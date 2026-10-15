@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.github
+_archive
+.claude
+.env*
+npm-debug.log*
+docs

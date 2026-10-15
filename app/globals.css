@@ -1,0 +1,165 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Strategic Income Group palette.
+     Core brand (from strategicincomegroup.com + logo):
+       navy  #0d2568   deep navy #02144b   logo navy #1e376c
+       gold  #c9a46e   silver    #989898   cream     #f8f5ef
+     Added for the app: sky #3b74d9 (info / links / charts) and sage #4f8a6b
+     (success states). All shadcn tokens below are HSL triplets. */
+  :root {
+    --background: 40 33% 98%;
+    --foreground: 225 45% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 225 45% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 45% 12%;
+    --primary: 224 78% 23%;
+    --primary-foreground: 40 39% 97%;
+    --secondary: 40 30% 93%;
+    --secondary-foreground: 224 60% 18%;
+    --muted: 40 24% 94%;
+    --muted-foreground: 222 12% 42%;
+    --accent: 36 46% 90%;
+    --accent-foreground: 30 40% 22%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 40 18% 86%;
+    --input: 40 18% 86%;
+    --ring: 36 46% 55%;
+    --radius: 0.5rem;
+
+    /* Brand tokens for marketing pages, charts and highlights */
+    --brand-navy: 224 78% 23%;
+    --brand-navy-deep: 225 95% 15%;
+    --brand-gold: 36 46% 61%;
+    --brand-silver: 0 0% 60%;
+    --brand-cream: 40 39% 95%;
+    --brand-sky: 219 68% 54%;
+    --brand-sage: 147 27% 43%;
+  }
+
+  .dark {
+    --background: 228 60% 7%;
+    --foreground: 40 30% 94%;
+    --card: 226 50% 10%;
+    --card-foreground: 40 30% 94%;
+    --popover: 226 50% 10%;
+    --popover-foreground: 40 30% 94%;
+    --primary: 36 52% 66%;
+    --primary-foreground: 225 80% 10%;
+    --secondary: 225 35% 15%;
+    --secondary-foreground: 40 26% 90%;
+    --muted: 225 35% 15%;
+    --muted-foreground: 222 14% 66%;
+    --accent: 225 40% 19%;
+    --accent-foreground: 36 60% 78%;
+    --destructive: 0 67% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 225 30% 19%;
+    --input: 225 30% 19%;
+    --ring: 36 52% 66%;
+
+    --brand-navy: 221 60% 62%;
+    --brand-navy-deep: 228 60% 7%;
+    --brand-gold: 36 52% 66%;
+    --brand-silver: 0 0% 70%;
+    --brand-cream: 225 35% 15%;
+    --brand-sky: 219 75% 66%;
+    --brand-sage: 147 30% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-size: 14px;
+  }
+}
+
+
+/* Minimal, theme-matched vertical scrollbar for the dashboard sidebar. */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 128, 120, 0.32) transparent;
+}
+.dark .sidebar-scroll {
+  scrollbar-color: rgba(190, 196, 188, 0.24) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(120, 128, 120, 0.3);
+  border-radius: 9999px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(120, 128, 120, 0.5);
+}
+.dark .sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(190, 196, 188, 0.22);
+}
+.dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(190, 196, 188, 0.42);
+}
+
+/* Minimal, theme-matched horizontal scrollbar for the Gantt timeline. */
+.gantt-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+}
+.dark .gantt-scroll {
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+.gantt-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.gantt-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.gantt-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.4);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.gantt-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.65);
+}
+.dark .gantt-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.38);
+}
+.dark .gantt-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.6);
+}
+
+/* Gold-branded Gantt task bars + dependency lines.
+   Light mode = dark gold; dark mode = light gold. */
+.gantt-bar {
+  background-color: rgba(201, 164, 110, 0.18);
+  border-color: rgba(176, 137, 74, 0.6);
+  color: #785a1c;
+}
+.dark .gantt-bar {
+  background-color: rgba(216, 189, 134, 0.16);
+  border-color: rgba(216, 189, 134, 0.45);
+  color: #ecd9a0;
+}
+.gantt-bar-fill { background-color: rgba(176, 137, 74, 0.32); }
+.dark .gantt-bar-fill { background-color: rgba(216, 189, 134, 0.3); }
+.gantt-line { stroke: rgba(122, 93, 29, 0.55); }
+.dark .gantt-line { stroke: rgba(236, 217, 160, 0.5); }
+.gantt-line-head { fill: rgba(122, 93, 29, 0.65); }
+.dark .gantt-line-head { fill: rgba(236, 217, 160, 0.55); }
+.gantt-today { background-color: rgba(176, 137, 74, 0.85); }
+.dark .gantt-today { background-color: rgba(236, 217, 160, 0.7); }

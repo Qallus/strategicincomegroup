@@ -1,0 +1,313 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ChevronDown, LogOut, Menu, Search, PanelLeft, X, MessageSquareText } from "lucide-react";
+import { DashboardActionTokenProvider } from "@/components/layout/dashboard-action-token";
+import { DmUnreadProvider, useDmUnread } from "@/components/direct-messages/dm-unread";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { dashboardNav, type NavEntry, type NavGroup, type NavLeaf } from "@/components/layout/dashboard-nav";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { ROLES, ROLE_LABELS } from "@/lib/rbac/roles";
+import { can } from "@/lib/rbac/permissions";
+import { cn } from "@/lib/utils";
+import type { DashboardProfile } from "@/lib/auth/server";
+
+type DashboardShellProps = {
+  actionToken: string;
+  children: React.ReactNode;
+  profile: DashboardProfile;
+};
+
+const STORAGE_KEY = "sig-sidebar-collapsed";
+
+export function DashboardShell({ actionToken, children, profile }: DashboardShellProps) {
+  const displayName = `${profile.firstName} ${profile.lastName}`.trim() || profile.email;
+  const pathname = usePathname();
+
+  // Facilitators and participants get their own scoped sidebars; everyone else gets the admin nav.
+  const navForRole = dashboardNav;
+
+  // Permission-filter: drop items the role can't see; drop now-empty groups.
+  const visibleEntries: NavEntry[] = navForRole
+    .map((entry): NavEntry | null => {
+      if (entry.kind === "group") {
+        const items = entry.items.filter((it) => !it.permission || can(profile.role, it.permission));
+        return items.length ? { ...entry, items } : null;
+      }
+      return !entry.permission || can(profile.role, entry.permission) ? entry : null;
+    })
+    .filter((e): e is NavEntry => e !== null);
+
+  const isActive = (href: string) => (href === "/dashboard" ? pathname === "/dashboard" : pathname === href || pathname.startsWith(`${href}/`));
+  const groupActive = (g: NavGroup) => g.items.some((it) => isActive(it.href));
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const isGroupOpen = (g: NavGroup) => openGroups[g.label] ?? groupActive(g);
+  const toggleGroup = (g: NavGroup) => setOpenGroups((o) => ({ ...o, [g.label]: !isGroupOpen(g) }));
+
+  // Restore the persisted desktop collapse state after mount (avoids hydration mismatch).
+  useEffect(() => {
+    if (localStorage.getItem(STORAGE_KEY) === "1") setCollapsed(true);
+  }, []);
+
+  // Entering a Workspace document auto-collapses the main sidebar for more editor room.
+  // Not persisted — the user can re-open it, and their saved preference returns elsewhere.
+  useEffect(() => {
+    if (pathname.startsWith("/dashboard/workspace/")) setCollapsed(true);
+  }, [pathname]);
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
+
+  return (
+    <DmUnreadProvider>
+    <div className="min-h-screen bg-background">
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={[
+          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r bg-card transition-all duration-200",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:translate-x-0",
+          collapsed ? "lg:w-16" : "lg:w-72",
+        ].join(" ")}
+      >
+        <div className={`flex h-20 shrink-0 items-center border-b ${collapsed ? "lg:justify-center lg:px-2" : "px-6"}`}>
+          <Link
+            href="/dashboard"
+            className="flex flex-col items-start"
+            aria-label="Strategic Income Group dashboard"
+            onClick={() => setMobileOpen(false)}
+          >
+            <span className={`relative block h-10 w-[180px] ${collapsed ? "lg:hidden" : ""}`}>
+              <img src="/brand/sig-logo.png" alt="Strategic Income Group" className="h-full w-full object-contain object-left dark:hidden" />
+              <img src="/brand/sig-logo-white.png" alt="Strategic Income Group" className="hidden h-full w-full object-contain object-left dark:block" />
+            </span>
+            {collapsed ? <img src="/brand/sig-mark.svg" alt="SIG" className="hidden h-9 w-9 lg:block" /> : null}
+          </Link>
+
+          {/* Close button (mobile only) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto lg:hidden"
+            aria-label="Close navigation"
+            onClick={() => setMobileOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <nav className="sidebar-scroll min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+          {visibleEntries.map((entry) =>
+            entry.kind === "group" ? (
+              <GroupBlock
+                key={entry.label}
+                group={entry}
+                collapsed={collapsed}
+                open={isGroupOpen(entry)}
+                active={groupActive(entry)}
+                onToggle={() => toggleGroup(entry)}
+                isItemActive={isActive}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            ) : (
+              <LeafLink
+                key={entry.href}
+                item={entry}
+                collapsed={collapsed}
+                active={isActive(entry.href)}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            ),
+          )}
+        </nav>
+      </aside>
+
+      <div className={`transition-all duration-200 ${collapsed ? "lg:pl-16" : "lg:pl-72"}`}>
+        <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
+          <div className="flex h-16 w-full items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
+            {/* Mobile: open drawer */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 lg:hidden"
+              aria-label="Open navigation"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            {/* Mobile: SIG mark (the sidebar logo covers desktop) */}
+            <Link href="/dashboard" aria-label="Dashboard" className="shrink-0 lg:hidden">
+              <img src="/brand/sig-logo.png" alt="SIG" className="h-7 w-auto object-contain dark:hidden" />
+              <img src="/brand/sig-logo-white.png" alt="SIG" className="hidden h-7 w-auto object-contain dark:block" />
+            </Link>
+            {/* Desktop: collapse/expand */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:inline-flex"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-pressed={collapsed}
+              onClick={toggleCollapsed}
+            >
+              <PanelLeft className="h-5 w-5" />
+            </Button>
+
+            <div className="relative hidden w-full max-w-xl sm:block">
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-9" placeholder="Search participants, waves, tags..." />
+            </div>
+            <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
+              {/* Install prompt takes room on small screens — desktop/tablet only */}
+              <span className="hidden sm:inline-flex">
+                <InstallAppButton />
+              </span>
+              <MessagesBell />
+              <ThemeToggle />
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-medium">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{ROLE_LABELS[profile.role]}</p>
+              </div>
+              <Link href="/dashboard/profile" aria-label="My Profile" className="shrink-0">
+                <UserAvatar
+                  firstName={profile.firstName}
+                  lastName={profile.lastName}
+                  email={profile.email}
+                  avatarUrl={profile.avatarUrl}
+                  className="h-9 w-9 shrink-0 text-sm"
+                />
+              </Link>
+              <form action="/auth/logout" method="post">
+                <Button type="submit" variant="ghost" size="icon" aria-label="Sign out">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
+          </div>
+        </header>
+
+        <DashboardActionTokenProvider token={actionToken}>
+          <main className="w-full overflow-x-clip px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-6">{children}</main>
+        </DashboardActionTokenProvider>
+      </div>
+
+      <MobileBottomNav role={profile.role} entries={visibleEntries} />
+    </div>
+    </DmUnreadProvider>
+  );
+}
+
+// Header bell → Direct Messages, with a live unread badge.
+function MessagesBell() {
+  const { unread } = useDmUnread();
+  return (
+    <Link
+      href="/dashboard/direct-messages"
+      aria-label={unread > 0 ? `Direct Messages (${unread} unread)` : "Direct Messages"}
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+    >
+      <MessageSquareText className="h-5 w-5" />
+      {unread > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function LeafLink({
+  item, collapsed, active, indent, onNavigate,
+}: {
+  item: NavLeaf; collapsed: boolean; active: boolean; indent?: boolean; onNavigate: () => void;
+}) {
+  const { unread } = useDmUnread();
+  const badge = item.href === "/dashboard/direct-messages" && unread > 0 ? unread : 0;
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      title={collapsed ? item.label : undefined}
+      className={cn(
+        "group relative flex h-10 items-center gap-3 rounded-md text-sm font-medium transition-colors",
+        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        collapsed ? "lg:justify-center lg:px-0 px-3" : "px-3",
+        indent && !collapsed ? "lg:pl-9" : "",
+      )}
+    >
+      <span className="relative shrink-0">
+        <item.icon className="h-4 w-4" />
+        {badge > 0 && collapsed && (
+          <span className="absolute -right-1.5 -top-1.5 hidden h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive px-0.5 text-[9px] font-bold leading-none text-destructive-foreground lg:flex" />
+        )}
+      </span>
+      <span className={collapsed ? "lg:hidden" : ""}>{item.label}</span>
+      {badge > 0 && (
+        <span className={cn("ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold leading-none text-destructive-foreground", collapsed ? "lg:hidden" : "")}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+      <span className={cn("pointer-events-none absolute left-full z-50 ml-2 hidden whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md", collapsed ? "lg:group-hover:block" : "")}>
+        {item.label}
+      </span>
+    </Link>
+  );
+}
+
+function GroupBlock({
+  group, collapsed, open, active, onToggle, isItemActive, onNavigate,
+}: {
+  group: NavGroup; collapsed: boolean; open: boolean; active: boolean;
+  onToggle: () => void; isItemActive: (href: string) => boolean; onNavigate: () => void;
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        title={collapsed ? group.label : undefined}
+        aria-expanded={open}
+        className={cn(
+          "group relative flex h-10 w-full items-center gap-3 rounded-md text-sm font-medium transition-colors",
+          active ? "text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          collapsed ? "lg:justify-center lg:px-0 px-3" : "px-3",
+        )}
+      >
+        <group.icon className="h-4 w-4 shrink-0" />
+        <span className={collapsed ? "lg:hidden" : ""}>{group.label}</span>
+        {!collapsed && <ChevronDown className={cn("ml-auto h-4 w-4 shrink-0 transition-transform", open ? "rotate-180" : "")} />}
+        <span className={cn("pointer-events-none absolute left-full z-50 ml-2 hidden whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md", collapsed ? "lg:group-hover:block" : "")}>
+          {group.label}
+        </span>
+      </button>
+      {open && (
+        <div className="mt-1 space-y-1">
+          {group.items.map((it) => (
+            <LeafLink key={it.href} item={it} collapsed={collapsed} active={isItemActive(it.href)} indent onNavigate={onNavigate} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

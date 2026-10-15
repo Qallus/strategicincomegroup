@@ -1,0 +1,83 @@
+import { createClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { ROLES, canAccessDashboard, normalizeAppRole, type AppRole } from "@/lib/rbac/roles";
+
+const OWNER_EMAILS = new Set(["jeremy@strategicincomegroup.com"]);
+
+export type DashboardProfile = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: AppRole;
+  status: "active" | "invited" | "pending" | "suspended" | "archived" | "inactive";
+  avatarUrl: string | null;
+};
+
+export async function getCurrentProfile(): Promise<DashboardProfile | null> {
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      id: "local-preview",
+      email: "planning@strategicincomegroup.com",
+      firstName: "SIG",
+      lastName: "Admin",
+      role: ROLES.SUPER_ADMIN,
+      status: "active",
+      avatarUrl: null,
+    };
+  }
+
+  // Use getSession() instead of getUser() in Server Components.
+  // getUser() makes a live Supabase network call and tries to refresh expired
+  // tokens via setAll(), but Server Components cannot write cookies — so the
+  // refreshed token is silently lost and router.refresh() redirects to login.
+  // The middleware already validates and refreshes the session; we just read it.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.user) return null;
+  const user = session.user;
+
+  const admin = createSupabaseAdminClient();
+  let { data: profile } = await admin
+    .from("profiles")
+    .select("id,auth_user_id,email,first_name,last_name,role,status,avatar_url")
+    .or(`id.eq.${user.id},auth_user_id.eq.${user.id}`)
+    .maybeSingle();
+
+  if (!profile && user.email) {
+    const byEmail = await admin
+      .from("profiles")
+      .select("id,auth_user_id,email,first_name,last_name,role,status,avatar_url")
+      .eq("email", user.email.trim().toLowerCase())
+      .maybeSingle();
+    profile = byEmail.data;
+  }
+
+  if (profile && profile.auth_user_id !== user.id) {
+    await admin.from("profiles").update({ auth_user_id: user.id, updated_at: new Date().toISOString() }).eq("id", profile.id);
+  }
+
+  const userEmail = (user.email ?? "").trim().toLowerCase();
+  const profileEmail = (profile?.email ?? userEmail).trim().toLowerCase();
+  const isOwner = OWNER_EMAILS.has(userEmail) || OWNER_EMAILS.has(profileEmail);
+  const role = isOwner ? ROLES.SUPER_ADMIN : normalizeAppRole(profile?.role) ?? ROLES.PARTICIPANT;
+  const status = isOwner ? "active" : profile?.status ?? "active";
+
+  return {
+    id: profile?.id ?? user.id,
+    email: profile?.email ?? user.email ?? "",
+    firstName: profile?.first_name ?? "",
+    lastName: profile?.last_name ?? "",
+    role,
+    status,
+    avatarUrl: profile?.avatar_url ?? null,
+  };
+}
+
+export function isActiveDashboardProfile(profile: DashboardProfile | null) {
+  return Boolean(profile && profile.status === "active" && canAccessDashboard(profile.role));
+}

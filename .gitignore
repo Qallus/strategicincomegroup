@@ -1,0 +1,20 @@
+main/.git/
+main/.claude/
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+out/
+dist/
+npm-debug.log*
+next-dev*.log
+tsconfig.tsbuildinfo
+
+# Large video source files (host on Drive/CDN, never in git — GitHub caps at 100MB)
+*.mp4
+*.mov
+docs/assets/video/**/*.mp4
+
+# Legal package archives — the extracted markdown is the source of truth
+docs/legal/*.zip
