@@ -11,7 +11,8 @@
     "db:migrate": "node scripts/apply-migrations.mjs",
     "db:migrate:status": "node scripts/apply-migrations.mjs --status",
     "db:migrate:check": "node scripts/apply-migrations.mjs --check",
-    "dev:requests": "node scripts/dev-requests.mjs"
+    "dev:requests": "node scripts/dev-requests.mjs",
+    "redtail:check": "node scripts/redtail-check.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
