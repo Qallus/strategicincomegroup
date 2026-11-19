@@ -32,6 +32,8 @@ function ResetInner() {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [busy, setBusy] = useState(false);
+  // Arrived from an invitation email (/auth/confirm?type=invite) rather than a reset request.
+  const welcome = params.get("welcome") === "1";
 
   useEffect(() => {
     let active = true;
@@ -109,7 +111,11 @@ function ResetInner() {
   }
 
   return (
-    <AuthShell eyebrow="Account recovery" title="Set a new password" description="Choose a new password for your account.">
+    <AuthShell
+      eyebrow={welcome ? "Welcome to Strategic Income Group" : "Account recovery"}
+      title={welcome ? "Choose your password" : "Set a new password"}
+      description={welcome ? "Create a password to finish setting up your account." : "Choose a new password for your account."}
+    >
       <form onSubmit={submit} className="space-y-4">
         <AuthField label="New password" htmlFor="pw">
           <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" required className="h-11" />
