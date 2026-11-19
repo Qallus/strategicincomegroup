@@ -65,7 +65,9 @@ function fallbackLink(href) {
 </p>`;
 }
 
-function layout({ title, preheader, eyebrow, heading, body }) {
+const DEFAULT_FOOTNOTE = "If you didn’t request this email, you can safely ignore it.";
+
+function layout({ title, preheader, eyebrow, heading, body, footnote = DEFAULT_FOOTNOTE }) {
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -97,7 +99,7 @@ function layout({ title, preheader, eyebrow, heading, body }) {
               ${body}
               <hr style="border:0;border-top:1px solid ${C.border};margin:32px 0 20px;" />
               <p style="margin:0;font-family:${SANS};font-size:12px;line-height:1.6;color:${C.muted};">
-                If you didn’t request this email, you can safely ignore it. Questions? Call us at
+                ${footnote} Questions? Call us at
                 <a href="tel:+14804667070" style="color:${C.navy};text-decoration:none;">(480) 466-7070</a>.
               </p>
             </td>
@@ -217,6 +219,114 @@ for (const t of TEMPLATES) {
 }
 writeFileSync(path.join(OUT, "README.md"), readme.join("\n") + "\n");
 console.log(`Wrote ${TEMPLATES.length} templates to ${path.relative(process.cwd(), OUT)}`);
+
+// ── Security notifications (Authentication → Emails → Security) ──────────────
+// Variables per Supabase docs: OldEmail (email changed), Phone/OldPhone (phone changed),
+// Provider (sign-in method linked/removed), FactorType (MFA added/removed).
+const SECURITY_FOOTNOTE = "This is an automatic security notice for your Strategic Income Group account — if you made this change, there’s nothing else to do.";
+
+/** Two-column "what changed" box (muted surface, like the site's cards). */
+function details(rows) {
+  const tr = rows
+    .map(
+      ([k, v]) => `
+    <tr>
+      <td style="padding:8px 14px;font-family:${SANS};font-size:13px;color:${C.muted};white-space:nowrap;vertical-align:top;">${k}</td>
+      <td style="padding:8px 14px;font-family:${SANS};font-size:13px;font-weight:600;color:${C.ink};word-break:break-all;">${v}</td>
+    </tr>`,
+    )
+    .join("");
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 18px;background:${C.codeBg};border:1px solid ${C.border};border-radius:8px;">${tr}
+</table>`;
+}
+
+const notYou = (extra = "") =>
+  `${p(`<strong>Didn’t make this change?</strong> Reset your password right away${extra}, then call us at (480) 466-7070 so we can help secure your account.`)}`;
+const resetUrl = "{{ .SiteURL }}/forgot-password?email={{ .Email }}";
+const PROVIDER = `{{ if eq .Provider "google" }}Google{{ else if eq .Provider "azure" }}Microsoft{{ else if eq .Provider "apple" }}Apple{{ else if eq .Provider "email" }}Email &amp; password{{ else if eq .Provider "phone" }}Phone{{ else }}{{ .Provider }}{{ end }}`;
+const FACTOR = `{{ if eq .FactorType "totp" }}Authenticator app{{ else if eq .FactorType "phone" }}Text message (SMS){{ else if eq .FactorType "webauthn" }}Security key / passkey{{ else }}{{ .FactorType }}{{ end }}`;
+
+// Names match Supabase → Authentication → Emails → Security exactly.
+const SECURITY = [
+  {
+    name: "Password changed",
+    file: "password-changed.html",
+    subject: "Your Strategic Income Group password was changed",
+    preheader: "The password for your account was just changed.",
+    heading: "Your password was changed",
+    body: `${p("The password for your Strategic Income Group account was just changed.")}${details([["Account", "{{ .Email }}"]])}${notYou()}${button(resetUrl, "Reset password")}`,
+  },
+  {
+    name: "Email address changed",
+    file: "email-address-changed.html",
+    subject: "Your Strategic Income Group email address was changed",
+    preheader: "The sign-in email for your account was changed.",
+    heading: "Your email address was changed",
+    body: `${p("The email address you use to sign in to Strategic Income Group was changed.")}${details([["Previous email", "{{ .OldEmail }}"], ["New email", "{{ .Email }}"]])}${p("<strong>Didn’t make this change?</strong> Call us right away at (480) 466-7070 so we can help secure your account.")}`,
+  },
+  {
+    name: "Phone number changed",
+    file: "phone-number-changed.html",
+    subject: "Your Strategic Income Group phone number was changed",
+    preheader: "The phone number on your account was changed.",
+    heading: "Your phone number was changed",
+    body: `${p("The phone number on your Strategic Income Group account was changed.")}${details([["Account", "{{ .Email }}"], ["Previous number", "{{ .OldPhone }}"], ["New number", "{{ .Phone }}"]])}${notYou()}${button(resetUrl, "Reset password")}`,
+  },
+  {
+    name: "Sign-in method linked",
+    file: "sign-in-method-linked.html",
+    subject: "A sign-in method was added to your Strategic Income Group account",
+    preheader: "A new way to sign in was linked to your account.",
+    heading: "A new sign-in method was linked",
+    body: `${p("A new way to sign in was linked to your Strategic Income Group account.")}${details([["Account", "{{ .Email }}"], ["Sign-in method", PROVIDER]])}${notYou()}${button(resetUrl, "Reset password")}`,
+  },
+  {
+    name: "Sign-in method removed",
+    file: "sign-in-method-removed.html",
+    subject: "A sign-in method was removed from your Strategic Income Group account",
+    preheader: "A way to sign in was removed from your account.",
+    heading: "A sign-in method was removed",
+    body: `${p("A way to sign in was removed from your Strategic Income Group account. You can no longer use it to sign in.")}${details([["Account", "{{ .Email }}"], ["Removed method", PROVIDER]])}${notYou()}${button(resetUrl, "Reset password")}`,
+  },
+  {
+    name: "MFA method added",
+    file: "mfa-method-added.html",
+    subject: "Two-factor authentication was added to your account",
+    preheader: "A new two-factor verification method protects your account.",
+    heading: "Two-factor authentication added",
+    body: `${p("A new verification method was added to your Strategic Income Group account. From now on, signing in will ask for a code from it — an extra layer of protection.")}${details([["Account", "{{ .Email }}"], ["Verification method", FACTOR]])}${notYou(" and remove the method in your account settings")}${button(resetUrl, "Reset password")}`,
+  },
+  {
+    name: "MFA method removed",
+    file: "mfa-method-removed.html",
+    subject: "Two-factor authentication was removed from your account",
+    preheader: "A two-factor verification method was removed from your account.",
+    heading: "Two-factor authentication removed",
+    body: `${p("A verification method was removed from your Strategic Income Group account. If it was your only one, signing in now needs just your password.")}${details([["Account", "{{ .Email }}"], ["Removed method", FACTOR]])}${notYou()}${button(resetUrl, "Reset password")}${note("We recommend keeping two-factor authentication on — you can add an authenticator app again at {{ .SiteURL }}/two-factor?setup=1.")}`,
+  },
+];
+
+const SEC_OUT = path.join(OUT, "security");
+mkdirSync(SEC_OUT, { recursive: true });
+const secReadme = [
+  "",
+  "## Security notifications",
+  "",
+  "**Authentication → Emails → Security**: turn each notification **on** (toggle), open it, set the Subject, paste the HTML from `security/`, Save.",
+  "",
+  "| Notification | Subject | File |",
+  "|---|---|---|",
+];
+for (const t of SECURITY) {
+  writeFileSync(
+    path.join(SEC_OUT, t.file),
+    layout({ title: t.subject, preheader: t.preheader, eyebrow: "Security notice", heading: t.heading, body: t.body, footnote: SECURITY_FOOTNOTE }),
+  );
+  secReadme.push(`| ${t.name} | ${t.subject} | \`security/${t.file}\` |`);
+}
+writeFileSync(path.join(OUT, "README.md"), readme.join("\n") + "\n" + secReadme.join("\n") + "\n");
+console.log(`Wrote ${SECURITY.length} security notification templates to ${path.relative(process.cwd(), SEC_OUT)}`);
 
 // ── App-sent emails (lib/email/templates.ts renders {{merge_field}}) ────────────
 // Dashboard → Team & Users invitations use the "user_invitation" event. The fork mapped it to

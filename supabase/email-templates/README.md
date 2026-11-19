@@ -15,3 +15,17 @@ Links go to `{{ .SiteURL }}/auth/confirm` (or `/reset-password`), which verifies
 | Change email address | Confirm your new email address | `change-email-address.html` |
 | Reset password | Reset your Strategic Income Group password | `reset-password.html` |
 | Reauthentication | Your Strategic Income Group verification code | `reauthentication.html` |
+
+## Security notifications
+
+**Authentication → Emails → Security**: turn each notification **on** (toggle), open it, set the Subject, paste the HTML from `security/`, Save.
+
+| Notification | Subject | File |
+|---|---|---|
+| Password changed | Your Strategic Income Group password was changed | `security/password-changed.html` |
+| Email address changed | Your Strategic Income Group email address was changed | `security/email-address-changed.html` |
+| Phone number changed | Your Strategic Income Group phone number was changed | `security/phone-number-changed.html` |
+| Sign-in method linked | A sign-in method was added to your Strategic Income Group account | `security/sign-in-method-linked.html` |
+| Sign-in method removed | A sign-in method was removed from your Strategic Income Group account | `security/sign-in-method-removed.html` |
+| MFA method added | Two-factor authentication was added to your account | `security/mfa-method-added.html` |
+| MFA method removed | Two-factor authentication was removed from your account | `security/mfa-method-removed.html` |
