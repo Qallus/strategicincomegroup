@@ -141,7 +141,7 @@ export const TEAM: TeamMember[] = [
     name: "Bree Sigler",
     title: "Client Service Associate",
     group: "admin",
-    photo: "/team/bree-sigler.webp",
+    photo: "/team/bree-sigler-2026.webp",
     history: ["Full profile coming soon."],
   },
   {
@@ -166,7 +166,7 @@ export const TEAM: TeamMember[] = [
     name: "Jeremy Waters",
     title: "Marketing Director",
     group: "admin",
-    photo: "/team/jeremy-waters.webp",
+    photo: "/team/jeremy-waters-2026.webp",
     quote: "Move with momentum and momentum will move you.",
     history: [
       "Over 20 years of projects ranging from web development, design, print design, digital displays, signage, vehicle graphics, packaging and more.",
