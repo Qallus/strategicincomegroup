@@ -144,6 +144,12 @@ export default async function ResourcesPage({ searchParams }: Props) {
                 ))}
               </ul>
             </div>
+            <Link href="/sigcares" className="group block rounded-xl border bg-card p-5 transition hover:border-primary/40">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold">SIGCares</p>
+              <h2 className="mt-1 font-serif text-xl">Feed My Starving Children</h2>
+              <p className="mt-1 text-sm text-muted-foreground">See the meals our community has packed and the kids fed around the world.</p>
+              <span className="mt-3 inline-block text-sm font-semibold text-primary group-hover:underline">See our impact →</span>
+            </Link>
             <div className="rounded-xl border bg-card p-5">
               <h2 className="font-serif text-xl">Book a review online</h2>
               <div className="mt-4 grid gap-2">

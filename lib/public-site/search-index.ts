@@ -58,6 +58,7 @@ export const STATIC_INDEX: SearchEntry[] = [
   { title: "Events", description: "Roundtables, workshops and community service events", href: "/events", category: "about", icon: "calendar", keywords: "event rsvp seminar workshop food packing" },
 
   // Resources
+  { title: "SIGCares — Feed My Starving Children", description: "Meals packed, kids fed and countries reached by SIG volunteers", href: "/sigcares", category: "resources", icon: "heart", keywords: "fmsc feed my starving children meals volunteer impact giving charity packing sigcares community", popular: true },
   { title: "Resources & Strategic Insights", description: "Monthly market commentary and planning articles", href: "/resources", category: "resources", icon: "book", keywords: "blog articles newsletter insights", popular: true },
   { title: "Privacy Policy", description: "How we collect, use and protect your information", href: "/privacy-policy", category: "resources", icon: "file", keywords: "privacy legal" },
   { title: "Terms of Service", description: "Terms that govern our website and services", href: "/terms-of-service", category: "resources", icon: "file", keywords: "terms legal sms" },

@@ -36,6 +36,9 @@ export const BOOKING_AUDIENCE_LABELS: Record<BookingAudience, string> = {
   clients: "Current clients",
 };
 
+export const IMPACT_PROGRAMS: Record<string, string> = { fmsc: "Feed My Starving Children" };
+export const kidsFedForAYear = (meals: number | null | undefined) => Math.round((meals ?? 0) / 365);
+
 export type IntakeQuestion = {
   key: string;
   label: string;
@@ -158,6 +161,12 @@ export type EventItem = {
   max_party_size?: number;
   arrival_note?: string | null;
   meeting_id?: string | null;
+  // SIGCares impact results (202611190130) — kids fed is derived (meals ÷ 365).
+  impact_program?: string | null;
+  impact_participants?: number | null;
+  impact_meals?: number | null;
+  impact_countries?: string[];
+  impact_notes?: string | null;
   created_at?: string;
   updated_at?: string;
   // computed

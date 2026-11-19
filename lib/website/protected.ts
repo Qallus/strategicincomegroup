@@ -44,6 +44,7 @@ export const PROTECTED_ROUTES = [
   "/insurance-planning",
   "/403b-plan",
   "/resources",
+  "/sigcares",
   "/contact",
   "/get-started",
   "/privacy-policy",

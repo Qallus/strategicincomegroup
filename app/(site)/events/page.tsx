@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, Globe, Lock, MapPin, Users } from "lucide-react";
 import { Container, PageHero } from "@/components/public-site/blocks";
 import { loadPublicEvents } from "@/lib/booking/data";
+import { ImpactBand } from "@/components/public-site/impact/impact-sections";
+import { loadFmscImpact } from "@/lib/impact/fmsc";
 import { EVENT_AUDIENCE_LABELS, EVENT_TYPE_LABELS, type EventItem } from "@/lib/booking/types";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +18,7 @@ const when = (iso: string, tz: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 export default async function EventsIndexPage() {
-  const events = await loadPublicEvents().catch(() => [] as EventItem[]);
+  const [events, impact] = await Promise.all([loadPublicEvents().catch(() => [] as EventItem[]), loadFmscImpact()]);
 
   return (
     <>
@@ -72,6 +74,11 @@ export default async function EventsIndexPage() {
             })}
           </div>
         )}
+        {impact.recorded.length ? (
+          <div className="mt-14">
+            <ImpactBand impact={impact} />
+          </div>
+        ) : null}
       </Container>
     </>
   );

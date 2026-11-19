@@ -142,6 +142,7 @@ export const FOOTER_COLUMNS = [
       { label: "Careers", href: "/join-our-team" },
       { label: "Resources", href: "/resources" },
       { label: "Events", href: "/events" },
+      { label: "SIGCares", href: "/sigcares" },
       { label: "Contact Us", href: "/contact" },
     ],
   },

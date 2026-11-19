@@ -26,6 +26,7 @@ const EVENT_CORE = [
 const EVENT_OPTIONAL = [
   "event_type", "series", "speakers", "office", "directions_url", "audience", "waitlist_enabled",
   "allow_guests", "max_party_size", "arrival_note", "meeting_id",
+  "impact_program", "impact_participants", "impact_meals", "impact_countries", "impact_notes",
 ] as const;
 const NEVER_WRITE = new Set(["id", "created_at", "updated_at", "registered_count", "waitlist_count"]);
 
@@ -110,6 +111,11 @@ const EVENT_FIELDS = {
   max_party_size: int("Max party size — if that column exists", 1, 50),
   arrival_note: str("Arrival note — if that column exists"),
   meeting_id: str("Online meeting id — if that column exists"),
+  impact_program: strEnum(["fmsc"], "Giving program this event counts toward (fmsc = Feed My Starving Children) — shown on /sigcares"),
+  impact_participants: int("Volunteers who attended (SIGCares results)", 0, 100000),
+  impact_meals: int("Meals packed (SIGCares results); kids fed for a year is computed as meals ÷ 365", 0, 100000000),
+  impact_countries: { type: "array", description: "Countries the meals went to, e.g. [\"Cambodia\",\"Philippines\"]", items: { type: "string" } },
+  impact_notes: str("Internal notes about the results"),
   extra: anyObj("Any other events columns to set (pass-through)"),
 };
 

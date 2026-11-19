@@ -15,7 +15,7 @@ import { StatCardRow } from "@/components/dashboard/stat-card-row";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { zonedToUtc, utcToZonedDate } from "@/lib/booking/availability";
 import {
-  BOOKING_AUDIENCE_LABELS, EVENT_AUDIENCE_LABELS, EVENT_TYPE_LABELS,
+  BOOKING_AUDIENCE_LABELS, EVENT_AUDIENCE_LABELS, EVENT_TYPE_LABELS, IMPACT_PROGRAMS, kidsFedForAYear,
   type AvailabilityRule, type Booking, type BookingManagerData, type BookingType, type EventItem,
   type EventRegistration, type EventSpeaker, type IntakeQuestion,
 } from "@/lib/booking/types";
@@ -509,7 +509,7 @@ function EventsTab({ events, origin, onEdit, onRegs, onDelete }: {
         return (
           <div key={e.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2"><span className="truncate font-semibold">{e.title}</span><Pill status={e.status} />{full && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Full</span>}</div>
+              <div className="flex items-center gap-2"><span className="truncate font-semibold">{e.title}</span><Pill status={e.status} />{full && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Full</span>}{e.impact_meals ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{e.impact_meals.toLocaleString()} meals · {kidsFedForAYear(e.impact_meals)} kids</span> : null}</div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
                 {e.event_type ? `${EVENT_TYPE_LABELS[e.event_type]} · ` : ""}{fmtDateTime(e.start_at, e.timezone)} · {EVENT_LOCATION_OPTS.find((o) => o.value === e.location_type)?.label}
                 {e.location_name ? ` · ${e.location_name}` : ""}{e.audience && e.audience !== "public" ? ` · ${EVENT_AUDIENCE_LABELS[e.audience]}` : ""}
@@ -587,6 +587,16 @@ function EventEditor({ draft, onChange, onSave, onClose, staffOpts, isAdmin }: {
           <Toggle checked={draft.allow_guests ?? true} onChange={(v) => set("allow_guests", v)} label="Guests allowed" />
           <Toggle checked={draft.waitlist_enabled ?? true} onChange={(v) => set("waitlist_enabled", v)} label="Waitlist when full" />
         </div>
+        <SectionLabel>Impact results (SIGCares)</SectionLabel>
+        <Field label="Giving program"><FieldSelect value={draft.impact_program ?? ""} onChange={(v) => set("impact_program", v || null)} options={[{ value: "", label: "None" }, ...Object.entries(IMPACT_PROGRAMS).map(([value, label]) => ({ value, label }))]} /></Field>
+        <Field label="Volunteers who attended"><Input type="number" min={0} value={draft.impact_participants ?? ""} onChange={(e) => set("impact_participants", e.target.value === "" ? null : Number(e.target.value))} /></Field>
+        <Field label="Meals packed"><Input type="number" min={0} value={draft.impact_meals ?? ""} onChange={(e) => set("impact_meals", e.target.value === "" ? null : Number(e.target.value))} placeholder="Enter after the packing" /></Field>
+        <Field label="Countries the meals went to"><Input value={(draft.impact_countries ?? []).join(", ")} onChange={(e) => set("impact_countries", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} placeholder="e.g. Cambodia, Philippines" /></Field>
+        {draft.impact_meals ? (
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            ≈ <span className="font-semibold text-foreground">{kidsFedForAYear(draft.impact_meals)}</span> kids fed for a year (meals ÷ 365). Totals on /sigcares update automatically.
+          </p>
+        ) : null}
         <div className="sm:col-span-2"><QuestionsEditor value={(draft.custom_fields as IntakeQuestion[]) ?? []} onChange={(q) => set("custom_fields", q)} /></div>
       </div>
       <div className="mt-5 flex justify-end gap-2">

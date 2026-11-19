@@ -51,6 +51,8 @@ const EVENT_COLUMNS = [
   // SIG (202611190120): the fields strategicincomegroup.com events use.
   "event_type", "series", "speakers", "office", "directions_url", "audience", "waitlist_enabled",
   "allow_guests", "max_party_size", "arrival_note", "meeting_id",
+  // SIGCares impact results (202611190130).
+  "impact_program", "impact_participants", "impact_meals", "impact_countries", "impact_notes",
 ] as const;
 
 function pick<T extends string>(payload: Record<string, unknown>, columns: readonly T[]): Record<string, unknown> {
@@ -329,6 +331,8 @@ export async function saveEvent(payload: Record<string, unknown>): Promise<Event
   const row = pick(payload, EVENT_COLUMNS);
   if (!Array.isArray(row.custom_fields)) row.custom_fields = [];
   if ("speakers" in row && !Array.isArray(row.speakers)) row.speakers = [];
+  if ("impact_countries" in row && !Array.isArray(row.impact_countries)) row.impact_countries = [];
+  if (row.impact_program === "") row.impact_program = null;
   row.slug = await ensureUniqueSlug("events", String(payload.slug || payload.title || "event"), id);
   if (payload.status === "published") row.published_at = (payload.published_at as string) || new Date().toISOString();
   row.updated_at = new Date().toISOString();
