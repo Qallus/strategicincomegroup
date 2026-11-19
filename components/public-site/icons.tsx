@@ -1,0 +1,62 @@
+import {
+  Award,
+  BarChart3,
+  BookOpen,
+  Briefcase,
+  CalendarDays,
+  Church,
+  Compass,
+  DollarSign,
+  FileText,
+  Globe,
+  HeartPulse,
+  Layers,
+  LayoutGrid,
+  Lock,
+  Map,
+  MapPin,
+  Phone,
+  Receipt,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  Sunset,
+  TrendingUp,
+  User,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+
+/** String keys used in lib/public-site data → lucide icons (keeps the data modules JSX-free). */
+export const SITE_ICONS: Record<string, LucideIcon> = {
+  users: Users,
+  user: User,
+  award: Award,
+  compass: Compass,
+  briefcase: Briefcase,
+  phone: Phone,
+  lock: Lock,
+  dollar: DollarSign,
+  chart: BarChart3,
+  map: Map,
+  heart: HeartPulse,
+  trending: TrendingUp,
+  grid: LayoutGrid,
+  receipt: Receipt,
+  globe: Globe,
+  sunset: Sunset,
+  shield: ShieldCheck,
+  book: BookOpen,
+  layers: Layers,
+  sparkles: Sparkles,
+  church: Church,
+  calendar: CalendarDays,
+  file: FileText,
+  rocket: Rocket,
+  pin: MapPin,
+};
+
+export function SiteIcon({ name, className }: { name: string; className?: string }) {
+  const Icon = SITE_ICONS[name] ?? LayoutGrid;
+  return <Icon className={className} aria-hidden />;
+}

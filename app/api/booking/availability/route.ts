@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireParticipantManager } from "@/lib/user-management/auth";
+import { assertCanManageType, requireBookingManager } from "@/lib/booking/access";
 import { loadAvailability, loadDateOverrides, replaceAvailability } from "@/lib/booking/data";
 
 function errStatus(msg: string) {
@@ -8,9 +8,10 @@ function errStatus(msg: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireParticipantManager(request);
+    const m = await requireBookingManager(request);
     const typeId = request.nextUrl.searchParams.get("booking_type_id");
     if (!typeId) throw new Error("booking_type_id is required.");
+    await assertCanManageType(m, typeId);
     const [rules, overrides] = await Promise.all([loadAvailability(typeId), loadDateOverrides(typeId)]);
     return NextResponse.json({ rules, overrides });
   } catch (error) {
@@ -22,9 +23,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    await requireParticipantManager(request, body?.actionToken);
+    const m = await requireBookingManager(request, body?.actionToken);
     const typeId = String(body?.booking_type_id || "");
     if (!typeId) throw new Error("booking_type_id is required.");
+    await assertCanManageType(m, typeId);
     const rules = Array.isArray(body?.rules) ? body.rules : [];
     return NextResponse.json({ rules: await replaceAvailability(typeId, rules) });
   } catch (error) {

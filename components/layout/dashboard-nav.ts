@@ -17,6 +17,7 @@ import {
   Home,
   Newspaper,
   IdCard,
+  Inbox,
   MailCheck,
   MessagesSquare,
   MonitorPlay,
@@ -50,6 +51,7 @@ export const dashboardNav: NavEntry[] = [
     kind: "group", label: "Clients", icon: Users, items: [
       { href: "/dashboard/contacts", label: "Contacts", icon: UserCircle, permission: PERMISSIONS.MANAGE_PARTICIPANTS },
       { href: "/dashboard/tags-segments", label: "Tags & Segments", icon: UsersRound, permission: PERMISSIONS.MANAGE_PARTICIPANTS },
+      { href: "/dashboard/form-submissions", label: "Form Submissions", icon: Inbox, permission: PERMISSIONS.MANAGE_PARTICIPANTS },
     ],
   },
   { kind: "item", href: "/dashboard/bookings", label: "Bookings & Events", icon: CalendarClock },
@@ -84,4 +86,5 @@ export const dashboardNav: NavEntry[] = [
   { kind: "item", href: "/dashboard/preferences", label: "My Settings", icon: Settings },
   { kind: "item", href: "/dashboard/user-management", label: "Team & Users", icon: BarChart3, permission: PERMISSIONS.MANAGE_USERS },
   { kind: "item", href: "/dashboard/settings", label: "Admin Settings", icon: Settings, permission: PERMISSIONS.MANAGE_SETTINGS },
+  { kind: "item", href: "/dashboard/settings/ai-connectors", label: "AI Connectors", icon: Sparkles, permission: PERMISSIONS.MANAGE_SETTINGS },
 ];

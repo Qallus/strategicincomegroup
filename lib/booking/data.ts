@@ -39,6 +39,8 @@ const TYPE_COLUMNS = [
   "buffer_before_minutes", "buffer_after_minutes", "location_type", "location_details",
   "color", "is_active", "is_public", "host_staff_id", "host_name", "timezone",
   "min_notice_hours", "max_advance_days", "price_cents", "currency", "questions", "confirmation_message",
+  // SIG (202611190120): public planner page, office and who the page is for.
+  "host_slug", "office", "audience",
 ] as const;
 
 const EVENT_COLUMNS = [
@@ -46,6 +48,9 @@ const EVENT_COLUMNS = [
   "location_type", "location_name", "location_address", "online_url", "cover_image_url",
   "capacity", "registration_required", "registration_closes_at", "price_cents", "currency",
   "host_staff_id", "host_name", "is_public", "custom_fields",
+  // SIG (202611190120): the fields strategicincomegroup.com events use.
+  "event_type", "series", "speakers", "office", "directions_url", "audience", "waitlist_enabled",
+  "allow_guests", "max_party_size", "arrival_note", "meeting_id",
 ] as const;
 
 function pick<T extends string>(payload: Record<string, unknown>, columns: readonly T[]): Record<string, unknown> {
@@ -75,6 +80,11 @@ export async function loadPublicBookingTypes(): Promise<BookingType[]> {
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as BookingType[];
+}
+
+/** Active public booking pages for one planner (team slug), e.g. /book?planner=laurie-simons. */
+export async function loadPublicBookingTypesForPlanner(hostSlug: string): Promise<BookingType[]> {
+  return (await loadPublicBookingTypes()).filter((t) => t.host_slug === hostSlug);
 }
 
 export async function loadBookingTypeBySlug(slug: string, opts: { publicOnly?: boolean } = {}): Promise<BookingType | null> {
@@ -318,6 +328,7 @@ export async function saveEvent(payload: Record<string, unknown>): Promise<Event
   const id = payload.id as string | undefined;
   const row = pick(payload, EVENT_COLUMNS);
   if (!Array.isArray(row.custom_fields)) row.custom_fields = [];
+  if ("speakers" in row && !Array.isArray(row.speakers)) row.speakers = [];
   row.slug = await ensureUniqueSlug("events", String(payload.slug || payload.title || "event"), id);
   if (payload.status === "published") row.published_at = (payload.published_at as string) || new Date().toISOString();
   row.updated_at = new Date().toISOString();
@@ -373,12 +384,16 @@ export async function createRegistration(input: {
     throw new Error("Registration for this event has closed.");
   }
 
-  const size = Math.max(1, Number(input.party_size) || 1);
+  const maxParty = event.allow_guests === false ? 1 : Number(event.max_party_size) || 50;
+  const size = Math.min(maxParty, Math.max(1, Number(input.party_size) || 1));
   let waitlisted = false;
   if (event.capacity != null) {
     const [decorated] = await decorateEventCounts([event as unknown as EventItem]);
     const taken = decorated.registered_count ?? 0;
-    if (taken + size > event.capacity) waitlisted = true;
+    if (taken + size > event.capacity) {
+      if (event.waitlist_enabled === false) throw new Error("This event is full.");
+      waitlisted = true;
+    }
   }
 
   const row = {
@@ -415,13 +430,21 @@ export async function deleteRegistration(id: string): Promise<void> {
 
 // ── Dashboard aggregate ──────────────────────────────────────────────────────
 
-export async function loadBookingManagerData(): Promise<BookingManagerData> {
-  const [bookingTypes, bookings, events, registrations] = await Promise.all([
+/**
+ * Dashboard data. Pass `hostId` for a non-admin planner to see only the booking
+ * pages, bookings and events they host (see lib/booking/access.ts).
+ */
+export async function loadBookingManagerData(opts: { hostId?: string } = {}): Promise<BookingManagerData> {
+  const [allTypes, allBookings, allEvents, allRegistrations] = await Promise.all([
     loadBookingTypes(),
     loadBookings({ limit: 500 }),
     loadEvents(),
     loadRegistrations({ limit: 500 }),
   ]);
+  const { bookingTypes, bookings, events, registrations } = scopeToHost(
+    { bookingTypes: allTypes, bookings: allBookings, events: allEvents, registrations: allRegistrations },
+    opts.hostId,
+  );
 
   const nowIso = new Date().toISOString();
   const stats: BookingStats = {
@@ -433,6 +456,24 @@ export async function loadBookingManagerData(): Promise<BookingManagerData> {
   };
 
   return { bookingTypes, bookings, events, registrations, stats };
+}
+
+export function scopeToHost<T extends { bookingTypes: BookingType[]; bookings: Booking[]; events: EventItem[]; registrations: EventRegistration[] }>(
+  data: T,
+  hostId?: string,
+): T {
+  if (!hostId) return data;
+  const bookingTypes = data.bookingTypes.filter((t) => t.host_staff_id === hostId);
+  const typeIds = new Set(bookingTypes.map((t) => t.id));
+  const events = data.events.filter((e) => e.host_staff_id === hostId);
+  const eventIds = new Set(events.map((e) => e.id));
+  return {
+    ...data,
+    bookingTypes,
+    bookings: data.bookings.filter((b) => b.host_staff_id === hostId || typeIds.has(b.booking_type_id)),
+    events,
+    registrations: data.registrations.filter((r) => eventIds.has(r.event_id)),
+  };
 }
 
 export type StaffOption = { id: string; display_name: string };

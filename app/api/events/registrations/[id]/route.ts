@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireParticipantManager } from "@/lib/user-management/auth";
+import { assertCanManageRegistration, requireBookingManager } from "@/lib/booking/access";
 import { deleteRegistration, updateRegistration } from "@/lib/booking/data";
 
 function errStatus(msg: string) {
@@ -10,7 +10,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const { id } = await params;
     const body = await request.json();
-    await requireParticipantManager(request, body?.actionToken);
+    const m = await requireBookingManager(request, body?.actionToken);
+    await assertCanManageRegistration(m, id);
     await updateRegistration(id, body);
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -23,7 +24,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    await requireParticipantManager(request, body?.actionToken);
+    const m = await requireBookingManager(request, body?.actionToken);
+    await assertCanManageRegistration(m, id);
     await deleteRegistration(id);
     return NextResponse.json({ ok: true });
   } catch (error) {

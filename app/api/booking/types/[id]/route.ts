@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireParticipantManager } from "@/lib/user-management/auth";
+import { assertCanManageType, requireBookingManager } from "@/lib/booking/access";
 import { deleteBookingType } from "@/lib/booking/data";
 
 function errStatus(msg: string) {
@@ -10,7 +10,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    await requireParticipantManager(request, body?.actionToken);
+    const m = await requireBookingManager(request, body?.actionToken);
+    await assertCanManageType(m, id);
     await deleteBookingType(id);
     return NextResponse.json({ ok: true });
   } catch (error) {

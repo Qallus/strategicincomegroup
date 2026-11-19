@@ -14,10 +14,13 @@ import { cn } from "@/lib/utils";
 import { StatCardRow } from "@/components/dashboard/stat-card-row";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { zonedToUtc, utcToZonedDate } from "@/lib/booking/availability";
-import type {
-  AvailabilityRule, Booking, BookingManagerData, BookingType, EventItem,
-  EventRegistration, IntakeQuestion,
+import {
+  BOOKING_AUDIENCE_LABELS, EVENT_AUDIENCE_LABELS, EVENT_TYPE_LABELS,
+  type AvailabilityRule, type Booking, type BookingManagerData, type BookingType, type EventItem,
+  type EventRegistration, type EventSpeaker, type IntakeQuestion,
 } from "@/lib/booking/types";
+import { OFFICES } from "@/lib/public-site/site-data";
+import { TEAM } from "@/lib/public-site/team";
 import type { StaffOption } from "@/lib/booking/data";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -53,6 +56,20 @@ const REG_STATUS_OPTS: FieldSelectOption[] = [
   { value: "registered", label: "Registered" }, { value: "waitlisted", label: "Waitlisted" },
   { value: "attended", label: "Attended" }, { value: "canceled", label: "Canceled" },
 ];
+const PLANNER_OPTS: FieldSelectOption[] = [
+  { value: "", label: "Not on a planner page" },
+  ...TEAM.filter((m) => m.group !== "admin").map((m) => ({ value: m.slug, label: m.name })),
+];
+const OFFICE_OPTS: FieldSelectOption[] = [{ value: "", label: "—" }, ...OFFICES.map((o) => ({ value: o.name, label: `${o.name} (${o.city})` }))];
+const officeAddress = (name: string) => {
+  const o = OFFICES.find((x) => x.name === name);
+  return o ? `${o.street}, ${o.locality}` : "";
+};
+const BOOKING_AUDIENCE_OPTS: FieldSelectOption[] = Object.entries(BOOKING_AUDIENCE_LABELS).map(([value, label]) => ({ value, label }));
+const EVENT_TYPE_OPTS: FieldSelectOption[] = Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+const EVENT_AUDIENCE_OPTS: FieldSelectOption[] = Object.entries(EVENT_AUDIENCE_LABELS).map(([value, label]) => ({ value, label }));
+const plannerName = (slug?: string | null) => TEAM.find((m) => m.slug === slug)?.name;
+
 const tzOpts = (): FieldSelectOption[] => TIMEZONES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }));
 
 function fmtDateTime(iso: string, tz: string) {
@@ -95,7 +112,7 @@ function Pill({ status }: { status: string }) {
 
 type Tab = "types" | "bookings" | "events";
 
-export function BookingsClient({ initialData, staffOptions }: { initialData: BookingManagerData; staffOptions: StaffOption[] }) {
+export function BookingsClient({ initialData, staffOptions, isAdmin = true }: { initialData: BookingManagerData; staffOptions: StaffOption[]; isAdmin?: boolean }) {
   const token = useDashboardActionToken();
   const [tab, setTab] = React.useState<Tab>("types");
   const [types, setTypes] = React.useState<BookingType[]>(initialData.bookingTypes);
@@ -176,25 +193,30 @@ export function BookingsClient({ initialData, staffOptions }: { initialData: Boo
       {/* Tabs */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="flex items-center rounded-lg border border-border bg-card p-0.5 text-xs">
-          {([["types", "Booking Types"], ["bookings", "Bookings"], ["events", "Events"]] as [Tab, string][]).map(([k, l]) => (
+          {([["types", "Booking Pages"], ["bookings", "Bookings"], ["events", "Events"]] as [Tab, string][]).map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)} className={cn("rounded-md px-3 py-1.5 font-medium", tab === k ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>{l}</button>
           ))}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {tab === "types" && <Button size="sm" onClick={() => setEditType(newType())}><Plus className="h-3.5 w-3.5" /> New type</Button>}
+          {tab === "types" && <Button size="sm" onClick={() => setEditType(newType())}><Plus className="h-3.5 w-3.5" /> New booking page</Button>}
           {tab === "events" && <Button size="sm" onClick={() => setEditEvent(newEvent())}><Plus className="h-3.5 w-3.5" /> New event</Button>}
         </div>
       </div>
 
+      {!isAdmin && (
+        <div className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          You’re seeing the booking pages, bookings and events you host. A SIG Admin can assign others to you.
+        </div>
+      )}
       {error && <div className="mb-3 flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span>{error}</span><button onClick={() => setError(null)}><X className="h-3.5 w-3.5" /></button></div>}
 
       {tab === "types" && <TypesTab types={types} origin={origin} onEdit={setEditType} onAvailability={setAvailFor} onDelete={removeType} />}
       {tab === "bookings" && <BookingsTab bookings={bookings} onStatus={setBookingStatus} onDelete={removeBooking} />}
       {tab === "events" && <EventsTab events={events} origin={origin} onEdit={setEditEvent} onRegs={setRegsFor} onDelete={removeEvent} />}
 
-      {editType && <TypeEditor draft={editType} onChange={setEditType} onSave={saveType} onClose={() => setEditType(null)} staffOpts={staffSelectOpts} />}
+      {editType && <TypeEditor draft={editType} onChange={setEditType} onSave={saveType} onClose={() => setEditType(null)} staffOpts={staffSelectOpts} isAdmin={isAdmin} />}
       {availFor && <AvailabilityModal type={availFor} token={token} onClose={() => setAvailFor(null)} />}
-      {editEvent && <EventEditor draft={editEvent} onChange={setEditEvent} onSave={saveEvent} onClose={() => setEditEvent(null)} staffOpts={staffSelectOpts} />}
+      {editEvent && <EventEditor draft={editEvent} onChange={setEditEvent} onSave={saveEvent} onClose={() => setEditEvent(null)} staffOpts={staffSelectOpts} isAdmin={isAdmin} />}
       {regsFor && <RegistrationsModal event={regsFor} token={token} onClose={() => setRegsFor(null)} />}
     </div>
   );
@@ -204,18 +226,20 @@ function newType(): Partial<BookingType> {
   return {
     name: "", description: "", duration_minutes: 30, slot_interval_minutes: null,
     buffer_before_minutes: 0, buffer_after_minutes: 0, location_type: "video", location_details: "",
-    color: "#0f766e", is_active: true, is_public: true, host_staff_id: null, host_name: "",
-    timezone: "America/Chicago", min_notice_hours: 12, max_advance_days: 60, price_cents: 0, currency: "USD",
-    questions: [], confirmation_message: "",
+    color: "#1e3a8a", is_active: true, is_public: true, host_staff_id: null, host_name: "",
+    timezone: "America/Phoenix", min_notice_hours: 24, max_advance_days: 60, price_cents: 0, currency: "USD",
+    questions: [], confirmation_message: "", host_slug: null, office: "East Valley Office", audience: "everyone",
   };
 }
 function newEvent(): Partial<EventItem> {
   return {
     title: "", summary: "", description: "", status: "draft", start_at: "", end_at: null,
-    timezone: "America/Chicago", location_type: "in_person", location_name: "", location_address: "",
+    timezone: "America/Phoenix", location_type: "in_person", location_name: "SIG Chandler Office", location_address: officeAddress("East Valley Office"),
     online_url: "", cover_image_url: "", capacity: null, registration_required: true,
     registration_closes_at: null, price_cents: 0, currency: "USD", host_staff_id: null, host_name: "",
-    is_public: true, custom_fields: [],
+    is_public: true, custom_fields: [], event_type: "workshop", series: "", speakers: [], office: "East Valley Office",
+    directions_url: "", audience: "public", waitlist_enabled: true, allow_guests: true, max_party_size: 4,
+    arrival_note: "Arrive 10 minutes early.", meeting_id: "",
   };
 }
 
@@ -301,6 +325,13 @@ function TypesTab({ types, origin, onEdit, onAvailability, onDelete }: {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2"><span className="truncate font-semibold">{t.name}</span>{!t.is_active && <Pill status="canceled" />}</div>
                 <div className="mt-0.5 text-[11px] text-muted-foreground">{t.duration_minutes} min · {LOCATION_OPTS.find((o) => o.value === t.location_type)?.label}{t.host_name ? ` · ${t.host_name}` : ""}</div>
+                {(t.host_slug || t.office || (t.audience && t.audience !== "everyone")) && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {t.host_slug && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{plannerName(t.host_slug) ?? t.host_slug}</span>}
+                    {t.office && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{t.office}</span>}
+                    {t.audience && t.audience !== "everyone" && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{BOOKING_AUDIENCE_LABELS[t.audience]}</span>}
+                  </div>
+                )}
               </div>
             </div>
             {t.description && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{t.description}</p>}
@@ -320,17 +351,23 @@ function TypesTab({ types, origin, onEdit, onAvailability, onDelete }: {
   );
 }
 
-function TypeEditor({ draft, onChange, onSave, onClose, staffOpts }: {
+function TypeEditor({ draft, onChange, onSave, onClose, staffOpts, isAdmin }: {
   draft: Partial<BookingType>; onChange: (d: Partial<BookingType>) => void;
-  onSave: (d: Partial<BookingType>) => Promise<void>; onClose: () => void; staffOpts: FieldSelectOption[];
+  onSave: (d: Partial<BookingType>) => Promise<void>; onClose: () => void; staffOpts: FieldSelectOption[]; isAdmin: boolean;
 }) {
   const [busy, setBusy] = React.useState(false);
   const set = <K extends keyof BookingType>(k: K, v: BookingType[K]) => onChange({ ...draft, [k]: v });
   async function submit() { setBusy(true); try { await onSave(draft); } finally { setBusy(false); } }
   return (
-    <Modal title={draft.id ? "Edit booking type" : "New booking type"} onClose={onClose}>
+    <Modal title={draft.id ? "Edit booking page" : "New booking page"} onClose={onClose}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Name" full><Input value={draft.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Stewardship Consultation" /></Field>
+        <Field label="Name" full><Input value={draft.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Free Consultation" /></Field>
+        <Field label="Planner page"><FieldSelect value={draft.host_slug ?? ""} onChange={(v) => {
+          const m = TEAM.find((x) => x.slug === v);
+          onChange({ ...draft, host_slug: v || null, host_name: m ? `${m.name}${m.credentials ? `, ${m.credentials}` : ""}` : draft.host_name, office: m?.office ?? draft.office });
+        }} options={PLANNER_OPTS} /></Field>
+        <Field label="Who is it for?"><FieldSelect value={draft.audience ?? "everyone"} onChange={(v) => set("audience", v as BookingType["audience"])} options={BOOKING_AUDIENCE_OPTS} /></Field>
+        <Field label="Office"><FieldSelect value={draft.office ?? ""} onChange={(v) => onChange({ ...draft, office: v || null, location_details: draft.location_type === "in_person" && v ? officeAddress(v) : draft.location_details })} options={OFFICE_OPTS} /></Field>
         <Field label="Description" full><Textarea className="min-h-[60px]" value={draft.description ?? ""} onChange={(e) => set("description", e.target.value)} /></Field>
         <Field label="Duration (minutes)"><Input type="number" min={5} value={draft.duration_minutes ?? 30} onChange={(e) => set("duration_minutes", Number(e.target.value))} /></Field>
         <Field label="Slot interval (optional)"><Input type="number" min={5} value={draft.slot_interval_minutes ?? ""} placeholder="= duration" onChange={(e) => set("slot_interval_minutes", e.target.value ? Number(e.target.value) : null)} /></Field>
@@ -339,7 +376,7 @@ function TypeEditor({ draft, onChange, onSave, onClose, staffOpts }: {
         <Field label="Location"><FieldSelect value={draft.location_type ?? "video"} onChange={(v) => set("location_type", v as BookingType["location_type"])} options={LOCATION_OPTS} /></Field>
         <Field label="Location details"><Input value={draft.location_details ?? ""} onChange={(e) => set("location_details", e.target.value)} placeholder="Zoom link, address, etc." /></Field>
         <Field label="Timezone"><FieldSelect value={draft.timezone ?? "America/Chicago"} onChange={(v) => set("timezone", v)} options={tzOpts()} /></Field>
-        <Field label="Host"><FieldSelect value={draft.host_staff_id ?? ""} onChange={(v) => set("host_staff_id", v || null)} options={staffOpts} /></Field>
+        {isAdmin && <Field label="Managed by (dashboard user)"><FieldSelect value={draft.host_staff_id ?? ""} onChange={(v) => set("host_staff_id", v || null)} options={staffOpts} /></Field>}
         <Field label="Host display name"><Input value={draft.host_name ?? ""} onChange={(e) => set("host_name", e.target.value)} /></Field>
         <Field label="Color"><input type="color" value={draft.color ?? "#0f766e"} onChange={(e) => set("color", e.target.value)} className="h-9 w-full cursor-pointer rounded-md border border-input bg-background" /></Field>
         <Field label="Min notice (hours)"><Input type="number" min={0} value={draft.min_notice_hours ?? 12} onChange={(e) => set("min_notice_hours", Number(e.target.value))} /></Field>
@@ -474,8 +511,8 @@ function EventsTab({ events, origin, onEdit, onRegs, onDelete }: {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2"><span className="truncate font-semibold">{e.title}</span><Pill status={e.status} />{full && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Full</span>}</div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {fmtDateTime(e.start_at, e.timezone)} · {EVENT_LOCATION_OPTS.find((o) => o.value === e.location_type)?.label}
-                {e.location_name ? ` · ${e.location_name}` : ""}
+                {e.event_type ? `${EVENT_TYPE_LABELS[e.event_type]} · ` : ""}{fmtDateTime(e.start_at, e.timezone)} · {EVENT_LOCATION_OPTS.find((o) => o.value === e.location_type)?.label}
+                {e.location_name ? ` · ${e.location_name}` : ""}{e.audience && e.audience !== "public" ? ` · ${EVENT_AUDIENCE_LABELS[e.audience]}` : ""}
               </div>
               <div className="mt-1 flex items-center gap-3">
                 {e.status === "published" && e.is_public && <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><ExternalLink className="h-3 w-3" />/events/{e.slug}</a>}
@@ -494,12 +531,12 @@ function EventsTab({ events, origin, onEdit, onRegs, onDelete }: {
   );
 }
 
-function EventEditor({ draft, onChange, onSave, onClose, staffOpts }: {
+function EventEditor({ draft, onChange, onSave, onClose, staffOpts, isAdmin }: {
   draft: Partial<EventItem>; onChange: (d: Partial<EventItem>) => void;
-  onSave: (d: Partial<EventItem>) => Promise<void>; onClose: () => void; staffOpts: FieldSelectOption[];
+  onSave: (d: Partial<EventItem>) => Promise<void>; onClose: () => void; staffOpts: FieldSelectOption[]; isAdmin: boolean;
 }) {
   const [busy, setBusy] = React.useState(false);
-  const tz = draft.timezone || "America/Chicago";
+  const tz = draft.timezone || "America/Phoenix";
   const set = <K extends keyof EventItem>(k: K, v: EventItem[K]) => onChange({ ...draft, [k]: v });
   const startP = isoToParts(draft.start_at ?? null, tz);
   const endP = isoToParts(draft.end_at ?? null, tz);
@@ -510,7 +547,11 @@ function EventEditor({ draft, onChange, onSave, onClose, staffOpts }: {
   return (
     <Modal title={draft.id ? "Edit event" : "New event"} onClose={onClose} wide>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Title" full><Input value={draft.title ?? ""} onChange={(e) => set("title", e.target.value)} /></Field>
+        <SectionLabel>Event</SectionLabel>
+        <Field label="Title" full><Input value={draft.title ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Caregivers Circle — Roundtable Event" /></Field>
+        <Field label="Event type"><FieldSelect value={draft.event_type ?? "workshop"} onChange={(v) => set("event_type", v as EventItem["event_type"])} options={EVENT_TYPE_OPTS} /></Field>
+        <Field label="Series (optional)"><Input value={draft.series ?? ""} onChange={(e) => set("series", e.target.value)} placeholder="e.g. SIG Private Roundtable Series" /></Field>
+        <Field label="Who can attend?"><FieldSelect value={draft.audience ?? "public"} onChange={(v) => set("audience", v as EventItem["audience"])} options={EVENT_AUDIENCE_OPTS} /></Field>
         <Field label="Summary" full><Input value={draft.summary ?? ""} onChange={(e) => set("summary", e.target.value)} placeholder="One-line teaser" /></Field>
         <Field label="Description" full><Textarea className="min-h-[72px]" value={draft.description ?? ""} onChange={(e) => set("description", e.target.value)} /></Field>
         <Field label="Status"><FieldSelect value={draft.status ?? "draft"} onChange={(v) => set("status", v as EventItem["status"])} options={EVENT_STATUS_OPTS} /></Field>
@@ -519,18 +560,32 @@ function EventEditor({ draft, onChange, onSave, onClose, staffOpts }: {
         <Field label="Start time"><FieldSelect value={startP.time || "09:00"} onChange={(v) => set("start_at", partsToIso(startP.date, v, tz))} options={TIME_OPTS} /></Field>
         <Field label="End date"><DatePicker value={endP.date} onChange={(v) => set("end_at", v ? partsToIso(v, endP.time || "10:00", tz) : null)} /></Field>
         <Field label="End time"><FieldSelect value={endP.time || ""} onChange={(v) => set("end_at", endP.date ? partsToIso(endP.date, v, tz) : null)} options={[{ value: "", label: "—" }, ...TIME_OPTS]} /></Field>
+        <SectionLabel>Location</SectionLabel>
+        <Field label="Office (optional)"><FieldSelect value={draft.office ?? ""} onChange={(v) => {
+          const o = OFFICES.find((x) => x.name === v);
+          onChange({ ...draft, office: v || null, ...(o ? { location_name: `SIG ${o.city} Office`, location_address: officeAddress(v), directions_url: o.directions } : {}) });
+        }} options={OFFICE_OPTS} /></Field>
         <Field label="Location type"><FieldSelect value={draft.location_type ?? "in_person"} onChange={(v) => set("location_type", v as EventItem["location_type"])} options={EVENT_LOCATION_OPTS} /></Field>
         <Field label="Venue / location name"><Input value={draft.location_name ?? ""} onChange={(e) => set("location_name", e.target.value)} /></Field>
         <Field label="Address" full><Input value={draft.location_address ?? ""} onChange={(e) => set("location_address", e.target.value)} /></Field>
-        <Field label="Online URL"><Input value={draft.online_url ?? ""} onChange={(e) => set("online_url", e.target.value)} placeholder="https://…" /></Field>
+        <Field label="Directions URL"><Input value={draft.directions_url ?? ""} onChange={(e) => set("directions_url", e.target.value)} placeholder="Google Maps link" /></Field>
+        <Field label="Arrival note"><Input value={draft.arrival_note ?? ""} onChange={(e) => set("arrival_note", e.target.value)} placeholder="Arrive 10 minutes early." /></Field>
+        <Field label="Online URL (Teams / Zoom)"><Input value={draft.online_url ?? ""} onChange={(e) => set("online_url", e.target.value)} placeholder="https://…" /></Field>
+        <Field label="Meeting ID / passcode"><Input value={draft.meeting_id ?? ""} onChange={(e) => set("meeting_id", e.target.value)} /></Field>
+        <SectionLabel>Speakers</SectionLabel>
+        <div className="sm:col-span-2"><SpeakersEditor value={(draft.speakers as EventSpeaker[]) ?? []} onChange={(v) => set("speakers", v)} /></div>
+        <SectionLabel>Registration</SectionLabel>
         <Field label="Cover image URL"><Input value={draft.cover_image_url ?? ""} onChange={(e) => set("cover_image_url", e.target.value)} placeholder="https://…" /></Field>
         <Field label="Capacity (blank = unlimited)"><Input type="number" min={1} value={draft.capacity ?? ""} onChange={(e) => set("capacity", e.target.value ? Number(e.target.value) : null)} /></Field>
         <Field label="Host display name"><Input value={draft.host_name ?? ""} onChange={(e) => set("host_name", e.target.value)} /></Field>
-        <Field label="Host"><FieldSelect value={draft.host_staff_id ?? ""} onChange={(v) => set("host_staff_id", v || null)} options={staffOpts} /></Field>
-        <Field label="Registration closes"><DatePicker value={closesP.date} onChange={(v) => set("registration_closes_at", v ? partsToIso(v, closesP.time || "23:59", tz) : null)} /></Field>
+        {isAdmin && <Field label="Managed by (dashboard user)"><FieldSelect value={draft.host_staff_id ?? ""} onChange={(v) => set("host_staff_id", v || null)} options={staffOpts} /></Field>}
+        <Field label="Max party size (incl. guests)"><Input type="number" min={1} max={50} value={draft.max_party_size ?? 4} onChange={(e) => set("max_party_size", Number(e.target.value) || 1)} /></Field>
+        <Field label="Registration deadline"><DatePicker value={closesP.date} onChange={(v) => set("registration_closes_at", v ? partsToIso(v, closesP.time || "23:59", tz) : null)} /></Field>
         <div className="flex flex-wrap gap-4 sm:col-span-2">
           <Toggle checked={draft.registration_required ?? true} onChange={(v) => set("registration_required", v)} label="Registration required" />
           <Toggle checked={draft.is_public ?? true} onChange={(v) => set("is_public", v)} label="Public event page" />
+          <Toggle checked={draft.allow_guests ?? true} onChange={(v) => set("allow_guests", v)} label="Guests allowed" />
+          <Toggle checked={draft.waitlist_enabled ?? true} onChange={(v) => set("waitlist_enabled", v)} label="Waitlist when full" />
         </div>
         <div className="sm:col-span-2"><QuestionsEditor value={(draft.custom_fields as IntakeQuestion[]) ?? []} onChange={(q) => set("custom_fields", q)} /></div>
       </div>
@@ -539,6 +594,34 @@ function EventEditor({ draft, onChange, onSave, onClose, staffOpts }: {
         <Button onClick={submit} disabled={busy || !String(draft.title ?? "").trim() || !draft.start_at}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save</Button>
       </div>
     </Modal>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mt-2 border-b border-border pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:col-span-2">{children}</p>;
+}
+
+function SpeakersEditor({ value, onChange }: { value: EventSpeaker[]; onChange: (v: EventSpeaker[]) => void }) {
+  const update = (i: number, patch: Partial<EventSpeaker>) => onChange(value.map((s, k) => (k === i ? { ...s, ...patch } : s)));
+  const addTeam = (slug: string) => {
+    const m = TEAM.find((x) => x.slug === slug);
+    if (m) onChange([...value, { name: `${m.name}${m.credentials ? `, ${m.credentials}` : ""}`, title: m.title, team_slug: m.slug, photo_url: m.photo }]);
+  };
+  return (
+    <div className="space-y-2">
+      {value.map((s, i) => (
+        <div key={i} className="grid gap-2 rounded-lg border border-border p-2 sm:grid-cols-[1fr_1fr_auto]">
+          <Input value={s.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="Speaker name" className="h-8" />
+          <Input value={s.title ?? ""} onChange={(e) => update(i, { title: e.target.value })} placeholder="Title / organization" className="h-8" />
+          <button onClick={() => onChange(value.filter((_, k) => k !== i))} className="px-1 text-muted-foreground hover:text-destructive" aria-label="Remove speaker"><Trash2 className="h-3.5 w-3.5" /></button>
+          <Textarea value={s.bio ?? ""} onChange={(e) => update(i, { bio: e.target.value })} placeholder="Short bio (optional)" className="min-h-[44px] sm:col-span-3" />
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => onChange([...value, { name: "", title: "" }])}><Plus className="h-3.5 w-3.5" /> Guest speaker</Button>
+        <div className="w-56"><FieldSelect value="" onChange={addTeam} options={[{ value: "", label: "+ Add SIG team member…" }, ...TEAM.map((m) => ({ value: m.slug, label: m.name }))]} className="h-8" /></div>
+      </div>
+    </div>
   );
 }
 

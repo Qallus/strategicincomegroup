@@ -163,3 +163,112 @@
 .dark .gantt-line-head { fill: rgba(236, 217, 160, 0.55); }
 .gantt-today { background-color: rgba(176, 137, 74, 0.85); }
 .dark .gantt-today { background-color: rgba(236, 217, 160, 0.7); }
+
+/* ── Public site ─────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Gold that keeps AA contrast on light surfaces and goes brighter on dark. */
+  .text-gold {
+    color: hsl(36 55% 36%);
+  }
+  .dark .text-gold,
+  .sig-on-navy .text-gold {
+    color: hsl(var(--brand-gold));
+  }
+
+  /* Faint blueprint grid used on navy bands (hero, footer). */
+  .sig-grid-bg {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse at 70% 40%, black 30%, transparent 85%);
+  }
+
+  .sig-pop {
+    animation: sig-pop 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform-origin: top center;
+  }
+
+  /* Long-form article/legal copy (no typography plugin in this project). */
+  .sig-prose {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    color: hsl(var(--foreground) / 0.88);
+  }
+  .sig-prose > * + * {
+    margin-top: 1.15em;
+  }
+  .sig-prose h1,
+  .sig-prose h2,
+  .sig-prose h3,
+  .sig-prose h4 {
+    color: hsl(var(--foreground));
+    font-family: "DM Serif Display", Georgia, serif;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-top: 1.9em;
+  }
+  .sig-prose h1 { font-size: 2.1rem; }
+  .sig-prose h2 { font-size: 1.75rem; }
+  .sig-prose h3 { font-size: 1.4rem; }
+  .sig-prose h4 { font-size: 1.15rem; }
+  .sig-prose a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .sig-prose strong { color: hsl(var(--foreground)); font-weight: 600; }
+  .sig-prose ul,
+  .sig-prose ol { padding-left: 1.4em; }
+  .sig-prose ul { list-style: disc; }
+  .sig-prose ol { list-style: decimal; }
+  .sig-prose li + li { margin-top: 0.4em; }
+  .sig-prose li::marker { color: hsl(var(--brand-gold)); }
+  .sig-prose blockquote {
+    border-left: 3px solid hsl(var(--brand-gold));
+    padding-left: 1.1em;
+    font-style: italic;
+    color: hsl(var(--muted-foreground));
+  }
+  .sig-prose img,
+  .sig-prose iframe,
+  .sig-prose video {
+    border-radius: var(--radius);
+    max-width: 100%;
+    height: auto;
+  }
+  .sig-prose iframe { aspect-ratio: 16 / 9; width: 100%; }
+  .sig-prose figure figcaption { font-size: 0.85rem; color: hsl(var(--muted-foreground)); margin-top: 0.5em; }
+  .sig-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    display: block;
+    overflow-x: auto;
+  }
+  .sig-prose th,
+  .sig-prose td {
+    border: 1px solid hsl(var(--border));
+    padding: 0.55em 0.8em;
+    text-align: left;
+    vertical-align: top;
+  }
+  .sig-prose th { background: hsl(var(--muted)); color: hsl(var(--foreground)); font-weight: 600; }
+  .sig-prose hr { border-color: hsl(var(--border)); margin: 2.2em 0; }
+}
+
+@keyframes sig-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sig-pop { animation: none; }
+}

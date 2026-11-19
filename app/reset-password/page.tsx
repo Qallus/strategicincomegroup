@@ -1,33 +1,25 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { AuthField, AuthMessage, AuthShell } from "@/components/auth/auth-shell";
 import { createClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<Shell><p className="text-center text-sm text-muted-foreground">Loading…</p></Shell>}>
+    <Suspense
+      fallback={
+        <AuthShell eyebrow="Account recovery" title="Set a new password">
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </AuthShell>
+      }
+    >
       <ResetInner />
     </Suspense>
-  );
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f1eee7] px-4 py-10 dark:bg-background">
-      <div className="w-full max-w-md rounded-lg border bg-card p-8 shadow-sm">
-        <div className="mb-6 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/sig-logo.png" alt="Strategic Income Group" className="mx-auto mb-2 h-10 w-auto dark:hidden" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/sig-logo-white.png" alt="" className="mx-auto mb-2 hidden h-10 w-auto dark:block" />
-          <p className="text-[11px] tracking-[0.22em] text-foreground">STRATEGIC INCOME GROUP</p>
-        </div>
-        {children}
-      </div>
-    </main>
   );
 }
 
@@ -49,54 +41,87 @@ function ResetInner() {
       if (tokenHash) {
         const { error: vErr } = await supabase.auth.verifyOtp({ type: type as "recovery", token_hash: tokenHash });
         if (!active) return;
-        if (vErr) { setError("This reset link is invalid or has expired. Ask an admin to send a new one."); setPhase("error"); return; }
-        setPhase("ready"); return;
+        if (vErr) {
+          setError("This reset link is invalid or has expired. Request a new one below.");
+          setPhase("error");
+          return;
+        }
+        setPhase("ready");
+        return;
       }
       const { data } = await supabase.auth.getUser();
       if (!active) return;
-      if (data.user) setPhase("ready"); else { setError("This reset link is invalid or has expired."); setPhase("error"); }
+      if (data.user) setPhase("ready");
+      else {
+        setError("This reset link is invalid or has expired.");
+        setPhase("error");
+      }
     }
     run();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [params, supabase]);
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setError("");
-    if (pw.length < 8) { setError("Password must be at least 8 characters."); return; }
-    if (pw !== pw2) { setError("Passwords do not match."); return; }
+    e.preventDefault();
+    setError("");
+    if (pw.length < 8) return setError("Password must be at least 8 characters.");
+    if (pw !== pw2) return setError("Passwords do not match.");
     setBusy(true);
     const { error: uErr } = await supabase.auth.updateUser({ password: pw });
     setBusy(false);
-    if (uErr) { setError(uErr.message); return; }
+    if (uErr) return setError(uErr.message);
     setPhase("done");
     setTimeout(() => router.push("/dashboard"), 1600);
   }
 
-  if (phase === "verifying") return <Shell><p className="text-center text-sm text-muted-foreground">Verifying your reset link…</p></Shell>;
-  if (phase === "error") return (
-    <Shell>
-      <h1 className="mb-2 text-lg font-semibold">Reset link problem</h1>
-      <p className="text-sm text-muted-foreground">{error}</p>
-      <Button asChild className="mt-5 w-full"><a href="/login">Back to sign in</a></Button>
-    </Shell>
-  );
-  if (phase === "done") return (
-    <Shell>
-      <h1 className="mb-2 text-lg font-semibold">Password updated</h1>
-      <p className="text-sm text-muted-foreground">You're all set — taking you to your dashboard…</p>
-    </Shell>
-  );
+  if (phase === "verifying") {
+    return (
+      <AuthShell eyebrow="Account recovery" title="Set a new password">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Verifying your reset link…
+        </p>
+      </AuthShell>
+    );
+  }
+  if (phase === "error") {
+    return (
+      <AuthShell eyebrow="Account recovery" title="Reset link problem">
+        <AuthMessage tone="error">{error}</AuthMessage>
+        <div className="mt-5 grid gap-2">
+          <Button asChild className="h-11 w-full">
+            <Link href="/forgot-password">Request a new link</Link>
+          </Button>
+          <Button asChild variant="outline" className="h-11 w-full">
+            <Link href="/login">Back to sign in</Link>
+          </Button>
+        </div>
+      </AuthShell>
+    );
+  }
+  if (phase === "done") {
+    return (
+      <AuthShell eyebrow="Account recovery" title="Password updated">
+        <AuthMessage tone="success">You’re all set — taking you to your dashboard…</AuthMessage>
+      </AuthShell>
+    );
+  }
 
   return (
-    <Shell>
-      <h1 className="mb-1 text-lg font-semibold">Set a new password</h1>
-      <p className="mb-5 text-sm text-muted-foreground">Choose a new password for your account.</p>
-      <form onSubmit={submit} className="space-y-3">
-        <div className="space-y-1.5"><label className="text-sm font-medium">New password</label><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" required /></div>
-        <div className="space-y-1.5"><label className="text-sm font-medium">Confirm password</label><Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" required /></div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <Button type="submit" disabled={busy} className="w-full">{busy ? "Saving…" : "Update password"}</Button>
+    <AuthShell eyebrow="Account recovery" title="Set a new password" description="Choose a new password for your account.">
+      <form onSubmit={submit} className="space-y-4">
+        <AuthField label="New password" htmlFor="pw">
+          <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" required className="h-11" />
+        </AuthField>
+        <AuthField label="Confirm password" htmlFor="pw2">
+          <Input id="pw2" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" required className="h-11" />
+        </AuthField>
+        {error ? <AuthMessage tone="error">{error}</AuthMessage> : null}
+        <Button type="submit" disabled={busy} className="h-11 w-full">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Update password
+        </Button>
       </form>
-    </Shell>
+    </AuthShell>
   );
 }

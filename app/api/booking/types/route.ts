@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireParticipantManager } from "@/lib/user-management/auth";
+import { assertCanManageType, requireBookingManager, scopePayload } from "@/lib/booking/access";
 import { loadBookingTypes, saveBookingType } from "@/lib/booking/data";
 
 function errStatus(msg: string) {
@@ -8,8 +8,9 @@ function errStatus(msg: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireParticipantManager(request);
-    return NextResponse.json({ bookingTypes: await loadBookingTypes() });
+    const m = await requireBookingManager(request);
+    const types = await loadBookingTypes();
+    return NextResponse.json({ bookingTypes: m.isAdmin ? types : types.filter((t) => t.host_staff_id === m.profileId) });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to load booking types";
     return NextResponse.json({ message: msg }, { status: errStatus(msg) });
@@ -19,8 +20,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    await requireParticipantManager(request, body?.actionToken);
+    const m = await requireBookingManager(request, body?.actionToken);
     if (!String(body?.name || "").trim()) throw new Error("A name is required.");
+    if (body?.id) await assertCanManageType(m, String(body.id));
+    scopePayload(m, body);
     const bookingType = await saveBookingType(body);
     return NextResponse.json({ bookingType });
   } catch (error) {

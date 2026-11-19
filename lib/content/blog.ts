@@ -63,7 +63,7 @@ export async function getPublishedPosts() {
     .or(`publish_at.is.null,publish_at.lte.${new Date().toISOString()}`)
     .order("publish_at", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(500); // the public Resources archive pages through every published post
   if (error) throw error;
   return data ?? [];
 }

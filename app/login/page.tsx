@@ -1,12 +1,13 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getCurrentProfile, isActiveDashboardProfile } from "@/lib/auth/server";
 import { ROLES } from "@/lib/rbac/roles";
 
 export const metadata = {
-  title: "Employee Login",
+  title: "Login",
 };
 
 /**
@@ -41,32 +42,22 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="grid min-h-screen bg-background px-4 py-10 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:p-0">
-      <div className="fixed right-5 top-5 z-10">
-        <ThemeToggle />
-      </div>
-      <section className="relative hidden overflow-hidden bg-brand-navy-deep text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-brand-gold/10 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -bottom-40 -left-20 h-[28rem] w-[28rem] rounded-full bg-brand-sky/10 blur-3xl" aria-hidden />
-        <span className="relative block h-12 w-60">
-          <img src="/brand/sig-logo-white.png" alt="Strategic Income Group" className="h-full w-full object-contain object-left" />
-        </span>
-        <div className="relative max-w-md">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-gold">Team workspace</p>
-          <h1 className="mt-4 font-serif text-5xl leading-tight">
-            Strategize. Invest. <span className="italic text-brand-gold">Give.</span>
-          </h1>
-          <p className="mt-4 text-white/70">
-            Clients, appointments, communications, and projects for the Strategic Income Group team, behind secure sign-in.
-          </p>
-        </div>
-        <p className="relative text-xs text-white/50">Chandler &middot; Peoria &middot; (480) 466-7070</p>
-      </section>
-      <section className="flex items-center justify-center">
-        <Suspense>
-          <LoginForm />
-        </Suspense>
-      </section>
-    </main>
+    <AuthShell
+      eyebrow="Welcome back"
+      title="Sign in"
+      description="Sign in to your Strategic Income Group account."
+      footer={
+        <>
+          New client?{" "}
+          <Link href="/register" className="font-medium text-primary hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <Suspense>
+        <LoginForm />
+      </Suspense>
+    </AuthShell>
   );
 }

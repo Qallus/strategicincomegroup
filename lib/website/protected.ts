@@ -29,6 +29,32 @@ export const PROTECTED_ROUTES = [
   "/email",
   "/sms",
   "/manifest.webmanifest",
+  // Code-owned public site (app/(site)) and auth pages.
+  "/team",
+  "/mission",
+  "/our-approach",
+  "/phase-1-2",
+  "/phase-2-2",
+  "/phase-3-2",
+  "/join-our-team",
+  "/services",
+  "/financial-planning",
+  "/investment-management",
+  "/estate-planning",
+  "/insurance-planning",
+  "/403b-plan",
+  "/resources",
+  "/contact",
+  "/get-started",
+  "/privacy-policy",
+  "/terms-of-service",
+  "/communication-policy",
+  "/register",
+  "/forgot-password",
+  "/two-factor",
+  // AI connectors (MCP OAuth consent + discovery).
+  "/oauth",
+  "/.well-known",
 ] as const;
 
 /** Slugs that must never be taken by a CMS page (the homepage is code-owned). */

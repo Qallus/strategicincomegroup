@@ -7,6 +7,35 @@ export type EventStatus = "draft" | "published" | "canceled" | "completed";
 export type EventLocationType = "in_person" | "online" | "hybrid";
 export type RegistrationStatus = "registered" | "waitlisted" | "canceled" | "attended";
 
+export type BookingAudience = "everyone" | "new_clients" | "clients";
+export type EventType = "roundtable" | "workshop" | "luncheon" | "webinar" | "community_service" | "client_appreciation" | "church" | "other";
+export type EventAudience = "public" | "clients" | "clients_and_guests" | "invite_only";
+export type EventSpeaker = { name: string; title?: string; bio?: string; photo_url?: string; team_slug?: string };
+
+export const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  roundtable: "Private Roundtable",
+  workshop: "Educational Workshop",
+  luncheon: "Investment Manager Luncheon",
+  webinar: "Webinar",
+  community_service: "Community Service (SIGCares)",
+  client_appreciation: "Client Appreciation",
+  church: "Kingdom Stewardship (Church)",
+  other: "Other",
+};
+
+export const EVENT_AUDIENCE_LABELS: Record<EventAudience, string> = {
+  public: "Open to the public",
+  clients: "Clients only",
+  clients_and_guests: "Clients & guests",
+  invite_only: "Invite only",
+};
+
+export const BOOKING_AUDIENCE_LABELS: Record<BookingAudience, string> = {
+  everyone: "Everyone",
+  new_clients: "New clients",
+  clients: "Current clients",
+};
+
 export type IntakeQuestion = {
   key: string;
   label: string;
@@ -38,6 +67,10 @@ export type BookingType = {
   currency: string;
   questions: IntakeQuestion[];
   confirmation_message: string | null;
+  /** Public planner (team page slug) this page belongs to. */
+  host_slug?: string | null;
+  office?: string | null;
+  audience?: BookingAudience;
   created_at?: string;
   updated_at?: string;
   // computed
@@ -113,6 +146,18 @@ export type EventItem = {
   is_public: boolean;
   custom_fields: IntakeQuestion[];
   published_at: string | null;
+  // SIG event fields (202611190120)
+  event_type?: EventType;
+  series?: string | null;
+  speakers?: EventSpeaker[];
+  office?: string | null;
+  directions_url?: string | null;
+  audience?: EventAudience;
+  waitlist_enabled?: boolean;
+  allow_guests?: boolean;
+  max_party_size?: number;
+  arrival_note?: string | null;
+  meeting_id?: string | null;
   created_at?: string;
   updated_at?: string;
   // computed
