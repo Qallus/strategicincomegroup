@@ -28,7 +28,11 @@ const SERIF = `'DM Serif Display', Georgia, 'Times New Roman', serif`;
 const SANS = `Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
 // Supabase templates use Go syntax ({{ .SiteURL }}); the app's own templates use {{site_url}}.
 let SITE = "{{ .SiteURL }}";
-const logo = () => `${SITE}/brand/sig-logo-white.png`;
+// The logo uses a fixed absolute URL rather than {{ .SiteURL }}: Supabase's template preview
+// doesn't substitute variables (so the image showed broken there), and a fixed URL keeps the
+// logo working even if the Site URL changes. Update it at the apex-domain cutover.
+const LOGO_URL = "https://app.strategicincomegroup.com/brand/sig-logo-white.png";
+const logo = () => LOGO_URL;
 
 const confirmUrl = (type, extra = "") => `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=${type}${extra}`;
 

@@ -27,7 +27,7 @@ values (
           <!-- Header -->
           <tr>
             <td bgcolor="#0d2568" style="background:#0d2568;border-radius:12px 12px 0 0;padding:26px 32px;">
-              <img src="{{site_url}}/brand/sig-logo-white.png" width="200" alt="Strategic Income Group" style="display:block;width:200px;max-width:100%;height:auto;border:0;" />
+              <img src="https://app.strategicincomegroup.com/brand/sig-logo-white.png" width="200" alt="Strategic Income Group" style="display:block;width:200px;max-width:100%;height:auto;border:0;" />
             </td>
           </tr>
           <tr><td height="3" bgcolor="#c9a46e" style="background:#c9a46e;font-size:0;line-height:0;">&nbsp;</td></tr>
