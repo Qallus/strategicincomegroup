@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { TemplatePicker } from "@/components/emails/template-picker";
 import { DEFAULT_EMAIL_FIELDS } from "@/lib/email/constants";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type UserOption = { id: string; full_name: string | null; email: string; role: string };
 type TemplateOption = { id: string; name: string; subject: string; status: string; category?: string | null; html_body?: string | null };
@@ -200,8 +201,7 @@ export function ManualEmailComposer({
               <div className="max-h-56 overflow-auto rounded-md border bg-background p-2">
                 {users.map((user) => (
                   <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedUserEmails.includes(user.email)}
                       onChange={(e) =>
                         setSelectedUserEmails((cur) =>
@@ -459,7 +459,12 @@ export function ManualEmailComposer({
       {isManualMode && (
         <div className="space-y-2 pt-4">
           <label className="text-sm font-medium">Attachments</label>
-          <Input multiple type="file" onChange={(e) => setAttachments(Array.from(e.target.files ?? []))} />
+          <label className="flex w-full cursor-pointer items-center gap-2 rounded-md border border-dashed border-input bg-background px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:border-ring hover:bg-muted/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+            <Paperclip className="h-4 w-4 text-brand-gold" />
+            <span className="font-medium text-foreground">Choose files</span>
+            <span className="truncate">{attachments.length ? `${attachments.length} file${attachments.length === 1 ? "" : "s"} selected` : "No files selected"}</span>
+            <input multiple type="file" className="sr-only" onChange={(e) => setAttachments(Array.from(e.target.files ?? []))} />
+          </label>
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
               {attachments.map((f) => (

@@ -22,6 +22,7 @@ import { useDashboardActionToken } from "@/components/layout/dashboard-action-to
 import { CODE_OWNED_PAGES, codeOwnedToPickable, findCodeOwnedPage, type PickablePage } from "@/lib/website/frontend-pages";
 import { STATUS_PILL } from "./constants";
 import type { WebsitePageSummary } from "@/lib/website/types";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Declared at module scope on purpose. React may discard a useMemo result, and a
 // fresh lazy() would remount the editor and lose whatever had been typed or
@@ -135,24 +136,24 @@ export function EditAPage({ pages }: { pages: WebsitePageSummary[] }) {
         <label htmlFor="page-picker" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Which page?
         </label>
-        <select
-          id="page-picker"
-          value={selectedId}
-          onChange={(e) => { setSelectedId(e.target.value); reset(); }}
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="">Choose a page…</option>
-          {groups.map(([group, items]) => (
-            <optgroup key={group} label={group}>
-              {items.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label} — {p.path}
-                  {p.status && p.status !== "published" ? ` (${p.status})` : ""}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <Select value={selectedId} onValueChange={(v) => { setSelectedId(v); reset(); }}>
+          <SelectTrigger id="page-picker" className="h-10">
+            <SelectValue placeholder="Choose a page…" />
+          </SelectTrigger>
+          <SelectContent>
+            {groups.map(([group, items]) => (
+              <SelectGroup key={group}>
+                <SelectLabel>{group}</SelectLabel>
+                {items.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.label} — {p.path}
+                    {p.status && p.status !== "published" ? ` (${p.status})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
         {!managed.length ? (
           <p className="mt-1.5 text-xs text-muted-foreground">
             No Editor pages yet — everything listed is built in code. Create one on the Pages tab to get the full

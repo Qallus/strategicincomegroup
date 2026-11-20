@@ -14,6 +14,7 @@ import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { EMAIL_EVENT_KEYS } from "@/lib/email/constants";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { cn } from "@/lib/utils";
+import { FieldSelect } from "@/components/ui/field-select";
 
 type EmailTemplateRow = {
   id: string;
@@ -446,31 +447,25 @@ function AddAutomationDialog({
         <div className="space-y-4">
           <label className="block space-y-1">
             <span className="text-sm font-medium">Template</span>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            <FieldSelect
+              className="h-10"
               value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
+              onChange={setTemplateId}
               disabled={!!presetTemplateId}
-            >
-              <option value="">Select a template…</option>
-              {templates.filter((t) => t.status !== "archived").map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
+              placeholder="Select a template…"
+              options={templates.filter((t) => t.status !== "archived").map((t) => ({ value: t.id, label: t.name }))}
+            />
           </label>
 
           <label className="block space-y-1">
             <span className="text-sm font-medium">Automation</span>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            <FieldSelect
+              className="h-10"
               value={eventKey}
-              onChange={(e) => setEventKey(e.target.value)}
-            >
-              <option value="">Select an automation…</option>
-              {EMAIL_EVENT_KEYS.map((ev) => (
-                <option key={ev.key} value={ev.key}>{ev.label}</option>
-              ))}
-            </select>
+              onChange={setEventKey}
+              placeholder="Select an automation…"
+              options={EMAIL_EVENT_KEYS.map((ev) => ({ value: ev.key, label: ev.label }))}
+            />
           </label>
 
           {eventKey && currentTemplateName ? (

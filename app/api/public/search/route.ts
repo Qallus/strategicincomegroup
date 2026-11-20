@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { getAllPosts } from "@/lib/public-site/posts";
-import { teamSearchEntries, type SearchEntry } from "@/lib/public-site/search-index";
+import { jobSearchEntries, teamSearchEntries, type SearchEntry } from "@/lib/public-site/search-index";
+import { getLiveJobs } from "@/lib/careers/server";
+import { hasJobDetail, jobTypeLabel } from "@/lib/careers/shared";
 import { getPublishedTeam } from "@/lib/team/data";
 
 export const revalidate = 300;
 
-// Articles + the live team roster for the header search dropdown (pages/careers are
-// bundled client-side; the bundled static team entries are replaced by these).
+// Articles + the live team roster + live job postings for the header search dropdown
+// (pages are bundled client-side; the bundled static team and careers entries are
+// replaced by these).
 export async function GET() {
-  const [posts, team] = await Promise.all([getAllPosts(), getPublishedTeam()]);
+  const [posts, team, jobs] = await Promise.all([getAllPosts(), getPublishedTeam(), getLiveJobs()]);
   const entries: SearchEntry[] = posts.map((p) => {
     const cats = p.categories.map((c) => c.name).join(" ");
     const isRetirement = /^30\d|retire/i.test(cats);
@@ -23,5 +26,6 @@ export async function GET() {
     };
   });
   entries.push(...teamSearchEntries(team));
+  entries.push(...jobSearchEntries(jobs.filter((j) => hasJobDetail(j)).map((j) => ({ slug: j.slug, title: j.title, type: jobTypeLabel(j), summary: j.summary }))));
   return NextResponse.json(entries, { headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=3600" } });
 }

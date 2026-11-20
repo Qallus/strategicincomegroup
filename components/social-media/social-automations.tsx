@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { Check, Loader2 } from "lucide-react";
-import { FieldSelect } from "@/components/ui/field-select";
+import { FieldSelect } from "@/components/ui/field-select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { SOCIAL_EVENT_KEYS, PLATFORMS } from "@/lib/social-media/constants";
@@ -38,7 +39,7 @@ export function SocialAutomations({ templates, initialAutomations }: { templates
       {rows.map((r) => (
         <div key={r.event_key} className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" className="accent-primary" checked={r.enabled} onChange={(e) => set(r.event_key, { enabled: e.target.checked })} /> {r.label}</label>
+            <label className="flex items-center gap-2 text-sm font-semibold"><Checkbox checked={r.enabled} onChange={(e) => set(r.event_key, { enabled: e.target.checked })} /> {r.label}</label>
             <button onClick={() => save(r.event_key)} disabled={saving === r.event_key} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs hover:bg-muted">
               {saving === r.event_key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedKey === r.event_key ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : null}
               {savedKey === r.event_key ? "Saved" : "Save"}

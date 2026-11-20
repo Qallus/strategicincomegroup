@@ -4,7 +4,7 @@ import { Container, PlannerGrid } from "@/components/public-site/blocks";
 import { AskSiggeyCard } from "@/components/public-site/ask-siggey-card";
 import { ContactExperience } from "@/components/public-site/contact-form";
 import { OfficeMapCard } from "@/components/public-site/office-map";
-import { OPEN_POSITIONS } from "@/lib/public-site/careers";
+import { getLiveJobs } from "@/lib/careers/server";
 import { CONTACT, OFFICES } from "@/lib/public-site/site-data";
 
 export const metadata = {
@@ -16,6 +16,9 @@ type Props = { searchParams: Promise<{ topic?: string; role?: string }> };
 
 export default async function ContactPage({ searchParams }: Props) {
   const { topic, role } = await searchParams;
+  const jobs = await getLiveJobs().catch(() => []);
+  const openCount = jobs.filter((j) => j.hiring_status === "open").length;
+  const positions = [...jobs].sort((a, b) => (a.hiring_status === b.hiring_status ? 0 : a.hiring_status === "open" ? -1 : 1)).map((j) => j.title);
   return (
     <>
       <section className="border-b">
@@ -45,7 +48,7 @@ export default async function ContactPage({ searchParams }: Props) {
 
       <Container className="py-14 md:py-16">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <ContactExperience topic={topic} role={role} />
+          <ContactExperience topic={topic} role={role} positions={positions} />
 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-2xl border bg-card p-5">
@@ -90,7 +93,7 @@ export default async function ContactPage({ searchParams }: Props) {
                 <Briefcase className="h-4 w-4 text-gold" /> Want to join SIG?
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Work that is more than just a job—it’s a calling. {OPEN_POSITIONS} positions available now.
+                Work that is more than just a job—it’s a calling. {openCount} positions available now.
               </p>
               <Link href="/join-our-team" className="mt-4 inline-flex items-center gap-1 text-sm font-medium hover:text-primary">
                 See careers <ArrowRight className="h-3.5 w-3.5" />

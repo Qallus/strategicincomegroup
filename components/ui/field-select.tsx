@@ -8,26 +8,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 // "" <-> a reserved sentinel internally (lets callers keep an "All"/"None" option).
 const EMPTY = "__empty__";
 
-export type FieldSelectOption = { value: string; label: string };
+export type FieldSelectOption = { value: string; label: string; disabled?: boolean };
 
 export function FieldSelect({
-  value, onChange, options, placeholder, className, disabled,
+  value, onChange, options, placeholder, className, contentClassName, disabled, id, name, "aria-label": ariaLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: FieldSelectOption[];
   placeholder?: string;
   className?: string;
+  contentClassName?: string;
   disabled?: boolean;
+  id?: string;
+  name?: string;
+  "aria-label"?: string;
 }) {
+  // "" shows the placeholder unless an option explicitly uses "" (e.g. "All").
+  const hasEmpty = options.some((o) => o.value === "");
   return (
-    <Select value={value === "" ? EMPTY : value} onValueChange={(v) => onChange(v === EMPTY ? "" : v)} disabled={disabled}>
-      <SelectTrigger className={className}>
+    <Select value={value === "" ? (hasEmpty ? EMPTY : "") : value} onValueChange={(v) => onChange(v === EMPTY ? "" : v)} disabled={disabled} name={name}>
+      <SelectTrigger id={id} aria-label={ariaLabel} className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className={contentClassName}>
         {options.map((o) => (
-          <SelectItem key={o.value} value={o.value === "" ? EMPTY : o.value}>{o.label}</SelectItem>
+          <SelectItem key={o.value} value={o.value === "" ? EMPTY : o.value} disabled={o.disabled}>{o.label}</SelectItem>
         ))}
       </SelectContent>
     </Select>

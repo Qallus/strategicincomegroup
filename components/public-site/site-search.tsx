@@ -42,7 +42,9 @@ export function SiteSearchPanel({ onClose }: { onClose: () => void }) {
   const results = useMemo(() => {
     // The API returns the live team roster; when it does, drop the bundled static team entries.
     const liveTeam = articles.some((a) => a.href.startsWith("/team/"));
-    const base = liveTeam ? STATIC_INDEX.filter((e) => !e.href.startsWith("/team/")) : STATIC_INDEX;
+    // Same for careers: the API returns live job postings, replacing the bundled ones.
+    const liveJobs = articles.some((a) => a.href.startsWith("/join-our-team/"));
+    const base = STATIC_INDEX.filter((e) => !(liveTeam && e.href.startsWith("/team/")) && !(liveJobs && e.href.startsWith("/join-our-team/")));
     const pool = [...base, ...articles].filter((e) =>
       tab === "all" ? true : tab === "resources" ? e.category === "resources" || e.href.startsWith("/resources") : e.category === tab,
     );

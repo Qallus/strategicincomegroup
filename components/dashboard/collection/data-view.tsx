@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { QuickActionBar } from "./quick-action-bar";
 import { downloadCsv, parseCsv, toCsv } from "./csv";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 /**
  * DataView — the one layout every SIG dashboard list uses.
@@ -148,19 +149,13 @@ function usePrefs(key: string) {
 }
 
 function Check({ checked, indeterminate, onChange, label }: { checked: boolean; indeterminate?: boolean; onChange: () => void; label: string }) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = Boolean(indeterminate);
-  }, [indeterminate]);
   return (
-    <input
-      ref={ref}
-      type="checkbox"
+    <Checkbox
       checked={checked}
+      indeterminate={Boolean(indeterminate)}
       onChange={onChange}
       onClick={(e) => e.stopPropagation()}
       aria-label={label}
-      className="h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-[hsl(var(--primary))]"
     />
   );
 }

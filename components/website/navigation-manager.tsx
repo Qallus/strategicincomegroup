@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { websiteApi } from "./api";
 import type { NavigationGroup, WebsiteNavItem } from "@/lib/website/types";
+import { FieldSelect } from "@/components/ui/field-select";
 
 const GROUPS: { value: NavigationGroup; label: string; hint: string }[] = [
   { value: "main", label: "Main menu", hint: "The bar across the top of every page." },
@@ -254,15 +255,15 @@ function LinkField({ url, pages, onChange }: { url: string; pages: PageOption[];
   return (
     <div className="flex min-w-[220px] flex-1 gap-1">
       <input value={url} onChange={(e) => onChange(e.target.value)} placeholder="/page-address or https://…" className={INPUT} aria-label="Links to" />
-      <select
+      <FieldSelect
         value=""
         aria-label="Choose a page"
-        onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
-        className="h-9 w-28 rounded-md border border-input bg-background px-1 text-xs"
-      >
-        <option value="">Pick a page…</option>
-        {pages.map((p) => <option key={p.id} value={`/${p.slug}`}>{p.title}</option>)}
-      </select>
+        onChange={(v) => { if (v) onChange(v); }}
+        placeholder="Pick a page…"
+        className="h-9 w-28 shrink-0 px-2 text-xs"
+        contentClassName="min-w-[14rem]"
+        options={pages.map((p) => ({ value: `/${p.slug}`, label: p.title }))}
+      />
     </div>
   );
 }

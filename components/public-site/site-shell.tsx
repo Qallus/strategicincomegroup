@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteAnnouncement } from "@/components/public-site/site-announcement";
 import { SiteHeader } from "@/components/public-site/site-header";
 import { SiteFooter } from "@/components/public-site/site-footer";
 import { SiteFab } from "@/components/public-site/site-fab";
@@ -28,6 +29,7 @@ export function SiteShell({
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:shadow">
         Skip to content
       </a>
+      <SiteAnnouncement />
       <SiteHeader />
       <main id="main" className={contentClassName ?? "flex-1"}>
         {children}

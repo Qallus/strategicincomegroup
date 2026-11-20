@@ -6,9 +6,11 @@
 import type { McpCaller } from "./auth";
 import { blogTools } from "./tools-blog";
 import { bookingTools } from "./tools-booking";
+import { careersTools } from "./tools-careers";
 import { contactTools } from "./tools-contacts";
 import { eventTools } from "./tools-events";
 import { formTools } from "./tools-forms";
+import { siteNoticeTools } from "./tools-site-notices";
 import { systemTools } from "./tools-system";
 import { teamTools } from "./tools-team";
 import { websiteTools } from "./tools-website";
@@ -27,8 +29,10 @@ export function allTools(): McpTool[] {
       ...bookingTools(),
       ...eventTools(),
       ...blogTools(),
+      ...careersTools(),
       ...websiteTools(),
       ...teamTools(),
+      ...siteNoticeTools(),
     ];
   }
   return cache;

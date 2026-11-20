@@ -6,6 +6,7 @@ import {
   Phone, Plus, Power, PowerOff, Save, Send, SlidersHorizontal, Trash2, UserX, Users, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldSelect, type FieldSelectOption } from "@/components/ui/field-select";
@@ -272,7 +273,7 @@ function Field({ label, children, full }: { label: string; children: React.React
   return <div className={full ? "sm:col-span-2" : ""}><label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>{children}</div>;
 }
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={checked} onChange={(e) => onChange(e.target.checked)} /> {label}</label>;
+  return <label className="flex items-center gap-2 text-sm"><Checkbox checked={checked} onChange={(e) => onChange(e.target.checked)} /> {label}</label>;
 }
 function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
@@ -311,7 +312,7 @@ function QuestionsEditor({ value, onChange }: { value: IntakeQuestion[]; onChang
           <div key={i} className="flex flex-wrap items-center gap-2">
             <Input value={q.label} onChange={(e) => set(i, { label: e.target.value, key: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 24) || `q${i + 1}` })} placeholder="Question label" className="h-8 flex-1 min-w-[160px]" />
             <div className="w-32"><FieldSelect value={q.type} onChange={(v) => set(i, { type: v as IntakeQuestion["type"] })} options={[{ value: "text", label: "Short text" }, { value: "textarea", label: "Long text" }, { value: "select", label: "Choice" }, { value: "email", label: "Email" }, { value: "phone", label: "Phone" }]} className="h-8" /></div>
-            <label className="flex items-center gap-1 text-xs"><input type="checkbox" className="accent-primary" checked={q.required} onChange={(e) => set(i, { required: e.target.checked })} /> req</label>
+            <label className="flex items-center gap-1 text-xs"><Checkbox checked={q.required} onChange={(e) => set(i, { required: e.target.checked })} /> req</label>
             <button onClick={() => onChange(value.filter((_, k) => k !== i))} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
         ))}
@@ -672,6 +673,7 @@ function BookingsList({ bookings, types, onStatus, onDelete }: {
               ["Planner", plannerName(plannerOf(b))],
               ["Email", b.invitee_email ? <a className="text-primary hover:underline" href={`mailto:${b.invitee_email}`}>{b.invitee_email}</a> : null],
               ["Phone", b.invitee_phone ? <a className="text-primary hover:underline" href={`tel:${b.invitee_phone}`}>{b.invitee_phone}</a> : null],
+              ["Reminders", b.notify_email === undefined && b.notify_sms === undefined ? null : [b.notify_email ? "Email" : null, b.notify_sms ? "Text (SMS consent given)" : null].filter(Boolean).join(" + ") || "Declined"],
               ["Location", `${locationLabel(b.location_type)}${b.location_details ? ` — ${b.location_details}` : ""}`],
               ["Reference", <span key="ref" className="font-mono">{b.reference}</span>],
               ["Source", b.source],

@@ -12,6 +12,7 @@ import { useDashboardActionToken } from "@/components/layout/dashboard-action-to
 import { composePostText, extractMergeFields, applyMergeFields, normalizeHashtag } from "@/lib/social-media/render";
 import { PLATFORM_MAP, platformLabel } from "@/lib/social-media/constants";
 import type { SocialAccount, SocialTemplate } from "@/lib/social-media/types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const TIME_OPTS = Array.from({ length: 96 }, (_, i) => {
@@ -144,14 +145,14 @@ export function SocialComposer({ accounts, templates, initialTemplateId }: {
 
         <div className="rounded-xl border border-border bg-card p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">When to post</div>
-          <div className="space-y-1.5">
+          <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} aria-label="When to post" className="gap-1.5">
             {([["draft", "Save as draft", FileText], ["schedule", "Schedule", CalendarClock], ["now", "Publish now", Send]] as [Mode, string, React.ElementType][]).map(([m, label, Icon]) => (
               <label key={m} className={cn("flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm", mode === m ? "border-primary bg-primary/5" : "border-border")}>
-                <input type="radio" className="accent-primary" checked={mode === m} onChange={() => setMode(m)} />
+                <RadioGroupItem value={m} />
                 <Icon className="h-4 w-4 text-muted-foreground" /> {label}
               </label>
             ))}
-          </div>
+          </RadioGroup>
           {mode === "schedule" && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <DatePicker value={date} onChange={setDate} allowClear={false} />

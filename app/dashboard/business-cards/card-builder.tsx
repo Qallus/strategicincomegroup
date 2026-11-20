@@ -7,7 +7,8 @@ import {
   ListChecks, Palette, PlayCircle, Plus, QrCode, Save, Settings, Smartphone,
   Sparkles, Trash2, Upload, User, Wand2, Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FieldSelect } from "@/components/ui/field-select";
 import { cn } from "@/lib/utils";
 import { CardPreview } from "@/components/business-card/card-preview";
@@ -431,8 +432,8 @@ function PanelBody(props: {
         {lf.fields.map((field, i) => (
           <div key={field.key} className="mb-1.5 flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm">
             <span className="flex-1 capitalize">{field.label}</span>
-            <label className="flex items-center gap-1 text-[11px] text-muted-foreground"><input type="checkbox" checked={field.enabled} onChange={(e) => setLF({ fields: lf.fields.map((f, j) => j === i ? { ...f, enabled: e.target.checked } : f) })} /> on</label>
-            <label className="flex items-center gap-1 text-[11px] text-muted-foreground"><input type="checkbox" checked={field.required} onChange={(e) => setLF({ fields: lf.fields.map((f, j) => j === i ? { ...f, required: e.target.checked } : f) })} /> req</label>
+            <label className="flex items-center gap-1 text-[11px] text-muted-foreground"><Checkbox checked={field.enabled} onChange={(e) => setLF({ fields: lf.fields.map((f, j) => j === i ? { ...f, enabled: e.target.checked } : f) })} /> on</label>
+            <label className="flex items-center gap-1 text-[11px] text-muted-foreground"><Checkbox checked={field.required} onChange={(e) => setLF({ fields: lf.fields.map((f, j) => j === i ? { ...f, required: e.target.checked } : f) })} /> req</label>
           </div>
         ))}
       </Section>
@@ -802,7 +803,7 @@ function VideoSplashFields({
         <F label="End (seconds)" hint="0 = play to end"><input type="number" min={0} className={iCls} value={end} onChange={(e) => setContent({ video_end: Number(e.target.value) })} /></F>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={!muted} onChange={(e) => setContent({ video_muted: !e.target.checked })} /> Play with audio
+        <Checkbox checked={!muted} onChange={(e) => setContent({ video_muted: !e.target.checked })} /> Play with audio
       </label>
       <p className="mt-1 text-[10px] text-muted-foreground">Browsers require muted autoplay; with audio on, the visitor may need to tap to start sound.</p>
     </>
@@ -884,7 +885,7 @@ function MediaPanel({
       <Section title="Background">
         <ImageField label="Background image" value={draft.background_image_url} onChange={(v) => set("background_image_url", v)} />
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={Boolean(media.use_background_image)} onChange={(e) => setMedia({ use_background_image: e.target.checked })} />
+          <Checkbox checked={Boolean(media.use_background_image)} onChange={(e) => setMedia({ use_background_image: e.target.checked })} />
           Use background image (with a dark overlay)
         </label>
       </Section>
@@ -893,7 +894,7 @@ function MediaPanel({
           <FieldSelect value={media.profile_shape || "circle"} onChange={(v) => setMedia({ profile_shape: v as MediaSettings["profile_shape"] })} options={[{ value: "circle", label: "Circle" }, { value: "rounded", label: "Rounded" }, { value: "square", label: "Square" }]} />
         </F>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={Boolean(media.profile_outline)} onChange={(e) => setMedia({ profile_outline: e.target.checked })} />
+          <Checkbox checked={Boolean(media.profile_outline)} onChange={(e) => setMedia({ profile_outline: e.target.checked })} />
           Accent outline around photo
         </label>
       </Section>

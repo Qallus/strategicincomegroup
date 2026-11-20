@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCardRow } from "@/components/dashboard/stat-card-row";
 import { OptStatusBadge } from "./opt-status-badge";
+import { FieldSelect } from "@/components/ui/field-select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CommunicationsRecord {
   id: string;
@@ -151,15 +153,17 @@ export function CommunicationsManager({ participants: initialParticipants, profi
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <select
+        <FieldSelect
           value={channelFilter}
-          onChange={(e) => setChannelFilter(e.target.value as any)}
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-        >
-          <option value="all">All records</option>
-          <option value="sms_opted_out">SMS opted out</option>
-          <option value="email_opted_out">Email opted out</option>
-        </select>
+          onChange={(v) => setChannelFilter(v as any)}
+          className="w-48"
+          aria-label="Filter records"
+          options={[
+            { value: "all", label: "All records" },
+            { value: "sms_opted_out", label: "SMS opted out" },
+            { value: "email_opted_out", label: "Email opted out" },
+          ]}
+        />
 
         {selectedIds.size > 0 ? (
           <>
@@ -186,11 +190,10 @@ export function CommunicationsManager({ participants: initialParticipants, profi
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">
-                  <input
-                    type="checkbox"
+                  <Checkbox
+                    aria-label="Select all"
                     checked={selectedIds.size === filtered.length && filtered.length > 0}
                     onChange={(e) => e.target.checked ? selectAll() : clearSelection()}
-                    className="rounded"
                   />
                 </TableHead>
                 <TableHead>Name</TableHead>
@@ -211,11 +214,10 @@ export function CommunicationsManager({ participants: initialParticipants, profi
               {filtered.map((r) => (
                 <TableRow key={r.id} className={selectedIds.has(r.id) ? "bg-accent/50" : ""}>
                   <TableCell>
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      aria-label="Select row"
                       checked={selectedIds.has(r.id)}
                       onChange={() => toggleSelect(r.id)}
-                      className="rounded"
                     />
                   </TableCell>
                   <TableCell className="font-medium">{r.name || "—"}</TableCell>

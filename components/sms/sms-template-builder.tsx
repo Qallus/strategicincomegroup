@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { DEFAULT_SMS_FIELDS } from "@/lib/sms/constants";
 import { smsSegmentCount, extractSmsFields } from "@/lib/sms/templates";
+import { FieldSelect } from "@/components/ui/field-select";
 
 interface SmsTemplate {
   id: string;
@@ -201,20 +202,20 @@ export function SmsTemplateBuilder({ templates: initialTemplates }: SmsTemplateB
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Category</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm">
-                  <option value="general">General</option>
-                  <option value="reminder">Reminder</option>
-                  <option value="follow_up">Follow-up</option>
-                  <option value="announcement">Announcement</option>
-                </select>
+                <FieldSelect value={category} onChange={setCategory} className="mt-1" aria-label="Category" options={[
+                  { value: "general", label: "General" },
+                  { value: "reminder", label: "Reminder" },
+                  { value: "follow_up", label: "Follow-up" },
+                  { value: "announcement", label: "Announcement" },
+                ]} />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm">
-                  <option value="draft">Draft</option>
-                  <option value="active">Active</option>
-                  <option value="archived">Archived</option>
-                </select>
+                <FieldSelect value={status} onChange={setStatus} className="mt-1" aria-label="Status" options={[
+                  { value: "draft", label: "Draft" },
+                  { value: "active", label: "Active" },
+                  { value: "archived", label: "Archived" },
+                ]} />
               </div>
             </div>
 

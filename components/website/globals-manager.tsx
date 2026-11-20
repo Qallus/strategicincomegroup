@@ -14,6 +14,7 @@ import { useDashboardActionToken } from "@/components/layout/dashboard-action-to
 import { websiteApi } from "./api";
 import { formatDate } from "./constants";
 import type { WebsiteGlobal, WebsiteRedirect } from "@/lib/website/types";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const INPUT =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -109,10 +110,9 @@ function GlobalCard({ global, onSaved }: { global: WebsiteGlobal; onSaved: () =>
           <div key={key}>
             {typeof current === "boolean" ? (
               <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox" checked={current}
+                <Checkbox
+                  checked={current}
                   onChange={(e) => setValue((v) => ({ ...v, [key]: e.target.checked }))}
-                  className="h-4 w-4 accent-[#b88a4a]"
                 />
                 {FIELD_LABELS[key] ?? key}
               </label>

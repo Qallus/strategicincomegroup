@@ -4,6 +4,7 @@ import {
   BookMarked,
   BookOpen,
   Bot,
+  Briefcase,
   CalendarClock,
   CalendarRange,
   Palette,
@@ -19,6 +20,7 @@ import {
   IdCard,
   Inbox,
   MailCheck,
+  Megaphone,
   MessagesSquare,
   MonitorPlay,
   MessageSquare,
@@ -75,9 +77,11 @@ export const dashboardNav: NavEntry[] = [
   {
     kind: "group", label: "Content", icon: FileText, items: [
       { href: "/dashboard/blog-posts", label: "Blog Posts", icon: FileText, permission: PERMISSIONS.REVIEW_CONTENT },
+      { href: "/dashboard/careers", label: "Job Postings", icon: Briefcase, permission: PERMISSIONS.REVIEW_CONTENT },
       { href: "/dashboard/media-studio", label: "Media", icon: MonitorPlay, permission: PERMISSIONS.MANAGE_SETTINGS },
       { href: "/dashboard/cms", label: "Website Pages", icon: PanelsTopLeft, permission: PERMISSIONS.MANAGE_CMS },
       { href: "/dashboard/cms/editor", label: "Website Editor", icon: SquarePen, permission: PERMISSIONS.MANAGE_CMS },
+      { href: "/dashboard/site-notices", label: "Site Notices", icon: Megaphone, permission: PERMISSIONS.MANAGE_SETTINGS },
     ],
   },
   { kind: "item", href: "/dashboard/ai-agent", label: "AI Agent", icon: Bot, permission: PERMISSIONS.MANAGE_SETTINGS },

@@ -9,7 +9,8 @@ import {
   Music, Pause, Play, Plus, Quote as QuoteIcon, RotateCcw, RotateCw, Rows3, Save, Search, Settings2, Shapes,
   Smartphone, Sparkles, Square, Star, Tablet, Trash2, Type, Upload, Video, Volume2, X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldSelect } from "@/components/ui/field-select";
@@ -665,8 +666,8 @@ function BlockView({ block: b, selectedId, onSelect, nested = false, dnd }: { bl
         <div key={i} style={{ marginBottom: 16 }}>
           {it.fieldType !== "checkbox" && <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{it.title}{it.required ? " *" : ""}</label>}
           {it.fieldType === "textarea" ? <textarea placeholder={it.placeholder} rows={4} readOnly style={fieldStyle} />
-            : it.fieldType === "select" ? <select style={fieldStyle}>{(it.options || "").split(",").map((o, k) => <option key={k}>{o.trim()}</option>)}</select>
-            : it.fieldType === "checkbox" ? <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 15 }}><input type="checkbox" readOnly /> {it.placeholder || it.title}</label>
+            : it.fieldType === "select" ? <div role="presentation" style={{ ...fieldStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}><span>{(it.options || "").split(",")[0]?.trim() || it.placeholder || "Choose…"}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.6, flexShrink: 0 }}><path d="m6 9 6 6 6-6" /></svg></div>
+            : it.fieldType === "checkbox" ? <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 15 }}><Checkbox readOnly /> {it.placeholder || it.title}</label>
             : <input type="text" placeholder={it.placeholder} readOnly style={fieldStyle} />}
         </div>
       ))}<span style={{ display: "inline-block", background: b.buttonColor || "var(--green)", color: "#fff", padding: "13px 26px", borderRadius: 6, fontWeight: 700 }}>{b.label || "Submit"}</span></div>);
@@ -1001,7 +1002,7 @@ function RowInspector({ block, update, onAddToColumn, onMove, onRemove, onSelect
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div><L>Vertical align</L><FieldSelect value={block.valign ?? "stretch"} onChange={(v) => update({ valign: v as CmsBlock["valign"] })} options={[{ value: "stretch", label: "Stretch" }, { value: "top", label: "Top" }, { value: "center", label: "Center" }, { value: "bottom", label: "Bottom" }]} className="h-8" /></div>
-        <label className="flex items-end gap-1.5 pb-1.5 text-[11px] text-muted-foreground"><input type="checkbox" checked={block.stackMobile !== false} onChange={(e) => update({ stackMobile: e.target.checked })} /> Stack on mobile</label>
+        <label className="flex items-end gap-1.5 pb-1.5 text-[11px] text-muted-foreground"><Checkbox checked={block.stackMobile !== false} onChange={(e) => update({ stackMobile: e.target.checked })} /> Stack on mobile</label>
       </div>
       {cols.map((c, ci) => (
         <div key={c.id} className="rounded-lg border border-border/70 bg-muted/30 p-2">
@@ -1147,7 +1148,7 @@ function Inspector({ block, update, upload, onAddToColumn, onMove, onRemove, onS
               <div className="mb-1 grid grid-cols-2 gap-1"><Input className="h-8" value={it.title ?? ""} onChange={(e) => setItem(i, { title: e.target.value })} placeholder="Label" /><FieldSelect value={it.fieldType ?? "text"} onChange={(v) => setItem(i, { fieldType: v })} options={[{ value: "text", label: "Text" }, { value: "email", label: "Email" }, { value: "phone", label: "Phone" }, { value: "number", label: "Number" }, { value: "date", label: "Date" }, { value: "textarea", label: "Textarea" }, { value: "select", label: "Select" }, { value: "checkbox", label: "Checkbox" }]} className="h-8" /></div>
               <Input className="mb-1 h-8" value={it.placeholder ?? ""} onChange={(e) => setItem(i, { placeholder: e.target.value })} placeholder="Placeholder" />
               {it.fieldType === "select" && <Input className="mb-1 h-8" value={it.options ?? ""} onChange={(e) => setItem(i, { options: e.target.value })} placeholder="Option A, Option B, Option C" />}
-              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><input type="checkbox" checked={Boolean(it.required)} onChange={(e) => setItem(i, { required: e.target.checked })} /> Required</label>
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Checkbox checked={Boolean(it.required)} onChange={(e) => setItem(i, { required: e.target.checked })} /> Required</label>
             </div>
           ))}
           <Button type="button" variant="outline" size="sm" onClick={() => addItem({ title: "New field", fieldType: "text" })}><Plus className="h-3.5 w-3.5" /> Add field</Button>
@@ -1160,7 +1161,7 @@ function Inspector({ block, update, upload, onAddToColumn, onMove, onRemove, onS
           <div><L>Title</L><Input value={block.text ?? ""} onChange={(e) => update({ text: e.target.value })} /></div>
           <div><L>Description</L><Textarea className="min-h-[44px]" value={block.subtext ?? ""} onChange={(e) => update({ subtext: e.target.value })} /></div>
           <div className="grid grid-cols-2 gap-2"><div><L>Button label</L><Input value={block.label ?? ""} onChange={(e) => update({ label: e.target.value })} /></div><div><L>File URL</L><div className="flex gap-1"><Input className="h-9" value={block.url ?? ""} onChange={(e) => update({ url: e.target.value })} placeholder="https://…" /><Button type="button" variant="outline" size="sm" className="shrink-0 px-2" onClick={() => upload((url) => update({ url }))}><Upload className="h-3.5 w-3.5" /></Button></div></div></div>
-          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><input type="checkbox" checked={Boolean(block.newTab)} onChange={(e) => update({ newTab: e.target.checked })} /> Open in new tab</label>
+          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Checkbox checked={Boolean(block.newTab)} onChange={(e) => update({ newTab: e.target.checked })} /> Open in new tab</label>
         </div>
       )}
 
@@ -1239,7 +1240,7 @@ function Inspector({ block, update, upload, onAddToColumn, onMove, onRemove, onS
           <div className="grid grid-cols-2 gap-2"><Num label="Font size" value={block.fontSize} onChange={(v) => update({ fontSize: v })} placeholder="16" /><Num label="Radius" value={block.radius} onChange={(v) => update({ radius: v })} placeholder="6" /></div>
           <ColorField label="Button color" value={block.buttonColor ?? ""} onChange={(v) => update({ buttonColor: v })} />
           <ColorField label="Label color" value={block.textColor ?? ""} onChange={(v) => update({ textColor: v })} />
-          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><input type="checkbox" checked={Boolean(block.newTab)} onChange={(e) => update({ newTab: e.target.checked })} /> Open in new tab</label>
+          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Checkbox checked={Boolean(block.newTab)} onChange={(e) => update({ newTab: e.target.checked })} /> Open in new tab</label>
         </div>
       )}
 

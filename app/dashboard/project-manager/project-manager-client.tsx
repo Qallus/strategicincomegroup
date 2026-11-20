@@ -7,6 +7,7 @@ import {
   Paperclip, Plus, Pencil, Save, StickyNote, Trash2, UserPlus, Users, UsersRound, X, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldSelect, type FieldSelectOption } from "@/components/ui/field-select";
@@ -1170,9 +1171,9 @@ function ItemEditor({
           <Field label="Description" full><Textarea className="min-h-[64px]" value={draft.description} onChange={(e) => set("description", e.target.value)} /></Field>
           <Field label="Internal notes" full><Textarea className="min-h-[56px]" value={draft.internal_notes} onChange={(e) => set("internal_notes", e.target.value)} /></Field>
           <div className="flex flex-wrap gap-4 sm:col-span-2">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={draft.client_visible} onChange={(e) => set("client_visible", e.target.checked)} /> Client visible</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={draft.notify} onChange={(e) => set("notify", e.target.checked)} /> Notify</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={draft.is_blocked} onChange={(e) => set("is_blocked", e.target.checked)} /> Blocked</label>
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.client_visible} onChange={(e) => set("client_visible", e.target.checked)} /> Client visible</label>
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.notify} onChange={(e) => set("notify", e.target.checked)} /> Notify</label>
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.is_blocked} onChange={(e) => set("is_blocked", e.target.checked)} /> Blocked</label>
           </div>
           {draft.is_blocked && <Field label="Blocker reason" full><Input value={draft.blocker_reason} onChange={(e) => set("blocker_reason", e.target.value)} /></Field>}
         </div>
@@ -1193,7 +1194,7 @@ function ItemEditor({
               <div className="w-44"><FieldSelect value={depSource} onChange={setDepSource} options={depSourceOpts} placeholder="Depends on…" className="h-8" /></div>
               <div className="w-40"><FieldSelect value={depType} onChange={(v) => setDepType(v as DependencyType)} options={DEP_TYPE_OPTS} className="h-8" /></div>
               <Input type="number" value={depLag} onChange={(e) => setDepLag(Number(e.target.value))} className="h-8 w-20" title="Lag days" />
-              <label className="flex items-center gap-1 pb-1.5 text-xs"><input type="checkbox" className="accent-primary" checked={depAuto} onChange={(e) => setDepAuto(e.target.checked)} /> auto-shift</label>
+              <label className="flex items-center gap-1 pb-1.5 text-xs"><Checkbox checked={depAuto} onChange={(e) => setDepAuto(e.target.checked)} /> auto-shift</label>
               <Button size="sm" variant="outline" onClick={add} disabled={!depSource || depBusy}>{depBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Add</Button>
             </div>
           </div>

@@ -54,6 +54,7 @@ export type TrashRule =
 
 export const TRASH_POLICY: Record<string, TrashRule> = {
   blog_post: { method: "status", table: "blog_posts", column: "status", value: "deleted" },
+  job_posting: { method: "snapshot", table: "job_postings" },
   contact: { method: "status", table: "contacts", column: "status", value: "archived" },
   form_submission: { method: "archive", table: "form_submissions", column: "deleted_at", extra: { action_reason: "deleted" } },
   booking: { method: "snapshot", table: "bookings" },

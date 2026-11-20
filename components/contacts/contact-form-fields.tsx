@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export type ContactFormData = {
   first_name: string;
@@ -147,11 +148,11 @@ export function ContactFormFields({ data, onChange }: Props) {
       {/* Opt-ins */}
       <div className="flex gap-6">
         <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={data.email_opt_in} onChange={(e) => onChange({ email_opt_in: e.target.checked })} className="rounded" />
+          <Checkbox checked={data.email_opt_in} onChange={(e) => onChange({ email_opt_in: e.target.checked })} />
           Email opt-in
         </label>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={data.sms_opt_in} onChange={(e) => onChange({ sms_opt_in: e.target.checked })} className="rounded" />
+          <Checkbox checked={data.sms_opt_in} onChange={(e) => onChange({ sms_opt_in: e.target.checked })} />
           SMS opt-in
         </label>
       </div>

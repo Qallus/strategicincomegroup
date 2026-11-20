@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Upload, Plus, Send } from "lucide-react";
 import { smsSegmentCount } from "@/lib/sms/templates";
 import { SmsRecipientPicker } from "@/components/sms/sms-recipient-picker";
+import { FieldSelect } from "@/components/ui/field-select";
 
 interface SmsTemplate { id: string; name: string; body: string; }
 interface Participant { id: string; first_name: string; last_name: string; phone: string | null; sms_opt_in: boolean; }
@@ -221,16 +222,12 @@ export function SmsCompose({ templates, participants }: SmsComposeProps) {
               {templates.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1">Use template</p>
-                  <select
+                  <FieldSelect
                     value={selectedTemplateId}
-                    onChange={(e) => applyTemplate(e.target.value)}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">— No template —</option>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
+                    onChange={applyTemplate}
+                    aria-label="Use template"
+                    options={[{ value: "", label: "— No template —" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
+                  />
                 </div>
               )}
 

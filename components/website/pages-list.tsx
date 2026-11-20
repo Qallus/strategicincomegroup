@@ -20,6 +20,7 @@ import { pagePath, type WebsitePageSummary } from "@/lib/website/types";
 import { websiteApi } from "./api";
 import { CMS_LIKE_PAGE_TYPES, STATUS_PILL, formatDate, relativeTime } from "./constants";
 import type { PageDependencies } from "@/lib/website/data";
+import { FieldSelect } from "@/components/ui/field-select";
 
 const FILTERS = [
   { value: "all", label: "All" },
@@ -92,16 +93,15 @@ export function PagesList({ initialPages }: { initialPages: WebsitePageSummary[]
             className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
-          {FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-        </select>
-        <select value={pageType} onChange={(e) => setPageType(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
-          <option value="all">Every type</option>
-          {CMS_LIKE_PAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <select value={source} onChange={(e) => setSource(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
-          {SOURCE_FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-        </select>
+        <FieldSelect value={status} onChange={setStatus} className="w-auto min-w-[9rem]" aria-label="Status" options={FILTERS.map((f) => ({ value: f.value, label: f.label }))} />
+        <FieldSelect
+          value={pageType}
+          onChange={setPageType}
+          className="w-auto min-w-[9rem]"
+          aria-label="Page type"
+          options={[{ value: "all", label: "Every type" }, ...CMS_LIKE_PAGE_TYPES.map((t) => ({ value: t.value, label: t.label }))]}
+        />
+        <FieldSelect value={source} onChange={setSource} className="w-auto min-w-[9rem]" aria-label="Source" options={SOURCE_FILTERS.map((f) => ({ value: f.value, label: f.label }))} />
         <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
           <FilePlus2 className="h-4 w-4" /> New page
         </Button>
@@ -329,9 +329,7 @@ function CreatePageDialog({ onClose, onCreated }: { onClose: () => void; onCreat
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start from</label>
-            <select value={template} onChange={(e) => setTemplate(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm">
-              {PAGE_TEMPLATES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-            </select>
+            <FieldSelect value={template} onChange={setTemplate} aria-label="Start from" options={PAGE_TEMPLATES.map((t) => ({ value: t.key, label: t.label }))} />
             {chosen ? <p className="mt-1 text-xs text-muted-foreground">{chosen.description}</p> : null}
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}

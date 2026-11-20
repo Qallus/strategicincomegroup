@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowDown, ArrowRight, Briefcase, Check, CheckCircle2, Compass, Landmark, Loader2, Users } from "lucide-react";
+import { FormSelect } from "@/components/ui/form-select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { JOBS } from "@/lib/public-site/careers";
@@ -87,7 +88,7 @@ const TOPIC_TO_OPTION: Record<string, OptionKey> = {
 
 const HELP_WITH = ["Financial planning", "Investments", "Retirement income", "Estate planning", "Insurance", "Tax planning", "Charitable giving"];
 
-export function ContactExperience({ topic, role }: { topic?: string; role?: string }) {
+export function ContactExperience({ topic, role, positions }: { topic?: string; role?: string; positions?: string[] }) {
   const [selected, setSelected] = useState<OptionKey>(TOPIC_TO_OPTION[topic ?? ""] ?? "new_client");
   const [sent, setSent] = useState<OptionKey | null>(null);
   const option = OPTIONS.find((o) => o.key === selected)!;
@@ -167,14 +168,17 @@ export function ContactExperience({ topic, role }: { topic?: string; role?: stri
             </button>
           </div>
         ) : (
-          <VariantForm key={selected} option={option} role={role} onSent={() => setSent(selected)} />
+          <VariantForm key={selected} option={option} role={role} positions={positions} onSent={() => setSent(selected)} />
         )}
       </div>
     </div>
   );
 }
 
-function VariantForm({ option, role, onSent }: { option: (typeof OPTIONS)[number]; role?: string; onSent: () => void }) {
+function VariantForm({ option, role, positions, onSent }: { option: (typeof OPTIONS)[number]; role?: string; positions?: string[]; onSent: () => void }) {
+  // Live job listings when the page passes them; the static roster otherwise. A role from a
+  // "Join the waitlist" link is kept even if it isn't listed, so it can be pre-selected.
+  const positionTitles = Array.from(new Set([...(positions?.length ? positions : JOBS.map((j) => j.title)), ...(role ? [role] : []), "General interest / waitlist"]));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [chips, setChips] = useState<string[]>([]);
@@ -315,7 +319,7 @@ function VariantForm({ option, role, onSent }: { option: (typeof OPTIONS)[number
       {k === "career_interest" ? (
         <>
           <Field label="Position" required>
-            <Select name="position" defaultValue={role} options={[...JOBS.map((j) => j.title), "General interest / waitlist"]} />
+            <Select name="position" defaultValue={role} options={positionTitles} />
           </Field>
           <Field label="Preferred office">
             <Select name="office" options={["Either", "East Valley (Chandler)", "West Valley (Peoria)"]} />
@@ -346,18 +350,10 @@ function VariantForm({ option, role, onSent }: { option: (typeof OPTIONS)[number
   );
 }
 
+// Branded (Radix) select that still posts through FormData like the native
+// <select> it replaced: defaults to the first option, honours a valid defaultValue.
 function Select({ name, options, defaultValue }: { name: string; options: string[]; defaultValue?: string }) {
-  return (
-    <select
-      name={name}
-      defaultValue={defaultValue && options.includes(defaultValue) ? defaultValue : options[0]}
-      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-    >
-      {options.map((o) => (
-        <option key={o}>{o}</option>
-      ))}
-    </select>
-  );
+  return <FormSelect name={name} options={options} defaultValue={defaultValue} className="h-10" />;
 }
 
 function Field({ label, required, className, children }: { label: string; required?: boolean; className?: string; children: React.ReactNode }) {

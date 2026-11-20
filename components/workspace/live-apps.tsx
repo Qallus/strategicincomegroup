@@ -16,6 +16,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { TimePicker } from "@/components/ui/time-picker";
 
 const isImageUrl = (s: string) => /\.(png|jpe?g|gif|webp|svg|avif|bmp)(\?|$)/i.test(s || "");
 
@@ -543,7 +544,7 @@ function CustomCell({ column, value, token, onChange, updateColumn }: { column: 
     case "url": return <UrlCell value={value ?? ""} onChange={onChange} />;
     case "date": return <DateTimePicker dateOnly date={value?.date ?? ""} onChange={(d) => onChange(d ? { date: d } : null)} placeholder="Set date…" />;
     case "datetime": return <DateTimePicker date={value?.date ?? ""} time={value?.time ?? ""} onChange={(d, t) => onChange(d || t ? { date: d, time: t } : null)} placeholder="Set date & time…" />;
-    case "time": return <input type="time" value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} onKeyDown={(e) => e.stopPropagation()} className="h-8 rounded border bg-background px-2 text-xs" />;
+    case "time": return <div onKeyDown={(e) => e.stopPropagation()}><TimePicker value={value ?? ""} onChange={(v) => onChange(v || null)} placeholder="Set time…" className="h-8 px-2 text-xs" /></div>;
     case "checkbox": return <CheckboxCell value={!!value} onChange={onChange} />;
     case "select": return <SelectCell column={column} value={value ?? null} onChange={onChange} updateColumn={updateColumn} />;
     case "user": return <UsersCell value={value ?? []} onChange={onChange} />;

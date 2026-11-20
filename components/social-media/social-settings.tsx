@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { Check, Loader2, Plus, Save, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { FieldSelect } from "@/components/ui/field-select";
 import { cn } from "@/lib/utils";
@@ -93,7 +94,7 @@ export function SocialSettings({ initialAccounts }: { initialAccounts: SocialAcc
             </div>
             <div className="mt-3 flex items-center gap-3 border-t border-border pt-3">
               <div className="w-44"><FieldSelect value={a.status} onChange={(v) => set(idx, { status: v })} options={[{ value: "disconnected", label: "Disconnected" }, { value: "connected", label: "Connected" }, { value: "error", label: "Error" }]} className="h-8" /></div>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={a.is_active} onChange={(e) => set(idx, { is_active: e.target.checked })} /> Active</label>
+              <label className="flex items-center gap-2 text-sm"><Checkbox checked={a.is_active} onChange={(e) => set(idx, { is_active: e.target.checked })} /> Active</label>
               <Button size="sm" className="ml-auto" onClick={() => save(idx)} disabled={savingId === savingKey}>
                 {savingId === savingKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedId === a.id ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />} Save
               </Button>

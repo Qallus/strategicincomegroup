@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { websiteApi } from "./api";
 import type { MediaItem, MediaUsage } from "@/lib/website/media";
+import { FieldSelect } from "@/components/ui/field-select";
 
 export function MediaManager() {
   const token = useDashboardActionToken();
@@ -56,16 +57,18 @@ export function MediaManager() {
             className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </form>
-        <select
+        <FieldSelect
           value={assetType}
-          onChange={(e) => { setAssetType(e.target.value); void load(query, e.target.value); }}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-        >
-          <option value="photo">Images</option>
-          <option value="video">Video</option>
-          <option value="audio">Audio</option>
-          <option value="all">Everything</option>
-        </select>
+          onChange={(v) => { setAssetType(v); void load(query, v); }}
+          className="w-36"
+          aria-label="Media type"
+          options={[
+            { value: "photo", label: "Images" },
+            { value: "video", label: "Video" },
+            { value: "audio", label: "Audio" },
+            { value: "all", label: "Everything" },
+          ]}
+        />
         <Button asChild variant="outline" className="gap-1.5">
           <Link href="/dashboard/media-studio"><ExternalLink className="h-4 w-4" /> Upload in Media Studio</Link>
         </Button>

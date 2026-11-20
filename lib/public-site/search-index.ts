@@ -16,6 +16,18 @@ export type SearchEntry = {
   popular?: boolean;
 };
 
+/** One search entry per job posting with a detail page → /join-our-team/<slug>. */
+export function jobSearchEntries(jobs: { slug: string; title: string; type: string; summary?: string }[]): SearchEntry[] {
+  return jobs.map((j) => ({
+    title: j.title,
+    description: `Careers · ${j.type}`,
+    href: `/join-our-team/${j.slug}`,
+    category: "about",
+    icon: "briefcase",
+    keywords: `job career hiring apply ${j.summary ?? ""}`.trim(),
+  }));
+}
+
 /** One search entry per team member → /team/<slug>. */
 export function teamSearchEntries(members: TeamMember[]): SearchEntry[] {
   return members.map((m) => ({
@@ -91,15 +103,9 @@ export const STATIC_INDEX: SearchEntry[] = [
   ...teamSearchEntries(TEAM),
   { title: "Our Team", description: "Meet our financial planners and administrative team", href: "/team", category: "planners", icon: "users", keywords: "team planners advisors staff" },
 
-  // Careers
-  ...JOBS.map<SearchEntry>((j) => ({
-    title: j.title,
-    description: `Careers · ${j.type}`,
-    href: `/join-our-team/${j.slug}`,
-    category: "about",
-    icon: "briefcase",
-    keywords: "job career hiring apply",
-  })),
+  // Careers — static baseline; /api/public/search returns the live (dashboard-managed)
+  // job postings and the search dropdown swaps them in (see jobSearchEntries).
+  ...jobSearchEntries(JOBS),
 ];
 
 /** Simple ranked match: title hits beat description/keyword hits; every term must match somewhere. */

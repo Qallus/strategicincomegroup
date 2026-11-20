@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, ChevronDown, Menu, Phone, Search, X } from "lucide-react";
@@ -32,6 +32,8 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Bottom edge of the header row: fixed panels start here, so an announcement bar above the header doesn't hide them.
+  const [panelTop, setPanelTop] = useState(64);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navRef = useRef<HTMLElement>(null);
 
@@ -71,6 +73,10 @@ export function SiteHeader() {
       document.removeEventListener("click", onClick);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (mobileOpen || searchOpen) setPanelTop(Math.max(0, (navRef.current?.getBoundingClientRect().top ?? 0)) + 64);
+  }, [mobileOpen, searchOpen]);
 
   useEffect(() => {
     document.body.classList.toggle("overflow-hidden", mobileOpen);
@@ -186,10 +192,10 @@ export function SiteHeader() {
       </div>
 
       {searchOpen ? <SiteSearchPanel onClose={() => setSearchOpen(false)} /> : null}
-      {mobileOpen ? <MobileMenu pathname={pathname} onNavigate={() => setMobileOpen(false)} /> : null}
+      {mobileOpen ? <MobileMenu pathname={pathname} top={panelTop} onNavigate={() => setMobileOpen(false)} /> : null}
     </header>
     {searchOpen ? (
-      <div aria-hidden onClick={() => setSearchOpen(false)} className="fixed inset-0 top-16 z-40 bg-black/30 backdrop-blur-sm" />
+      <div aria-hidden onClick={() => setSearchOpen(false)} style={{ top: panelTop }} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" />
     ) : null}
     </>
   );
@@ -279,10 +285,10 @@ function MegaPanel({ menu, onNavigate }: { menu: MegaMenu; onNavigate: () => voi
   );
 }
 
-function MobileMenu({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
+function MobileMenu({ pathname, top, onNavigate }: { pathname: string; top: number; onNavigate: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   return (
-    <div className="fixed inset-x-0 bottom-0 top-16 z-40 overflow-y-auto border-t bg-background px-4 pb-10 pt-3 sm:px-6 lg:hidden">
+    <div style={{ top }} className="fixed inset-x-0 bottom-0 z-40 overflow-y-auto border-t bg-background px-4 pb-10 pt-3 sm:px-6 lg:hidden">
       <ul className="divide-y">
         {PRIMARY_NAV.map((item) =>
           isMega(item) ? (

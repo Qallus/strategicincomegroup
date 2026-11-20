@@ -4,7 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquare, Check, RotateCcw, Trash2, Reply, Send } from "lucide-react";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { WorkspaceComment, MentionUser } from "@/lib/workspace/comments";
 
@@ -43,7 +44,7 @@ export function CommentsPanel({ documentId, comments, mentionable }: { documentI
     <div className="space-y-3 rounded-md border bg-card p-3">
       <div className="flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-sm font-medium"><MessageSquare className="h-4 w-4" /> Comments</p>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} /> Show resolved</label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><Checkbox checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} /> Show resolved</label>
       </div>
 
       <Composer documentId={documentId} parentId={null} mentionable={mentionable} placeholder="Add a comment… use @ to mention" onDone={() => router.refresh()} />

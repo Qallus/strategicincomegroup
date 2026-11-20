@@ -192,6 +192,15 @@ Optional event columns (`event_type`, `series`, `speakers`, `office`, `direction
 | `sig_blog_unpublish` (→ hidden or draft) | high |
 | `sig_blog_delete` (status deleted; restorable) | high |
 
+### Job postings (`blog` area) — `lib/mcp/tools-careers.ts`
+The roles on `/join-our-team` and their `/join-our-team/<slug>` detail pages — the same data as Dashboard → Content → Job Postings (`job_postings`; migration `202611190180_job_postings.sql`). Same access as Blog (Super Admin, Admin, Content Reviewer). A listing is on the site only while `status` is `published` (or `scheduled`) and now is inside `publish_at` / `close_at`.
+
+| Tool | Risk |
+| --- | --- |
+| `sig_job_postings_list` — every listing with `live_now`; filter by `status`, `department`, `search`, `live_only`; `full` adds detail content | read |
+| `sig_job_posting_upsert` — create (no `job`; defaults to draft) or edit (`job` = id or slug; only passed fields change): `title`, `slug`, `department`, `employment_type` (full_time / part_time / internship / contract), `type_label`, `badge_text`, `hiring_status` (open / waitlist), `location`, `compensation`, `summary`, `intro`, `sections` (`[{heading, paragraphs?, items?}]`), `apply_instructions`, `status`, `publish_at`, `close_at` (ISO; Arizona is `-07:00`), `sort_order`, `featured` | write → high when the result is (or was) live on the site |
+| `sig_job_posting_delete` (trashed; restorable with `sig_restore`) — to just hide a listing set `status: "closed"` instead | high |
+
 ### Team pages (employee profiles) — `lib/mcp/tools-team.ts`
 The public `strategicincomegroup.com/team/<slug>` pages, stored in `employee_profiles` and edited in Dashboard → My Profile. Every SIG employee (any staff role) can read and edit **their own** page; Super Admins / Admins can list and edit anyone's.
 
@@ -205,6 +214,19 @@ The public `strategicincomegroup.com/team/<slug>` pages, stored in `employee_pro
 Fields: `first_name`, `last_name`, `full_name`, `job_title`, `credentials`, `office` (East/West Valley Office), `employment_date` (YYYY-MM-DD), `experience` (paragraphs separated by a blank line), `inspires`, `hobbies`, `best_purchase` (under $100), `favorite_destination`, `why_love_job`, `favorite_quote`, `phone`, `email`, `linkedin_url`, `work_days` (`mon`…`sun`, replaces the list), `start_time` / `close_time` (24h HH:MM), `photo_url`, `gallery_urls` (replaces the list), `is_published`. Nothing is required; `''` clears a field. Uploading new image files happens in the dashboard (the tools take URLs).
 
 Example prompts: *"Draft my 'Why I love my job' from these notes, then save it"*, *"Set my schedule to Mon–Thu 8 to 4:30"*, *"Which team pages are missing a photo?"* (admin). The assistant should show a draft and save only after the person approves it. Saves refresh `/team` and the person's page immediately.
+
+### Site notices (`admin`) — `lib/mcp/tools-site-notices.ts`
+The announcement bar above the main menu on every public page and the Blog Sidebar Notification card on every `/resources/<slug>` post — the same data as Dashboard → Content → Site Notices (`site_announcements`, `site_blocks`; migration `202611190170_site_notices.sql`). Admins / Super Admins only.
+
+| Tool | Risk |
+| --- | --- |
+| `sig_site_announcements_list` — every entry with status (live / scheduled / off / ended); `id` for one, `status` to filter | read |
+| `sig_site_announcement_upsert` — create (no `id`) or edit: `message`, `link_label`, `link_url`, `tone` (navy / gold / alert), `enabled`, `dismissible`, `priority`, `starts_at`, `ends_at` (ISO with offset; Arizona is `-07:00`) | write → high when the result is (or was) live on the site |
+| `sig_site_announcement_delete` | high |
+| `sig_blog_sidebar_get` | read |
+| `sig_blog_sidebar_update` — `enabled`, `eyebrow`, `title`, `body` (blank line between paragraphs), `phone`, `email`, `hours`, `show_offices`, `cta_label`, `cta_url` | write → always asks for confirmation (live immediately) |
+
+The bar shows only while enabled and inside its window; when several are live the highest `priority` (then the most recent start) wins. Visitors can dismiss it per announcement; editing it shows it again.
 
 ### Website pages (`website`, Super Admin) — wraps `lib/website/shepherd-tools.ts`
 | Tool | Risk |

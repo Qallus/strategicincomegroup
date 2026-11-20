@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 
 type Issue = { kind: "placeholder" | "draft-marker"; text: string; line: number };
 
@@ -341,12 +342,11 @@ export function LegalManager() {
 
             <div className="grid gap-3 sm:grid-cols-[14rem_minmax(0,1fr)]">
               <div className="space-y-1.5">
-                <Label htmlFor="legal-effective">Effective date</Label>
-                <Input
-                  id="legal-effective"
-                  type="date"
+                <Label>Effective date</Label>
+                <DatePicker
                   value={effective}
-                  onChange={(e) => { setEffective(e.target.value); setDirty(true); }}
+                  onChange={(v) => { setEffective(v); setDirty(true); }}
+                  placeholder="Pick a date"
                 />
                 <p className="text-[11px] text-muted-foreground">
                   Required to publish. Shown in the page header.

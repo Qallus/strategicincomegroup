@@ -4,6 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 // Branded, theme-aware date picker (no native browser calendar).
 // value / onChange use "YYYY-MM-DD".
@@ -41,9 +42,17 @@ export function DatePicker({
     function onDoc(e: MouseEvent) {
       const t = e.target as Node;
       if (wrapRef.current?.contains(t) || popRef.current?.contains(t)) return;
+      // Month/year dropdowns are Radix Selects portaled to <body>; clicks in
+      // them belong to the calendar, not "outside".
+      if (t instanceof Element && t.closest("[data-radix-popper-content-wrapper]")) return;
       setOpen(false);
     }
-    function onEsc(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      // Escape inside an open month/year dropdown closes only that dropdown.
+      if (document.querySelector('[role="listbox"][data-state="open"]')) return;
+      setOpen(false);
+    }
     if (open) { document.addEventListener("mousedown", onDoc); document.addEventListener("keydown", onEsc); }
     return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
   }, [open]);
@@ -104,24 +113,24 @@ export function DatePicker({
           <div className="mb-1 flex items-center justify-between">
             <button type="button" onClick={() => setCursor(new Date(Date.UTC(year, mon - 1, 1)))} className="rounded p-1 hover:bg-accent hover:text-accent-foreground"><ChevronLeft className="h-4 w-4" /></button>
             <div className="flex items-center gap-1">
-              <select
-                aria-label="Month"
-                value={mon}
-                onChange={(e) => setCursor(new Date(Date.UTC(year, Number(e.target.value), 1)))}
-                className="h-7 rounded border border-input bg-background px-1 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                {Array.from({ length: 12 }, (_, m) => (
-                  <option key={m} value={m}>{new Date(Date.UTC(2000, m, 1)).toLocaleDateString([], { month: "short", timeZone: "UTC" })}</option>
-                ))}
-              </select>
-              <select
-                aria-label="Year"
-                value={year}
-                onChange={(e) => setCursor(new Date(Date.UTC(Number(e.target.value), mon, 1)))}
-                className="h-7 rounded border border-input bg-background px-1 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                {years.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <Select value={String(mon)} onValueChange={(v) => setCursor(new Date(Date.UTC(year, Number(v), 1)))}>
+                <SelectTrigger aria-label="Month" className="h-7 w-auto gap-1 px-2 text-sm font-medium shadow-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, m) => (
+                    <SelectItem key={m} value={String(m)}>{new Date(Date.UTC(2000, m, 1)).toLocaleDateString([], { month: "short", timeZone: "UTC" })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={String(year)} onValueChange={(v) => setCursor(new Date(Date.UTC(Number(v), mon, 1)))}>
+                <SelectTrigger aria-label="Year" className="h-7 w-auto gap-1 px-2 text-sm font-medium shadow-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <button type="button" onClick={() => setCursor(new Date(Date.UTC(year, mon + 1, 1)))} className="rounded p-1 hover:bg-accent hover:text-accent-foreground"><ChevronRight className="h-4 w-4" /></button>
           </div>

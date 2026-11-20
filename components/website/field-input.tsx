@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { defaultsFor, type FieldDef } from "@/lib/website/schema";
 import { MediaPicker } from "./media-picker";
 import { InlineAiActions } from "./inline-ai";
+import { FieldSelect } from "@/components/ui/field-select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const INPUT =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -102,12 +104,7 @@ export function FieldInput({ field, value, onChange, aiContext }: FieldInputProp
     case "boolean":
       return (
         <label className="flex cursor-pointer items-center gap-2.5 py-1">
-          <input
-            type="checkbox"
-            checked={value === true}
-            onChange={(e) => onChange(e.target.checked)}
-            className="h-4 w-4 rounded border-input accent-[#b88a4a]"
-          />
+          <Checkbox checked={value === true} onChange={(e) => onChange(e.target.checked)} />
           <span className="text-sm">{field.label}</span>
           {field.help ? <span className="text-xs text-muted-foreground">{field.help}</span> : null}
         </label>
@@ -117,11 +114,12 @@ export function FieldInput({ field, value, onChange, aiContext }: FieldInputProp
       return (
         <div>
           <Label field={field} />
-          <select className={INPUT} value={String(value ?? field.default ?? "")} onChange={(e) => onChange(e.target.value)}>
-            {(field.options ?? []).map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <FieldSelect
+            value={String(value ?? field.default ?? "")}
+            onChange={(v) => onChange(v)}
+            aria-label={field.label}
+            options={(field.options ?? []).map((o) => ({ value: o.value, label: o.label }))}
+          />
         </div>
       );
 
@@ -198,12 +196,7 @@ function LinkField({ field, value, onChange }: Omit<FieldInputProps, "aiContext"
         <input className={INPUT} value={link.label ?? ""} onChange={(e) => set({ label: e.target.value })} placeholder="Button label" />
         <input className={INPUT} value={link.href ?? ""} onChange={(e) => set({ href: e.target.value })} placeholder="/page-address or https://…" />
         <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={link.newTab === true}
-            onChange={(e) => set({ newTab: e.target.checked })}
-            className="h-4 w-4 rounded border-input accent-[#b88a4a]"
-          />
+          <Checkbox checked={link.newTab === true} onChange={(e) => set({ newTab: e.target.checked })} />
           Open in a new tab
         </label>
       </div>

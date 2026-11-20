@@ -159,10 +159,11 @@ export function renderCmsBlock(b: CmsBlock): string {
         const t = FIELD_TYPES.has(it.fieldType || "") ? it.fieldType! : "text";
         const label = `<label style="display:block;font-size:13px;font-weight:600;margin:0 0 6px">${esc(it.title || "")}${it.required ? ' <span style="color:#b04">*</span>' : ""}</label>`;
         let ctrl = "";
-        const st = "width:100%;padding:11px 13px;border:1px solid var(--line,#e4ded2);border-radius:8px;font-size:15px;background:#fff";
+        // CMS preview only (HTML string, not React): themed native controls with a brand chevron and accent.
+        const st = "width:100%;padding:11px 13px;border:1px solid var(--line,#e4ded2);border-radius:8px;font-size:15px;background-color:var(--card,#fff);color:inherit;accent-color:var(--gold,#c9a46e)";
         if (t === "textarea") ctrl = `<textarea placeholder="${esc(it.placeholder || "")}" rows="4" style="${st}"></textarea>`;
-        else if (t === "select") ctrl = `<select style="${st}">${(it.options || "").split(",").map((o) => `<option>${esc(o.trim())}</option>`).join("")}</select>`;
-        else if (t === "checkbox") ctrl = `<label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" /> ${esc(it.placeholder || it.title || "")}</label>`;
+        else if (t === "select") ctrl = `<select style="${st};appearance:none;-webkit-appearance:none;padding-right:36px;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c9a46e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 12px center">${(it.options || "").split(",").map((o) => `<option>${esc(o.trim())}</option>`).join("")}</select>`;
+        else if (t === "checkbox") ctrl = `<label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" style="width:18px;height:18px;accent-color:var(--gold,#c9a46e)" /> ${esc(it.placeholder || it.title || "")}</label>`;
         else ctrl = `<input type="${t === "phone" ? "tel" : t}" placeholder="${esc(it.placeholder || "")}" style="${st}" />`;
         return `<div style="margin-bottom:16px">${t === "checkbox" ? "" : label}${ctrl}</div>`;
       }).join("");

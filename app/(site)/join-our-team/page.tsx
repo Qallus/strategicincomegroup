@@ -1,9 +1,10 @@
-import Link from "next/link";
-import { ArrowRight, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { ButtonLink, CtaBand, PageHero, Section, SectionHeading } from "@/components/public-site/blocks";
-import { OPEN_POSITIONS, ROLE_GROUPS, WHY_SIG } from "@/lib/public-site/careers";
+import { CareersRoles, type RoleCard } from "@/components/public-site/careers-roles";
+import { getLiveJobs } from "@/lib/careers/server";
+import { groupJobs, hasJobDetail } from "@/lib/careers/shared";
+import { WHY_SIG } from "@/lib/public-site/careers";
 import { OFFICES } from "@/lib/public-site/site-data";
-import { cn } from "@/lib/utils";
 
 export const metadata = {
   title: "Careers — Join Our Team",
@@ -11,9 +12,28 @@ export const metadata = {
     "At Strategic Income Group we believe work is more than just a job—it’s a calling. Explore careers in financial planning, client service and operations.",
 };
 
-const openCount = OPEN_POSITIONS;
+// Listings come from Dashboard → Job Postings (falls back to lib/public-site/careers.ts).
+export const revalidate = 300;
 
-export default function CareersPage() {
+export default async function CareersPage() {
+  const jobs = await getLiveJobs();
+  const openCount = jobs.filter((j) => j.hiring_status === "open").length;
+  const groups = groupJobs(jobs).map((g) => ({
+    heading: g.heading,
+    roles: g.jobs.map<RoleCard>((j) => ({
+      slug: j.slug,
+      title: j.title,
+      summary: j.summary,
+      department: j.department,
+      badge: j.badge_text,
+      open: j.hiring_status === "open",
+      featured: j.featured,
+      hasDetail: hasJobDetail(j),
+      location: j.location,
+      employmentType: j.employment_type,
+    })),
+  }));
+
   return (
     <>
       <PageHero
@@ -60,50 +80,8 @@ export default function CareersPage() {
           title="We are always seeking top-tier professionals"
           description="We actively build a waitlist of qualified candidates for immediate and future opportunities."
         />
-        <div className="mt-12 grid gap-8 lg:grid-cols-3">
-          {ROLE_GROUPS.map((g) => (
-            <div key={g.heading}>
-              <h3 className="font-serif text-2xl">{g.heading}</h3>
-              <ul className="mt-5 space-y-3">
-                {g.roles.map((r) => {
-                  const body = (
-                    <>
-                      <span className="flex items-start justify-between gap-3">
-                        <span className="font-medium">{r.title}</span>
-                        {r.status ? (
-                          <span
-                            className={cn(
-                              "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                              r.status === "Part-Time" ? "bg-[hsl(219_68%_54%/0.15)] text-[hsl(219_60%_40%)] dark:text-brand-sky" : "bg-[hsl(147_27%_43%/0.15)] text-[hsl(147_35%_30%)] dark:text-brand-sage",
-                            )}
-                          >
-                            {r.status}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{r.summary}</span>
-                      {r.slug ? (
-                        <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-                          View role <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                        </span>
-                      ) : null}
-                    </>
-                  );
-                  return (
-                    <li key={r.title}>
-                      {r.slug ? (
-                        <Link href={`/join-our-team/${r.slug}`} className="group block rounded-xl border bg-card p-4 transition hover:border-primary/40 hover:shadow-md">
-                          {body}
-                        </Link>
-                      ) : (
-                        <div className="rounded-xl border border-dashed bg-card/60 p-4">{body}</div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+        <div className="mt-10">
+          <CareersRoles groups={groups} />
         </div>
       </Section>
 

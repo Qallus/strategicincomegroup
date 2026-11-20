@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AuthField, AuthMessage } from "@/components/auth/auth-shell";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const RULES = [
   { test: (p: string) => p.length >= 10, label: "At least 10 characters" },
@@ -98,7 +99,7 @@ export function RegisterForm() {
         <Input id="confirm" type="password" required autoComplete="new-password" value={form.confirm} onChange={set("confirm")} className="h-11" />
       </AuthField>
       <label className="flex items-start gap-2.5 text-sm text-muted-foreground">
-        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-input accent-[hsl(var(--primary))]" />
+        <Checkbox checked={agree} onChange={(e) => setAgree(e.target.checked)} wrapperClassName="mt-0.5" />
         <span>
           I agree to the{" "}
           <Link href="/terms-of-service" className="text-primary hover:underline">Terms of Service</Link> and{" "}

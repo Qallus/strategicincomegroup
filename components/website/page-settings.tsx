@@ -12,6 +12,8 @@ import { slugProblem } from "@/lib/website/protected";
 import { CMS_LIKE_PAGE_TYPES } from "./constants";
 import type { PageDependencies } from "@/lib/website/data";
 import type { WebsitePage } from "@/lib/website/types";
+import { FieldSelect } from "@/components/ui/field-select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const INPUT =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -93,7 +95,7 @@ export function PageSettings({
               </p>
               {!slugIssue ? (
                 <label className="mt-2 flex cursor-pointer items-center gap-2 text-amber-900 dark:text-amber-200">
-                  <input type="checkbox" checked={createRedirect} onChange={(e) => setCreateRedirect(e.target.checked)} className="h-3.5 w-3.5 accent-[#b88a4a]" />
+                  <Checkbox size="sm" checked={createRedirect} onChange={(e) => setCreateRedirect(e.target.checked)} />
                   Send /{page.slug} to /{form.slug} automatically
                 </label>
               ) : null}
@@ -107,15 +109,11 @@ export function PageSettings({
           ) : null}
 
           <Row label="Page type">
-            <select className={INPUT} value={form.page_type} onChange={(e) => set({ page_type: e.target.value })}>
-              {CMS_LIKE_PAGE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+            <FieldSelect value={form.page_type} onChange={(v) => set({ page_type: v })} aria-label="Page type" options={CMS_LIKE_PAGE_TYPES.map((t) => ({ value: t.value, label: t.label }))} />
           </Row>
 
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.navigation_visibility} onChange={(e) => set({ navigation_visibility: e.target.checked })} className="h-4 w-4 accent-[#b88a4a]" />
+            <Checkbox checked={form.navigation_visibility} onChange={(e) => set({ navigation_visibility: e.target.checked })} />
             Offer this page in the navigation manager
           </label>
           {form.navigation_visibility ? (
@@ -146,11 +144,11 @@ export function PageSettings({
 
           <div className="space-y-2">
             <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.no_index} onChange={(e) => set({ no_index: e.target.checked })} className="h-4 w-4 accent-[#b88a4a]" />
+              <Checkbox checked={form.no_index} onChange={(e) => set({ no_index: e.target.checked })} />
               Ask search engines not to index this page
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.no_follow} onChange={(e) => set({ no_follow: e.target.checked })} className="h-4 w-4 accent-[#b88a4a]" />
+              <Checkbox checked={form.no_follow} onChange={(e) => set({ no_follow: e.target.checked })} />
               Ask search engines not to follow its links
             </label>
           </div>

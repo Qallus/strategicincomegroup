@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const CONSENT =
   "By checking this box, I agree to receive the Strategic Income Group Newsletter via email. Messages may include links to pages on strategicincomegroup.com. Message frequency varies (typically 1 to 2 emails each month).";
@@ -71,11 +72,11 @@ export function NewsletterForm() {
       </div>
       <input type="text" name="company_website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
       <label className="flex items-start gap-2.5 text-xs leading-relaxed text-white/65">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 accent-[hsl(36_46%_61%)]"
+          wrapperClassName="mt-0.5"
+          className="border-white/40 bg-transparent text-[hsl(225_80%_10%)] peer-checked:border-brand-gold peer-checked:bg-brand-gold peer-focus-visible:ring-brand-gold peer-focus-visible:ring-offset-transparent"
         />
         <span>
           <strong className="font-medium text-white/85">Newsletter Email Consent:</strong> {CONSENT} See our{" "}

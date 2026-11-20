@@ -13,6 +13,7 @@ import { PROTECTED_ROUTES } from "@/lib/website/protected";
 import { websiteApi } from "./api";
 import { formatDateTime } from "./constants";
 import type { EditorSettings, WebsiteAuditLog } from "@/lib/website/types";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function SettingsPanel() {
   const token = useDashboardActionToken();
@@ -44,12 +45,11 @@ export function SettingsPanel() {
         {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
 
         <label className="mt-3 flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
+          <Checkbox
+            wrapperClassName="mt-1"
             disabled={busy || !settings}
             checked={settings?.allowShepherdDirectPublish ?? false}
             onChange={(e) => toggleDirectPublish(e.target.checked)}
-            className="mt-1 h-4 w-4 accent-[#b88a4a]"
           />
           <span>
             <span className="block text-sm font-medium">
