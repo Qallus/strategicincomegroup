@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 // Charts follow the dataviz skill: categorical slots in fixed order (one color per
 // packing, oldest first, so a packing keeps its color as new ones are added),
 // legend always present, direct labels, hover/focus tooltips and a table view.
-// Light-mode aqua/yellow are under 3:1 on white, so every mark is also labeled.
+// Palette = SIG brand hues (globals.css .sig-viz); every mark is also labeled.
 
-const SLOTS = 8;
+const SLOTS = 6;
 const short = (iso: string) => new Date(iso).toLocaleDateString("en-US", { timeZone: "America/Phoenix", month: "short", year: "numeric" });
 const long = (iso: string) => new Date(iso).toLocaleDateString("en-US", { timeZone: "America/Phoenix", month: "long", day: "numeric", year: "numeric" });
 const n = (v: number) => v.toLocaleString("en-US");
 
-/** Color per packing by chronological position; beyond 8 packings the oldest fold into "Earlier". */
+/** Color per packing by chronological position; beyond 6 packings the oldest fold into "Earlier". */
 function colorFor(recorded: Packing[], slug: string) {
   const i = recorded.findIndex((p) => p.slug === slug);
   const fold = Math.max(0, recorded.length - (SLOTS - 1));

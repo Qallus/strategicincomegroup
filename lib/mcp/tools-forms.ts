@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { trashRecord } from "./trash";
 import { bool, clamp, ilikeSafe, int, need, obj, opt, s, str, strEnum, type Json, type McpTool } from "./types";
 
-const FORM_TYPES = ["new_client", "client_service", "church_403b", "career_interest", "contact", "newsletter"] as const;
+const FORM_TYPES = ["new_client", "client_service", "investment_committee", "church_403b", "career_interest", "contact", "newsletter"] as const;
 const SUGGESTED_STATUSES = ["received", "in_progress", "contacted", "resolved", "spam"] as const;
 
 const sb = () => createSupabaseAdminClient();

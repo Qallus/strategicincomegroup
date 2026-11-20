@@ -41,6 +41,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   // FMSC packings show SIGCares results to date (event.impact_program, or the known slug before the migration runs).
   const isFmsc = event.impact_program === "fmsc" || event.slug.startsWith("fmsc-");
   const impact = isFmsc ? await loadFmscImpact() : null;
+  // FMSC packings fall back to the SIGCares packing photo until one is set in Dashboard → Events.
+  const cover = event.cover_image_url || (isFmsc ? "/events/fmsc-food-packing.webp" : null);
   const directions =
     event.directions_url || (event.location_address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.location_address)}` : null);
 
@@ -81,9 +83,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       <Container className="py-12 md:py-16">
         <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
           <div className="min-w-0 space-y-10">
-            {event.cover_image_url ? (
+            {cover ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={event.cover_image_url} alt="" className="aspect-[2/1] w-full rounded-2xl border object-cover" />
+              <img
+                src={cover}
+                alt={isFmsc && !event.cover_image_url ? "Volunteers in hairnets smiling as they pack meals at Feed My Starving Children" : ""}
+                className="aspect-[16/9] w-full rounded-2xl border object-cover"
+              />
             ) : null}
             {event.description ? (
               <div className="sig-prose max-w-[68ch]">
@@ -117,30 +123,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                     );
                   })}
                 </div>
-              </section>
-            ) : null}
-
-            {impact && impact.recorded.length ? (
-              <section className="rounded-2xl border bg-muted/30 p-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">SIGCares results to date</p>
-                <h2 className="mt-2 font-serif text-3xl">Together, we’ve fed {impact.totals.kids.toLocaleString("en-US")} kids for a year.</h2>
-                {event.impact_meals ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    This packing: {event.impact_meals.toLocaleString("en-US")} meals · {kidsFedForAYear(event.impact_meals)} kids fed for a year
-                  </p>
-                ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">Your RSVP helps write the next chapter.</p>
-                )}
-                <div className="mt-6">
-                  <ImpactCounters impact={impact} />
-                </div>
-                <div className="mt-6">
-                  <KidsFedGrid recorded={impact.recorded} compact />
-                </div>
-                <div className="mt-8">
-                  <MilestoneTrail impact={impact} />
-                </div>
-                <Link href="/sigcares" className="mt-2 inline-flex text-sm font-semibold text-primary hover:underline">See the full SIGCares story →</Link>
               </section>
             ) : null}
 
@@ -210,6 +192,32 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </div>
           </aside>
         </div>
+
+        {impact && impact.recorded.length ? (
+          <section className="mt-14 rounded-3xl border bg-muted/30 p-6 sm:p-8 lg:p-10">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">SIGCares results to date</p>
+                <h2 className="mt-2 font-serif text-3xl sm:text-4xl">Together, we’ve fed {impact.totals.kids.toLocaleString("en-US")} kids for a year.</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {event.impact_meals
+                    ? `This packing: ${event.impact_meals.toLocaleString("en-US")} meals · ${kidsFedForAYear(event.impact_meals)} kids fed for a year`
+                    : "Your RSVP helps write the next chapter."}
+                </p>
+              </div>
+              <Link href="/sigcares" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">See the full SIGCares story →</Link>
+            </div>
+            <div className="mt-8">
+              <ImpactCounters impact={impact} />
+            </div>
+            <div className="mt-8">
+              <KidsFedGrid recorded={impact.recorded} />
+            </div>
+            <div className="mt-10">
+              <MilestoneTrail impact={impact} />
+            </div>
+          </section>
+        ) : null}
       </Container>
     </>
   );

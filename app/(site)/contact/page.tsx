@@ -38,7 +38,7 @@ export default async function ContactPage({ searchParams }: Props) {
           </div>
           <p className="mt-5 text-sm text-muted-foreground">
             Below, choose <strong className="text-foreground">Start planning</strong>, <strong className="text-foreground">Current client</strong>,{" "}
-            <strong className="text-foreground">Churches &amp; 403(b)</strong> or <strong className="text-foreground">Careers</strong>. The form changes to match.
+            <strong className="text-foreground">Investment Committee</strong> or <strong className="text-foreground">Careers</strong>. The form changes to match.
           </p>
         </Container>
       </section>

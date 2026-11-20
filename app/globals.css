@@ -273,28 +273,63 @@
   .sig-pop { animation: none; }
 }
 
-/* ── Data viz tokens (dataviz reference palette, validated light + dark) ── */
+/* ── Data viz tokens: SIG brand palette (navy, gold, sky, sage, plum, terracotta),
+   run through the dataviz validator — lightness band, chroma, CVD and contrast
+   all pass in light (#fcfcfb) and dark (#0b1020). Fixed order; never cycled. ── */
 @layer components {
   .sig-viz {
-    --series-1: #2a78d6;
-    --series-2: #eb6834;
-    --series-3: #1baf7a;
-    --series-4: #eda100;
-    --series-5: #e87ba4;
-    --series-6: #008300;
-    --series-7: #6250d6;
-    --series-8: #e34948;
+    --series-1: #294cae;
+    --series-2: #c2872e;
+    --series-3: #268ed9;
+    --series-4: #328558;
+    --series-5: #855aaf;
+    --series-6: #cf5030;
     --series-other: hsl(var(--muted-foreground) / 0.45);
     --viz-track: hsl(var(--muted));
   }
   .dark .sig-viz {
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-    --series-6: #0ca30c;
-    --series-7: #9085e9;
-    --series-8: #e66767;
+    --series-1: #507ee2;
+    --series-2: #c08630;
+    --series-3: #269dd9;
+    --series-4: #2e8a63;
+    --series-5: #9e77c5;
+    --series-6: #d36245;
   }
+}
+
+/* ── Booking flow motion (/book) — restrained, and off under reduced motion ── */
+@keyframes sig-book-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sig-book-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes sig-book-ring {
+  from { opacity: 0.55; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.9); }
+}
+@keyframes sig-book-draw {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes sig-book-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.sig-book-in { animation: sig-book-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.sig-book-pop { animation: sig-book-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.sig-book-ring { animation: sig-book-ring 1400ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms both; }
+.sig-book-draw { stroke-dasharray: 24; animation: sig-book-draw 420ms ease-out 260ms both; }
+.sig-book-skeleton {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted-foreground) / 0.12) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: sig-book-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sig-book-in, .sig-book-pop, .sig-book-ring, .sig-book-draw, .sig-book-skeleton { animation: none; }
+  .sig-book-ring { opacity: 0; }
+  .sig-book-draw { stroke-dasharray: none; }
 }

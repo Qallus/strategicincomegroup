@@ -86,7 +86,7 @@ insert into public.employee_profiles
    experience,
    inspires, hobbies, favorite_destination, why_love_job, favorite_quote, sort_order)
 values
-  ($t$michael-gauthier$t$, $t$mike@strategicincomegroup.com$t$, $t$Michael Gauthier$t$, $t$Michael$t$, $t$Gauthier$t$, $t$Founder & CEO$t$, $t$CFP®$t$, $t$leadership$t$, null, $t$/team/michael-gauthier.webp$t$, $t$/book?planner=michael-gauthier$t$,
+  ($t$michael-gauthier$t$, $t$mike@strategicincomegroup.com$t$, $t$Michael Gauthier$t$, $t$Michael$t$, $t$Gauthier$t$, $t$Founder & CEO$t$, $t$CFP®$t$, $t$leadership$t$, null, $t$/team/michael-gauthier-2026.webp$t$, $t$/book?planner=michael-gauthier$t$,
    $t$Michael is a CERTIFIED FINANCIAL PLANNER™ professional with over two decades worth of experience helping families and individuals meet their wealth-building goals. In March of 2013, he left a large Wall Street firm to start Strategic Income Group, where he provides one-on-one financial consulting and management services.
 
 Michael enjoys sitting down with clients and showing them new capabilities and offerings. His mission is to change your relationship with money. In his downtime, he loves spending time with his wife and three children.$t$,

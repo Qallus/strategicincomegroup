@@ -5,7 +5,7 @@ import { formTypeLabel } from "@/lib/forms/types";
 // Public website forms: contact, newsletter sign-up and career interest.
 // Submissions land in form_submissions for the dashboard's Form Submissions inbox.
 
-const FORM_TYPES = new Set(["contact", "newsletter", "new_client", "client_service", "church_403b", "career_interest"]);
+const FORM_TYPES = new Set(["contact", "newsletter", "new_client", "client_service", "church_403b", "investment_committee", "career_interest"]);
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const clip = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   if (formType !== "newsletter" && formType !== "contact" && !payload.firstName) {
     return NextResponse.json({ error: "Please include your name." }, { status: 400 });
   }
-  if ((formType === "client_service" || formType === "career_interest") && !payload.message) {
+  if ((formType === "client_service" || formType === "career_interest" || formType === "investment_committee") && !payload.message) {
     return NextResponse.json({ error: "Please add a few details in the message." }, { status: 400 });
   }
 

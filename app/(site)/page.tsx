@@ -91,7 +91,7 @@ export default async function HomePage() {
           <div className="relative mx-auto w-full max-w-md">
             <div className="absolute -inset-3 rounded-2xl bg-gradient-to-br from-brand-gold/30 to-transparent blur-xl" aria-hidden />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/team/michael-gauthier.webp" alt="Mike Gauthier, CFP®" className="relative aspect-[4/5] w-full rounded-2xl border object-cover object-top" />
+            <img src="/team/michael-gauthier-2026.webp" alt="Mike Gauthier, CFP®" className="relative aspect-[4/5] w-full rounded-2xl border object-cover object-top" />
           </div>
           <div>
             <SectionHeading eyebrow="Meet our CEO" title="Mike Gauthier" description="Founder & CEO of Strategic Income Group" />

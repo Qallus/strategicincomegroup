@@ -29,7 +29,13 @@ export default async function EventsIndexPage() {
         breadcrumb={[{ label: "Events" }]}
         description="Roundtables, workshops and community service events with the Strategic Income Group team. Reserve your seat online."
       />
+      {impact.recorded.length ? (
+        <Container className="pt-10 md:pt-12">
+          <ImpactBand impact={impact} />
+        </Container>
+      ) : null}
       <Container className="py-12 md:py-16">
+        <h2 className="mb-6 font-serif text-3xl">Upcoming events</h2>
         {events.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-16 text-center">
             <CalendarDays className="mx-auto h-8 w-8 text-gold" />
@@ -74,11 +80,6 @@ export default async function EventsIndexPage() {
             })}
           </div>
         )}
-        {impact.recorded.length ? (
-          <div className="mt-14">
-            <ImpactBand impact={impact} />
-          </div>
-        ) : null}
       </Container>
     </>
   );

@@ -45,7 +45,7 @@ export const TEAM: TeamMember[] = [
     credentials: "CFP®",
     title: "Founder & CEO",
     group: "leadership",
-    photo: "/team/michael-gauthier.webp",
+    photo: "/team/michael-gauthier-2026.webp",
     booking: bookingHref("michael-gauthier"),
     quote:
       "Our family life verse is from Matthew 5:16 and says “In the same way, let your light shine before others, that they may see your good deeds and glorify your father in heaven”.",

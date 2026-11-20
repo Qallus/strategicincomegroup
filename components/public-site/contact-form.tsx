@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowRight, Briefcase, Check, CheckCircle2, Church, Compass, Loader2, Users } from "lucide-react";
+import { ArrowDown, ArrowRight, Briefcase, Check, CheckCircle2, Compass, Landmark, Loader2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { JOBS } from "@/lib/public-site/careers";
 import { PLANNERS } from "@/lib/public-site/team";
 import { cn } from "@/lib/utils";
 
-type OptionKey = "new_client" | "client_service" | "church_403b" | "career_interest";
+type OptionKey = "new_client" | "client_service" | "investment_committee" | "career_interest";
 
 const OPTIONS: {
   key: OptionKey;
@@ -49,16 +49,17 @@ const OPTIONS: {
     messageRequired: true,
   },
   {
-    key: "church_403b",
-    icon: Church,
-    title: "Churches & 403(b)",
-    blurb: "Faith-based retirement plans and stewardship for ministries.",
-    eyebrow: "Kingdom Stewardship",
-    heading: "Tell us about your church",
-    sub: "Mike Gauthier or a planner will follow up about your plan and next steps.",
-    submit: "Send 403(b) inquiry",
-    messageLabel: "What would you like to explore?",
-    messagePlaceholder: "Your current plan, timeline, or the questions your leadership is asking…",
+    key: "investment_committee",
+    icon: Landmark,
+    title: "Investment Committee",
+    blurb: "Fund companies, managers and partners with an investment offering.",
+    eyebrow: "Investment Committee",
+    heading: "Tell us about your offering",
+    sub: "Our Investment Committee reviews every submission. If it’s a fit for our clients, a committee member will reach out — please don’t call the main line.",
+    submit: "Submit to the committee",
+    messageLabel: "Brief overview",
+    messagePlaceholder: "What it is, who it’s for, how it fits a fiduciary planning practice, and any track record or materials we should review…",
+    messageRequired: true,
   },
   {
     key: "career_interest",
@@ -77,7 +78,9 @@ const OPTIONS: {
 
 const TOPIC_TO_OPTION: Record<string, OptionKey> = {
   careers: "career_interest",
-  "403b": "church_403b",
+  investments: "investment_committee",
+  "investment-committee": "investment_committee",
+  "403b": "new_client",
   client: "client_service",
   service: "client_service",
 };
@@ -280,25 +283,31 @@ function VariantForm({ option, role, onSent }: { option: (typeof OPTIONS)[number
         </>
       ) : null}
 
-      {k === "church_403b" ? (
+      {k === "investment_committee" ? (
         <>
-          <Field label="Church or organization" required>
+          <Field label="Company / firm" required>
             <Input name="organization" required className="h-10" />
           </Field>
-          <Field label="Your role">
-            <Select name="orgRole" options={["Senior / Lead Pastor", "Executive Pastor", "Business Administrator", "Elder / Board member", "Finance team", "Other"]} />
+          <Field label="Your title">
+            <Input name="orgRole" placeholder="e.g. Regional Director" className="h-10" />
           </Field>
-          <Field label="Number of staff">
-            <Select name="staffCount" options={["1–5", "6–15", "16–50", "51–100", "100+"]} />
-          </Field>
-          <Field label="Do you have a retirement plan today?">
-            <Select name="existingPlan" options={["Yes — a 403(b)", "Yes — another plan type", "No", "Not sure"]} />
-          </Field>
-          <Field label="I’m interested in" className="sm:col-span-2">
+          <Field label="Type of offering" required>
             <Select
-              name="interest"
-              options={["Faith-based 403(b) plan review or setup", "Retirement plan fiduciary guidance", "Staff stewardship education", "Elder / board presentation", "Kingdom Stewardship speaking & workshops"]}
+              name="offeringType"
+              options={["Mutual fund / ETF", "Separately managed account (SMA)", "Alternative investment / private fund", "Annuity / insurance product", "Fixed income / structured note", "Technology or service provider", "Other"]}
             />
+          </Field>
+          <Field label="Asset class / strategy">
+            <Input name="strategy" placeholder="e.g. Private credit, large-cap value" className="h-10" />
+          </Field>
+          <Field label="Firm AUM">
+            <Select name="aum" options={["Prefer not to say", "Under $1B", "$1B – $10B", "$10B – $100B", "Over $100B"]} />
+          </Field>
+          <Field label="Track record">
+            <Select name="trackRecord" options={["Under 3 years", "3 – 5 years", "5 – 10 years", "10+ years"]} />
+          </Field>
+          <Field label="Website or fact sheet link" className="sm:col-span-2">
+            <Input name="profileUrl" type="url" placeholder="https://" className="h-10" />
           </Field>
         </>
       ) : null}

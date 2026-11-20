@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Archive, Briefcase, CheckCircle2, Church, CircleDot, Compass, EyeOff, Inbox, Mail, MessageSquare, Phone, RotateCcw, Trash2, Users,
+  Archive, Briefcase, CheckCircle2, Church, CircleDot, Compass, EyeOff, Inbox, Landmark, Mail, MessageSquare, Phone, RotateCcw, Trash2, Users,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export type Submission = {
   created_at: string;
 };
 
-const ICONS: Record<string, LucideIcon> = { compass: Compass, users: Users, church: Church, briefcase: Briefcase, mail: Mail, message: MessageSquare };
+const ICONS: Record<string, LucideIcon> = { compass: Compass, users: Users, church: Church, landmark: Landmark, briefcase: Briefcase, mail: Mail, message: MessageSquare };
 const STATUS_CLASS: Record<string, string> = {
   received: "bg-primary/10 text-primary",
   in_progress: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
@@ -120,7 +120,7 @@ export function FormInbox({ submissions, staff }: { submissions: Submission[]; s
         { label: "Open", value: rows.filter(open).length, icon: Inbox, hint: "New + in progress" },
         { label: "New clients", value: typeCount("new_client"), icon: Compass },
         { label: "Client service", value: typeCount("client_service"), icon: Users },
-        { label: "Churches & 403(b)", value: typeCount("church_403b"), icon: Church },
+        { label: "Investment Committee", value: typeCount("investment_committee"), icon: Landmark },
         { label: "Careers", value: typeCount("career_interest"), icon: Briefcase },
       ]}
       filters={[
