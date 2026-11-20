@@ -118,6 +118,12 @@ export type Booking = {
   cancel_reason: string | null;
   reschedule_of: string | null;
   source: string | null;
+  // Client notification opt-ins (202611190160) — absent until that migration runs.
+  notify_email?: boolean;
+  notify_sms?: boolean;
+  notify_consent_at?: string | null;
+  sms_consent_text?: string | null;
+  notifications_sent?: Record<string, unknown> | null;
   created_at?: string;
   updated_at?: string;
   // joined

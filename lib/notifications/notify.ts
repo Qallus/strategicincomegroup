@@ -12,13 +12,17 @@ export type NotificationType =
   | "email_journey_issue"
   | "resource_shared"
   | "energy_audit_completed"
-  | "book_waitlist_request";
+  | "book_waitlist_request"
+  | "booking_created";
 
 export async function createDashboardNotification(input: {
   type: NotificationType;
   title: string;
   message: string;
   participantId?: string;
+  /** Dashboard user the notification is for (e.g. the booked planner). */
+  userId?: string | null;
+  actorUserId?: string | null;
   metadata?: Record<string, unknown>;
 }) {
   const supabase = createSupabaseAdminClient();
@@ -30,6 +34,8 @@ export async function createDashboardNotification(input: {
     destination: "dashboard",
     status: "queued",
     metadata: input.metadata ?? {},
+    ...(input.userId ? { user_id: input.userId } : {}),
+    ...(input.actorUserId ? { actor_user_id: input.actorUserId } : {}),
   });
 
   if (error) {

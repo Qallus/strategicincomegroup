@@ -69,6 +69,13 @@ async function sendViaResend(input: SendEmailInput): Promise<SmtpResult> {
   if (input.text) body.text = input.text;
   if (input.cc) body.cc = Array.isArray(input.cc) ? input.cc : [input.cc];
   if (input.bcc) body.bcc = Array.isArray(input.bcc) ? input.bcc : [input.bcc];
+  if (input.attachments?.length) {
+    body.attachments = input.attachments.map((a) => ({
+      filename: a.filename,
+      content: a.content.toString("base64"),
+      ...(a.contentType ? { content_type: a.contentType } : {}),
+    }));
+  }
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

@@ -221,6 +221,14 @@ export async function createBooking(input: {
   answers?: Record<string, unknown>;
   source?: string;
   status?: string;
+  /** Client notification opt-ins (202611190160). Dropped silently if the columns don't exist yet. */
+  notify?: {
+    email: boolean;
+    sms: boolean;
+    sms_consent_text?: string | null;
+    consent_ip?: string | null;
+    consent_user_agent?: string | null;
+  };
 }): Promise<Booking> {
   const sb = createSupabaseAdminClient();
 
@@ -250,9 +258,37 @@ export async function createBooking(input: {
     answers: input.answers ?? {},
     source: input.source ?? "public",
   };
-  const { data, error } = await sb.from("bookings").insert(row).select("*").single();
+  const notifyCols = input.notify
+    ? {
+        notify_email: input.notify.email,
+        notify_sms: input.notify.sms,
+        notify_consent_at: input.notify.email || input.notify.sms ? new Date().toISOString() : null,
+        sms_consent_text: input.notify.sms ? input.notify.sms_consent_text ?? null : null,
+        consent_ip: input.notify.email || input.notify.sms ? input.notify.consent_ip ?? null : null,
+        consent_user_agent: input.notify.email || input.notify.sms ? input.notify.consent_user_agent ?? null : null,
+      }
+    : null;
+
+  let { data, error } = await sb.from("bookings").insert(notifyCols ? { ...row, ...notifyCols } : row).select("*").single();
+  if (error && notifyCols && isMissingColumnError(error)) {
+    // 202611190160 hasn't been applied yet — book anyway, without the opt-in columns.
+    console.warn("[booking] notification opt-in columns missing; saving booking without them. Apply 202611190160_booking_notifications.sql.");
+    ({ data, error } = await sb.from("bookings").insert(row).select("*").single());
+  }
   if (error) throw new Error(error.message);
   return data as unknown as Booking;
+}
+
+/** PostgREST / Postgres "column does not exist" (schema cache or undefined_column). */
+export function isMissingColumnError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === "PGRST204" || error.code === "42703" || /column .* (does not exist|could not find)|Could not find the '.*' column/i.test(error.message ?? "");
+}
+
+/** Record which notifications went out. No-op (logged) before 202611190160 is applied. */
+export async function recordBookingNotifications(id: string, sent: Record<string, unknown>): Promise<void> {
+  const { error } = await createSupabaseAdminClient().from("bookings").update({ notifications_sent: sent }).eq("id", id);
+  if (error && !isMissingColumnError(error)) console.error("[booking] could not record notifications_sent", error.message);
 }
 
 export async function updateBooking(id: string, patch: Record<string, unknown>): Promise<void> {

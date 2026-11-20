@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Container } from "@/components/public-site/blocks";
 import { loadBookingTypeBySlug, loadPublicBookingTypes } from "@/lib/booking/data";
 import { getPublishedTeamMember } from "@/lib/team/data";
+import { CONTACT } from "@/lib/public-site/site-data";
 import { BookWidget } from "./book-widget";
 
 export const dynamic = "force-dynamic";
@@ -21,18 +22,29 @@ export default async function BookTypePage({ params }: { params: Promise<{ slug:
   if (!type) notFound();
   const planner = type.host_slug ? await getPublishedTeamMember(type.host_slug) : null;
   const siblings = planner
-    ? (await loadPublicBookingTypes().catch(() => [])).filter((t) => t.host_slug === planner.slug && t.slug !== type.slug)
+    ? (await loadPublicBookingTypes().catch(() => [])).filter((t) => t.host_slug === planner.slug)
     : [];
+  const meetingOptions = (siblings.length ? siblings : [type]).map((t) => ({
+    slug: t.slug, name: t.name, durationMinutes: t.duration_minutes, locationType: t.location_type, audience: t.audience ?? "everyone",
+  }));
 
   return (
-    <div className="border-t bg-muted/30">
-      <Container className="max-w-5xl py-10 md:py-14">
-        <Link
-          href={planner ? `/book?planner=${planner.slug}` : "/book"}
-          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> {planner ? `All times with ${planner.name}` : "Schedule Online"}
-        </Link>
+    <div className="relative border-t bg-muted/30">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-brand-gold/[0.07] to-transparent" aria-hidden />
+      <Container className="relative max-w-6xl py-8 md:py-12">
+        <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+          <Link href="/" className="hover:text-foreground hover:underline">Home</Link>
+          <ChevronRight className="h-3 w-3" aria-hidden />
+          <Link href="/book" className="hover:text-foreground hover:underline">Schedule Online</Link>
+          {planner ? (
+            <>
+              <ChevronRight className="h-3 w-3" aria-hidden />
+              <Link href={`/book?planner=${planner.slug}`} className="hover:text-foreground hover:underline">{planner.name}</Link>
+            </>
+          ) : null}
+          <ChevronRight className="h-3 w-3" aria-hidden />
+          <span aria-current="page" className="text-foreground">{type.name}</span>
+        </nav>
         <BookWidget
           slug={type.slug}
           name={type.name}
@@ -40,25 +52,20 @@ export default async function BookTypePage({ params }: { params: Promise<{ slug:
           durationMinutes={type.duration_minutes}
           locationType={type.location_type}
           locationDetails={type.location_details}
-          hostName={type.host_name}
-          hostPhoto={planner?.photo ?? null}
-          office={type.office ?? null}
+          hostName={planner?.name ?? type.host_name}
+          hostCredentials={planner?.credentials ?? null}
+          hostTitle={planner?.title ?? null}
+          hostSlug={planner?.slug ?? null}
+          hostPhoto={planner?.photo || null}
+          office={type.office ?? planner?.office ?? null}
           color={type.color}
           timezone={type.timezone}
           questions={type.questions ?? []}
+          maxAdvanceDays={type.max_advance_days || 60}
+          meetingOptions={meetingOptions}
+          officePhone={CONTACT.phone}
+          officePhoneHref={CONTACT.phoneHref}
         />
-        {siblings.length ? (
-          <div className="mt-8">
-            <p className="text-sm font-medium">Other ways to meet with {planner?.name}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {siblings.map((s) => (
-                <Link key={s.id} href={`/book/${s.slug}`} className="rounded-full border bg-background px-4 py-1.5 text-sm hover:border-primary/40 hover:bg-muted">
-                  {s.name} · {s.duration_minutes} min
-                </Link>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </Container>
     </div>
   );
