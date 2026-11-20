@@ -2,7 +2,7 @@
 // careers are static here; articles are added at runtime from /api/public/search.
 
 import { JOBS } from "./careers";
-import { TEAM } from "./team";
+import { TEAM, type TeamMember } from "./team";
 
 export type SearchCategory = "planning" | "investing" | "retirement" | "insurance" | "planners" | "resources" | "about" | "contact";
 
@@ -15,6 +15,19 @@ export type SearchEntry = {
   keywords?: string;
   popular?: boolean;
 };
+
+/** One search entry per team member → /team/<slug>. */
+export function teamSearchEntries(members: TeamMember[]): SearchEntry[] {
+  return members.map((m) => ({
+    title: `${m.name}${m.credentials ? `, ${m.credentials}` : ""}`,
+    description: `${m.title}${m.office ? ` · ${m.office}` : ""}`,
+    href: `/team/${m.slug}`,
+    category: "planners",
+    icon: m.group === "planner" ? "users" : "user",
+    keywords: `${m.group === "planner" ? "planner advisor cfp schedule" : "team staff"} ${m.history.join(" ").slice(0, 300)}`,
+    popular: m.group === "planner",
+  }));
+}
 
 export const SEARCH_CATEGORIES: { key: "all" | SearchCategory; label: string; icon: string }[] = [
   { key: "all", label: "All", icon: "globe" },
@@ -73,15 +86,9 @@ export const STATIC_INDEX: SearchEntry[] = [
   { title: "Client & Employee Login", description: "Sign in to your Strategic Income Group account", href: "/login", category: "contact", icon: "lock", keywords: "login sign in portal account" },
 
   // Planners & team
-  ...TEAM.map<SearchEntry>((m) => ({
-    title: `${m.name}${m.credentials ? `, ${m.credentials}` : ""}`,
-    description: `${m.title}${m.office ? ` · ${m.office}` : ""}`,
-    href: `/team/${m.slug}`,
-    category: "planners",
-    icon: m.group === "planner" ? "users" : "user",
-    keywords: `${m.group === "planner" ? "planner advisor cfp schedule" : "team staff"} ${m.history.join(" ").slice(0, 300)}`,
-    popular: m.group === "planner",
-  })),
+  // Static roster as a baseline; /api/public/search returns the live (dashboard-edited)
+  // roster and the search dropdown swaps it in (see teamSearchEntries).
+  ...teamSearchEntries(TEAM),
   { title: "Our Team", description: "Meet our financial planners and administrative team", href: "/team", category: "planners", icon: "users", keywords: "team planners advisors staff" },
 
   // Careers

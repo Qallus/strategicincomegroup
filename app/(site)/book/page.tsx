@@ -4,7 +4,7 @@ import { Container, PageHero } from "@/components/public-site/blocks";
 import { loadPublicBookingTypes } from "@/lib/booking/data";
 import { BOOKING_AUDIENCE_LABELS, type BookingType } from "@/lib/booking/types";
 import { CONTACT } from "@/lib/public-site/site-data";
-import { TEAM, getTeamMember } from "@/lib/public-site/team";
+import { getPublishedTeam } from "@/lib/team/data";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ type Props = { searchParams: Promise<{ planner?: string }> };
 
 export default async function BookIndexPage({ searchParams }: Props) {
   const { planner } = await searchParams;
-  const types = await loadPublicBookingTypes().catch(() => [] as BookingType[]);
+  const [types, TEAM] = await Promise.all([loadPublicBookingTypes().catch(() => [] as BookingType[]), getPublishedTeam()]);
+  const getTeamMember = (slug: string) => TEAM.find((m) => m.slug === slug) ?? null;
 
   // Group booking pages by planner, in team order; pages without a planner go last.
   const hosts = TEAM.filter((m) => types.some((t) => t.host_slug === m.slug));
@@ -83,8 +84,12 @@ export default async function BookIndexPage({ searchParams }: Props) {
             return (
               <section key={h.slug} className="grid gap-6 rounded-2xl border bg-card p-5 sm:p-6 lg:grid-cols-[260px_1fr]">
                 <div className="flex items-center gap-4 lg:flex-col lg:items-start">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={h.photo} alt={h.name} className="h-24 w-24 shrink-0 rounded-xl border bg-gradient-to-b from-muted to-background object-cover object-top lg:h-auto lg:w-full lg:aspect-[4/3]" />
+                  {h.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={h.photo} alt={h.name} className="h-24 w-24 shrink-0 rounded-xl border bg-gradient-to-b from-muted to-background object-cover object-top lg:h-auto lg:w-full lg:aspect-[4/3]" />
+                  ) : (
+                    <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border bg-muted font-serif text-4xl text-muted-foreground lg:h-auto lg:w-full lg:aspect-[4/3]">{h.name.charAt(0)}</span>
+                  )}
                   <div>
                     <h2 className="font-serif text-2xl leading-tight">{h.name}</h2>
                     {h.credentials ? <p className="text-sm text-gold">{h.credentials}</p> : null}

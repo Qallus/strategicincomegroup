@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Check, ChevronRight, MapPin, Phone } from "lucide-react";
-import { PLANNERS } from "@/lib/public-site/team";
+import { getPlanners } from "@/lib/team/data";
 import { CONTACT, PHASES } from "@/lib/public-site/site-data";
 import { cn } from "@/lib/utils";
 
@@ -203,7 +203,7 @@ export function CheckList({ items, className, columns = 1 }: { items: readonly s
 }
 
 /** "Schedule Online" — the three planners with booking links, as on the live site. */
-export function PlannerGrid({
+export async function PlannerGrid({
   title = "Schedule Online",
   description = "Meet with a Certified Financial Planner or Wealth Advisor—schedule your appointment in just a couple of clicks.",
   eyebrow = "Book a review",
@@ -214,6 +214,7 @@ export function PlannerGrid({
   eyebrow?: string;
   tone?: "default" | "muted";
 }) {
+  const PLANNERS = await getPlanners();
   return (
     <Section tone={tone}>
       <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
@@ -224,8 +225,12 @@ export function PlannerGrid({
         {PLANNERS.map((p) => (
           <article key={p.slug} className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-lg">
             <Link href={`/team/${p.slug}`} className="block aspect-[4/3] overflow-hidden bg-gradient-to-b from-muted to-background">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.photo} alt={p.name} loading="lazy" className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
+              {p.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.photo} alt={p.name} loading="lazy" className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center font-serif text-6xl text-muted-foreground/60">{p.name.charAt(0)}</span>
+              )}
             </Link>
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">

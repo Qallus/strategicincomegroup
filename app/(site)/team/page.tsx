@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ButtonLink, CtaBand, PageHero, PlannerGrid, Section, SectionHeading } from "@/components/public-site/blocks";
-import { ADMIN_TEAM, CEO } from "@/lib/public-site/team";
+import { getAdminTeam, getCeo } from "@/lib/team/data";
 import { CEO_BIO } from "@/lib/public-site/site-data";
+
+export const revalidate = 300;
 
 export const metadata = {
   title: "Our Team",
@@ -10,7 +12,8 @@ export const metadata = {
     "Meet the Strategic Income Group financial planners and team in our Chandler and Peoria, Arizona offices — credentialed CFP® professionals ready to listen.",
 };
 
-export default function TeamPage() {
+export default async function TeamPage() {
+  const [CEO, ADMIN_TEAM] = await Promise.all([getCeo(), getAdminTeam()]);
   return (
     <>
       <PageHero
@@ -34,27 +37,33 @@ export default function TeamPage() {
 
       <PlannerGrid tone="default" eyebrow="Financial planners" title="Book time with a planner" />
 
+      {CEO ? (
       <Section tone="muted">
         <div className="grid items-center gap-12 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
             <SectionHeading eyebrow="Founder & CEO of Strategic Income Group" title={CEO.name} />
             <p className="mt-5 leading-relaxed text-muted-foreground">{CEO_BIO}</p>
             <div className="mt-8">
-              <ButtonLink label="CEO Profile" href="/team/michael-gauthier" />
+              <ButtonLink label="CEO Profile" href={`/team/${CEO.slug}`} />
             </div>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={CEO.photo} alt={CEO.name} className="mx-auto aspect-[4/5] w-full max-w-sm rounded-2xl border object-cover object-top" />
+          {CEO.photo ? <img src={CEO.photo} alt={CEO.name} className="mx-auto aspect-[4/5] w-full max-w-sm rounded-2xl border object-cover object-top" /> : null}
         </div>
       </Section>
+      ) : null}
 
       <Section id="entire-team">
         <SectionHeading eyebrow="Strategic Income Group" title="Administrative Team" />
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {ADMIN_TEAM.map((m) => (
             <Link key={m.slug} href={`/team/${m.slug}`} className="group flex items-center gap-4 rounded-xl border bg-card p-4 transition hover:border-primary/40 hover:shadow-md">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.photo} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-lg border object-cover object-top" />
+              {m.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.photo} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-lg border object-cover object-top" />
+              ) : (
+                <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border bg-muted font-serif text-2xl text-muted-foreground">{m.name.charAt(0)}</span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block font-serif text-lg leading-tight">
                   {m.name}

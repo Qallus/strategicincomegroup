@@ -1,18 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Check, ExternalLink, Loader2, Mail, Phone, RefreshCw, Trash2, UserPlus, X } from "lucide-react";
+import {
+  Archive, Check, CheckCircle2, CircleDot, ExternalLink, Inbox, Loader2, Mail, Phone, PhoneCall, RefreshCw, Sparkles, Trash2, UserPlus, X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldSelect } from "@/components/ui/field-select";
+import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { cn } from "@/lib/utils";
 import type { BusinessCardLead, LeadStatus } from "@/lib/business-cards/types";
 
-type ConvertTarget = "contact" | "participant";
-const TARGETS: [ConvertTarget, string][] = [
+// The convert route only creates CRM contacts, and the contacts table only allows
+// type "contact" or "lead" (DB check constraint).
+const CONTACT_TYPES: [string, string][] = [
+  ["lead", "Lead"],
   ["contact", "Contact"],
-  ["participant", "Participant (enroll in pilot)"],
 ];
-const CONTACT_TYPES = ["lead", "prospect", "partner", "supporter", "donor", "other"];
 
 const STATUSES: LeadStatus[] = ["new", "contacted", "qualified", "archived"];
 
@@ -22,6 +25,10 @@ const STATUS_STYLE: Record<LeadStatus, string> = {
   qualified: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
   archived: "bg-muted text-muted-foreground",
 };
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const leadName = (l: BusinessCardLead) => l.name || l.email || l.phone || "—";
+const cardLabel = (l: BusinessCardLead) => l.card?.display_name || l.card?.card_name || "—";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -35,12 +42,16 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+function StatusPill({ status }: { status: LeadStatus }) {
+  return <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize", STATUS_STYLE[status])}>{status}</span>;
+}
+
 export function LeadsInbox({ isAdmin, scope, actionToken, onChanged }: { isAdmin: boolean; scope: "mine" | "all"; actionToken: string; onChanged?: () => void }) {
   const [leads, setLeads] = React.useState<BusinessCardLead[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [filter, setFilter] = React.useState<"all" | LeadStatus>("all");
   const [convertLead, setConvertLead] = React.useState<BusinessCardLead | null>(null);
+  const showOwner = isAdmin && scope === "all";
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -59,111 +70,177 @@ export function LeadsInbox({ isAdmin, scope, actionToken, onChanged }: { isAdmin
 
   React.useEffect(() => { load(); }, [load]);
 
-  async function setStatus(lead: BusinessCardLead, status: LeadStatus) {
-    setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, status } : l));
-    await fetch(`/api/business-cards/leads/${lead.id}`, {
-      method: "PATCH",
+  async function call(lead: BusinessCardLead, method: "PATCH" | "DELETE", body: Record<string, unknown> = {}) {
+    const res = await fetch(`/api/business-cards/leads/${lead.id}`, {
+      method,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status, actionToken }),
-    }).catch(() => load());
-    onChanged?.();
+      body: JSON.stringify({ ...body, actionToken }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "That didn't work.");
   }
 
-  async function remove(lead: BusinessCardLead) {
-    if (!window.confirm("Delete this lead?")) return;
-    setLeads((prev) => prev.filter((l) => l.id !== lead.id));
-    await fetch(`/api/business-cards/leads/${lead.id}`, {
-      method: "DELETE",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ actionToken }),
-    }).catch(() => load());
-    onChanged?.();
+  async function setStatus(list: BusinessCardLead[], status: LeadStatus) {
+    const ids = new Set(list.map((l) => l.id));
+    setLeads((prev) => prev.map((l) => (ids.has(l.id) ? { ...l, status } : l)));
+    try {
+      await Promise.all(list.filter((l) => l.status !== status).map((l) => call(l, "PATCH", { status })));
+    } catch (e) {
+      void load();
+      throw e;
+    } finally {
+      onChanged?.();
+    }
   }
 
-  const filtered = filter === "all" ? leads : leads.filter((l) => l.status === filter);
-  const counts = React.useMemo(() => {
-    const c: Record<string, number> = { all: leads.length };
-    for (const s of STATUSES) c[s] = leads.filter((l) => l.status === s).length;
-    return c;
-  }, [leads]);
+  async function remove(list: BusinessCardLead[]) {
+    if (!window.confirm(list.length === 1 ? "Delete this lead?" : `Delete ${list.length} leads?`)) return false;
+    const ids = new Set(list.map((l) => l.id));
+    setLeads((prev) => prev.filter((l) => !ids.has(l.id)));
+    try {
+      await Promise.all(list.map((l) => call(l, "DELETE")));
+    } catch (e) {
+      void load();
+      throw e;
+    } finally {
+      onChanged?.();
+    }
+    return true;
+  }
+
+  const columns: DataColumn<BusinessCardLead>[] = [
+    { id: "name", label: "Contact", required: true, width: 200, cell: (l) => <span className="font-medium">{leadName(l)}</span>, sort: leadName },
+    { id: "email", label: "Email", width: 220, cell: (l) => l.email ?? "—", sort: (l) => l.email },
+    { id: "phone", label: "Phone", width: 140, cell: (l) => l.phone ?? "—", sort: (l) => l.phone },
+    { id: "status", label: "Status", width: 120, cell: (l) => <StatusPill status={l.status} />, sort: (l) => STATUSES.indexOf(l.status), exportValue: (l) => l.status },
+    { id: "message", label: "Message", width: 280, cell: (l) => <span className="text-muted-foreground">{l.message || "—"}</span>, exportValue: (l) => l.message },
+    { id: "card", label: "Card", width: 170, cell: cardLabel, sort: cardLabel },
+    { id: "company", label: "Company", width: 160, cell: (l) => l.company ?? "—", sort: (l) => l.company, defaultHidden: true },
+    { id: "owner", label: "Owner", width: 160, cell: (l) => l.owner?.display_name || "—", sort: (l) => l.owner?.display_name, defaultHidden: !showOwner },
+    { id: "received", label: "Received", width: 130, cell: (l) => timeAgo(l.created_at), sort: (l) => l.created_at, exportValue: (l) => l.created_at },
+  ];
+
+  const cards = Array.from(new Map(leads.map((l) => [l.card_id, cardLabel(l)])).entries());
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          {(["all", ...STATUSES] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)} className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium capitalize transition", filter === f ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-              {f}
-              <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">{counts[f] ?? 0}</span>
-            </button>
-          ))}
-        </div>
-        <Button size="sm" variant="outline" onClick={load} disabled={loading}><RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Refresh</Button>
-      </div>
+    <div className="space-y-4">
+      {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
 
-      {error && <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
-
-      {loading && !leads.length ? (
-        <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <Mail className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-medium">No leads yet</p>
-          <p className="mt-1 max-w-xs text-xs text-muted-foreground">When someone taps “Send me your info” on a published card, their details land here.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Message</th>
-                <th className="px-4 py-3">Card</th>
-                {scope === "all" && <th className="px-4 py-3">Owner</th>}
-                <th className="px-4 py-3">Received</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((lead) => (
-                <tr key={lead.id} className="align-top hover:bg-muted/30">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{lead.name || "—"}</div>
-                    <div className="mt-0.5 flex flex-col gap-0.5 text-xs text-muted-foreground">
-                      {lead.email && <a href={`mailto:${lead.email}`} className="flex items-center gap-1 hover:text-primary"><Mail className="h-3 w-3" />{lead.email}</a>}
-                      {lead.phone && <a href={`tel:${lead.phone}`} className="flex items-center gap-1 hover:text-primary"><Phone className="h-3 w-3" />{lead.phone}</a>}
-                      {lead.company && <span>{lead.company}</span>}
-                    </div>
-                  </td>
-                  <td className="max-w-[260px] px-4 py-3 text-xs text-muted-foreground">{lead.message || "—"}</td>
-                  <td className="px-4 py-3 text-xs">{lead.card?.display_name || lead.card?.card_name || "—"}</td>
-                  {scope === "all" && <td className="px-4 py-3 text-xs text-muted-foreground">{lead.owner?.display_name || "—"}</td>}
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{timeAgo(lead.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <div className="w-32">
-                      <FieldSelect
-                        value={lead.status}
-                        onChange={(v) => setStatus(lead, v as LeadStatus)}
-                        options={STATUSES.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
-                        className="h-8"
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => setConvertLead(lead)} title="Save to…" className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:border-primary hover:text-primary">
-                        <UserPlus className="h-3.5 w-3.5" />Save to…
-                      </button>
-                      <button onClick={() => remove(lead)} title="Delete" className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataView<BusinessCardLead>
+        storageKey="business-cards.leads"
+        exportName="sig-card-leads"
+        noun={["lead", "leads"]}
+        defaultView="list"
+        loading={loading}
+        items={leads}
+        getId={(l) => l.id}
+        title={leadName}
+        subtitle={(l) => [l.email, l.phone, l.company].filter(Boolean).join(" · ") || "No contact details"}
+        media={(l) => (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+            {(leadName(l).trim().charAt(0) || "?").toUpperCase()}
+          </span>
+        )}
+        badge={(l) => <StatusPill status={l.status} />}
+        meta={(l) => `${cardLabel(l)} · ${timeAgo(l.created_at)}`}
+        columns={columns}
+        searchText={(l) => [l.name, l.email, l.phone, l.company, l.message, cardLabel(l), l.owner?.display_name].join(" ")}
+        stats={[
+          { label: "New", value: leads.filter((l) => l.status === "new").length, icon: Sparkles, hint: "Waiting for follow-up" },
+          { label: "Contacted", value: leads.filter((l) => l.status === "contacted").length, icon: PhoneCall },
+          { label: "Qualified", value: leads.filter((l) => l.status === "qualified").length, icon: CheckCircle2 },
+          { label: "All leads", value: leads.length, icon: Inbox },
+        ]}
+        filters={[
+          { id: "all", label: "All", test: () => true },
+          ...STATUSES.map((s) => ({ id: s, label: cap(s), test: (l: BusinessCardLead) => l.status === s })),
+        ]}
+        selectFilters={[
+          { id: "card", label: "Card", options: cards.map(([value, label]) => ({ value, label })), get: (l) => l.card_id },
+        ]}
+        board={{
+          lanes: STATUSES.map((s) => ({ id: s, label: cap(s) })),
+          get: (l) => l.status,
+          onMove: (l, lane) => setStatus([l], lane as LeadStatus).catch((e) => setError(e instanceof Error ? e.message : "Update failed.")),
+        }}
+        date={(l) => l.created_at}
+        actions={[
+          { label: "Contacted", icon: PhoneCall, show: (sel) => sel.some((l) => l.status !== "contacted"), run: (sel) => setStatus(sel, "contacted") },
+          { label: "Qualified", icon: CheckCircle2, show: (sel) => sel.some((l) => l.status !== "qualified"), run: (sel) => setStatus(sel, "qualified") },
+          { label: "New", icon: CircleDot, show: (sel) => sel.some((l) => l.status !== "new"), run: (sel) => setStatus(sel, "new") },
+          { label: "Archive", icon: Archive, show: (sel) => sel.some((l) => l.status !== "archived"), run: (sel) => setStatus(sel, "archived") },
+          { label: "Save to…", icon: UserPlus, single: true, run: (sel) => setConvertLead(sel[0]) },
+          { label: "Email", icon: Mail, single: true, show: (sel) => Boolean(sel[0]?.email), run: (sel) => void window.open(`mailto:${sel[0].email}`) },
+          { label: "Delete", icon: Trash2, destructive: true, run: (sel) => remove(sel) },
+        ]}
+        toolbar={
+          <Button size="sm" variant="outline" className="h-9 w-9 px-0" onClick={load} disabled={loading} title="Refresh" aria-label="Refresh">
+            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          </Button>
+        }
+        preview={(lead, close) => (
+          <div className="space-y-5">
+            <div className="grid gap-1.5 sm:max-w-xs">
+              <label className="text-xs font-medium text-muted-foreground">Status</label>
+              <FieldSelect
+                value={lead.status}
+                onChange={(v) => void setStatus([lead], v as LeadStatus).catch((e) => setError(e instanceof Error ? e.message : "Update failed."))}
+                options={STATUSES.map((s) => ({ value: s, label: cap(s) }))}
+              />
+            </div>
+            <dl className="grid gap-2.5 rounded-xl border bg-muted/30 p-4 text-sm">
+              {(
+                [
+                  ["Email", lead.email],
+                  ["Phone", lead.phone],
+                  ["Company", lead.company],
+                  ["Prefers", lead.preferred_contact],
+                  ["Card", cardLabel(lead)],
+                  ["Owner", showOwner ? lead.owner?.display_name ?? null : null],
+                  ["Source", lead.source],
+                  ["Received", new Date(lead.created_at).toLocaleString()],
+                ] as [string, string | null][]
+              )
+                .filter(([, v]) => v && v !== "—")
+                .map(([k, v]) => (
+                  <div key={k} className="grid grid-cols-[96px_1fr] gap-3">
+                    <dt className="text-muted-foreground">{k}</dt>
+                    <dd className="min-w-0 break-words">{v}</dd>
+                  </div>
+                ))}
+            </dl>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Message</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{lead.message || "No message."}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 border-t pt-4">
+              {lead.email ? (
+                <Button asChild size="sm"><a href={`mailto:${lead.email}`}><Mail className="h-4 w-4" /> Email</a></Button>
+              ) : null}
+              {lead.phone ? (
+                <Button asChild size="sm" variant="outline"><a href={`tel:${lead.phone}`}><Phone className="h-4 w-4" /> Call</a></Button>
+              ) : null}
+              <Button size="sm" variant="outline" onClick={() => { close(); setConvertLead(lead); }}><UserPlus className="h-4 w-4" /> Save to…</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto text-destructive hover:text-destructive"
+                title="Delete"
+                aria-label="Delete lead"
+                onClick={() => void remove([lead]).then((done) => done && close()).catch((e) => setError(e instanceof Error ? e.message : "Delete failed."))}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        empty={
+          <span className="flex flex-col items-center gap-2">
+            <Mail className="h-8 w-8" />
+            <span>No leads yet. When someone taps “Send me your info” on a published card, their details land here.</span>
+          </span>
+        }
+      />
 
       {convertLead && (
         <ConvertLeadModal
@@ -178,13 +255,10 @@ export function LeadsInbox({ isAdmin, scope, actionToken, onChanged }: { isAdmin
 }
 
 function ConvertLeadModal({ lead, actionToken, onClose, onConverted }: { lead: BusinessCardLead; actionToken: string; onClose: () => void; onConverted: () => void }) {
-  const [target, setTarget] = React.useState<ConvertTarget>("contact");
   const [contactType, setContactType] = React.useState("lead");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const [result, setResult] = React.useState<{ label: string; href: string } | null>(null);
-
-  const sel = "h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary";
 
   async function convert() {
     setBusy(true);
@@ -193,7 +267,7 @@ function ConvertLeadModal({ lead, actionToken, onClose, onConverted }: { lead: B
       const res = await fetch(`/api/business-cards/leads/${lead.id}/convert`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ target, contactType, actionToken }),
+        body: JSON.stringify({ target: "contact", contactType, actionToken }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.error) throw new Error(json.error || "Conversion failed.");
@@ -207,15 +281,15 @@ function ConvertLeadModal({ lead, actionToken, onClose, onConverted }: { lead: B
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Save lead to…</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          <h3 className="text-lg font-semibold">Save lead to Contacts</h3>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <div className="mb-4 break-words rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{lead.name || "—"}</span>
           {lead.email && <> · {lead.email}</>}{lead.phone && <> · {lead.phone}</>}{lead.company && <> · {lead.company}</>}
         </div>
@@ -226,26 +300,16 @@ function ConvertLeadModal({ lead, actionToken, onClose, onConverted }: { lead: B
               <Check className="h-4 w-4" /> Saved “{result.label}”.
             </div>
             <div className="flex justify-end gap-2">
-              <a href={result.href}><Button size="sm" variant="outline"><ExternalLink className="h-3.5 w-3.5" /> Open</Button></a>
+              <Button asChild size="sm" variant="outline"><a href={result.href}><ExternalLink className="h-3.5 w-3.5" /> Open</a></Button>
               <Button size="sm" onClick={onClose}>Done</Button>
             </div>
           </div>
         ) : (
           <>
             <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Destination</label>
-              <FieldSelect value={target} onChange={(v) => setTarget(v as ConvertTarget)} options={TARGETS.map(([v, l]) => ({ value: v, label: l }))} />
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Save as</label>
+              <FieldSelect value={contactType} onChange={setContactType} options={CONTACT_TYPES.map(([v, l]) => ({ value: v, label: l }))} />
             </div>
-
-            {target === "contact" && (
-              <div className="mb-3">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Contact type</label>
-                <FieldSelect value={contactType} onChange={setContactType} options={CONTACT_TYPES.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))} />
-              </div>
-            )}
-            {target === "participant" && (
-              <p className="mb-3 text-[11px] text-muted-foreground">Enrolls the lead as a pilot participant (matched/created by email).</p>
-            )}
 
             {error && <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</div>}
 

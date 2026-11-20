@@ -1,20 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Trash2, Users } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ClipboardList, ListTodo, Trash2, UserRound, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
+import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { CreatePlanDialog } from "./create-plan/create-plan-dialog";
 import { ProgressIndicator } from "./shared/badges";
 import { planColor, planIcon } from "@/lib/plans/constants";
 import { cn } from "@/lib/utils";
 import type { PlanPerson, PlanSummary, PlanTemplate } from "@/lib/plans/types";
 
-type Filter = "all" | "mine" | "shared";
+const progressOf = (plan: PlanSummary) => (plan.task_count ? (plan.completed_count / plan.task_count) * 100 : 0);
+const fmtDay = (iso: string | null) =>
+  iso ? new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+function PlanIcon({ plan }: { plan: PlanSummary }) {
+  const Icon = planIcon(plan.icon);
+  return (
+    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border", planColor(plan.color).chip)}>
+      <Icon className="h-5 w-5" aria-hidden />
+    </span>
+  );
+}
+
+function PremiumBadge({ plan }: { plan: PlanSummary }) {
+  return plan.plan_type === "premium" ? (
+    <span className="shrink-0 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground">
+      Premium
+    </span>
+  ) : null;
+}
 
 export function PlansIndexClient({
   plans,
@@ -32,181 +50,134 @@ export function PlansIndexClient({
   const router = useRouter();
   const token = useDashboardActionToken();
   const [creating, setCreating] = useState(false);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [deleting, setDeleting] = useState<PlanSummary | null>(null);
+  const [deleting, setDeleting] = useState<PlanSummary[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const href = (plan: PlanSummary) => `/dashboard/plans/${plan.id}?view=${plan.default_view}`;
+  const ownerLabel = (plan: PlanSummary) => (plan.owner_id === owner.id ? "You" : plan.owner?.name ?? "Someone else");
+  const mine = (plan: PlanSummary) => plan.owner_id === owner.id;
+
   async function confirmDelete() {
-    if (!deleting) return;
+    if (!deleting.length) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/plans/${deleting.id}`, {
-        method: "DELETE",
-        headers: { "content-type": "application/json", "x-sig-action-token": token },
-        body: JSON.stringify({ actionToken: token }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message ?? "Plan delete failed.");
-      setDeleting(null);
+      for (const plan of deleting) {
+        const res = await fetch(`/api/plans/${plan.id}`, {
+          method: "DELETE",
+          headers: { "content-type": "application/json", "x-sig-action-token": token },
+          body: JSON.stringify({ actionToken: token }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message ?? `Deleting “${plan.name}” failed.`);
+      }
+      setDeleting([]);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Plan delete failed.");
+      router.refresh();
     } finally {
       setBusy(false);
     }
   }
 
-  const visible = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return plans
-      .filter((plan) => (filter === "mine" ? plan.owner_id === owner.id : filter === "shared" ? plan.owner_id !== owner.id : true))
-      .filter((plan) => !query || plan.name.toLowerCase().includes(query) || (plan.description ?? "").toLowerCase().includes(query));
-  }, [plans, filter, search, owner.id]);
+  const columns: DataColumn<PlanSummary>[] = [
+    { id: "name", label: "Plan", required: true, width: 260, cell: (p) => <span className="font-medium">{p.name}</span>, sort: (p) => p.name },
+    {
+      id: "progress",
+      label: "Progress",
+      width: 170,
+      cell: (p) => <ProgressIndicator value={progressOf(p)} />,
+      sort: progressOf,
+      exportValue: (p) => Math.round(progressOf(p)),
+    },
+    { id: "tasks", label: "Tasks done", width: 120, align: "right", cell: (p) => `${p.completed_count}/${p.task_count}`, sort: (p) => p.task_count, exportValue: (p) => `${p.completed_count}/${p.task_count}` },
+    { id: "owner", label: "Owner", width: 170, cell: ownerLabel, sort: ownerLabel },
+    { id: "members", label: "Members", width: 110, align: "right", cell: (p) => p.member_count, sort: (p) => p.member_count },
+    { id: "visibility", label: "Visibility", width: 120, cell: (p) => (p.visibility === "private" ? "Private" : "Team"), sort: (p) => p.visibility },
+    { id: "type", label: "Type", width: 110, defaultHidden: true, cell: (p) => (p.plan_type === "premium" ? "Premium" : "Basic"), sort: (p) => p.plan_type },
+    { id: "start", label: "Start", width: 130, defaultHidden: true, cell: (p) => fmtDay(p.start_date), sort: (p) => p.start_date, exportValue: (p) => p.start_date },
+    { id: "target", label: "Target date", width: 130, cell: (p) => fmtDay(p.target_date), sort: (p) => p.target_date, exportValue: (p) => p.target_date },
+    { id: "updated", label: "Updated", width: 130, defaultHidden: true, cell: (p) => fmtDay(p.updated_at), sort: (p) => p.updated_at, exportValue: (p) => p.updated_at },
+    { id: "description", label: "Description", width: 300, defaultHidden: true, cell: (p) => <span className="text-muted-foreground">{p.description || "—"}</span>, exportValue: (p) => p.description },
+  ];
+
+  const openTasks = plans.reduce((s, p) => s + Math.max(0, p.task_count - p.completed_count), 0);
+  const allTasks = plans.reduce((s, p) => s + p.task_count, 0);
+  const doneTasks = plans.reduce((s, p) => s + p.completed_count, 0);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-1.5">
-          {(
-            [
-              { value: "all", label: "All plans" },
-              { value: "mine", label: "Owned by me" },
-              { value: "shared", label: "Shared with me" },
-            ] as Array<{ value: Filter; label: string }>
-          ).map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setFilter(tab.value)}
-              aria-pressed={filter === tab.value}
-              className={cn(
-                "min-h-[36px] rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-                filter === tab.value
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-muted-foreground hover:bg-accent/40",
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-48 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search plans…"
-              className="pl-9"
-              aria-label="Search plans"
-            />
-          </div>
-          <Button size="sm" onClick={() => setCreating(true)} className="gap-1.5">
-            <Plus className="h-3.5 w-3.5" aria-hidden /> New plan
-          </Button>
-        </div>
-      </div>
-
-      {visible.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-muted-foreground/25 px-6 py-16 text-center">
-          <p className="text-sm font-medium">
-            {plans.length === 0 ? "No plans yet." : search.trim() ? `No plans match “${search.trim()}”.` : "No plans in this filter."}
-          </p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            {plans.length === 0
-              ? "A plan is a board of tasks you can group, assign and schedule. Start from scratch or pick a template."
-              : "Try a different filter or clear the search."}
-          </p>
-          {plans.length === 0 ? (
+      <DataView<PlanSummary>
+        storageKey="plans-index"
+        exportName="sig-plans"
+        noun={["plan", "plans"]}
+        defaultView="cards"
+        items={plans}
+        getId={(p) => p.id}
+        title={(p) => p.name}
+        subtitle={(p) => p.description || "No description"}
+        media={(p) => <PlanIcon plan={p} />}
+        badge={(p) => <PremiumBadge plan={p} />}
+        meta={(p) => (
+          <span className="flex items-center gap-3">
+            <span className="tabular-nums">
+              {p.completed_count}/{p.task_count} task{p.task_count === 1 ? "" : "s"} done
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-3 w-3" aria-hidden />
+              <span className="tabular-nums">{p.member_count}</span>
+              <span className="sr-only">members</span>
+            </span>
+            {p.visibility === "private" ? <span>Private</span> : null}
+          </span>
+        )}
+        columns={columns}
+        searchText={(p) => [p.name, p.description, p.owner?.name].join(" ")}
+        stats={[
+          { label: "Plans", value: plans.length, icon: ClipboardList, hint: `${plans.filter(mine).length} owned by you` },
+          { label: "Open tasks", value: openTasks, icon: ListTodo },
+          { label: "Completed", value: doneTasks, icon: CheckCircle2, hint: allTasks ? `${Math.round((doneTasks / allTasks) * 100)}% of all tasks` : undefined },
+          { label: "Shared with you", value: plans.filter((p) => !mine(p)).length, icon: UserRound },
+        ]}
+        filters={[
+          { id: "all", label: "All plans", test: () => true },
+          { id: "mine", label: "Owned by me", test: mine },
+          { id: "shared", label: "Shared with me", test: (p) => !mine(p) },
+        ]}
+        selectFilters={[
+          { id: "visibility", label: "Visibility", options: [{ value: "team", label: "Team" }, { value: "private", label: "Private" }], get: (p) => p.visibility },
+          { id: "type", label: "Type", options: [{ value: "basic", label: "Basic" }, { value: "premium", label: "Premium" }], get: (p) => p.plan_type },
+        ]}
+        date={(p) => (p.target_date ? (p.target_date.length === 10 ? `${p.target_date}T12:00:00` : p.target_date) : null)}
+        onOpen={(p) => router.push(href(p))}
+        add={{ label: "New plan", onClick: () => setCreating(true) }}
+        actions={[
+          { label: "Open", icon: ArrowUpRight, single: true, run: (sel) => router.push(href(sel[0])) },
+          {
+            label: "Delete",
+            icon: Trash2,
+            destructive: true,
+            show: (sel) => sel.some((p) => p.can_manage),
+            run: (sel) => {
+              setError(null);
+              setDeleting(sel.filter((p) => p.can_manage));
+            },
+          },
+        ]}
+        empty={
+          <div>
+            <p className="text-sm font-medium text-foreground">No plans yet.</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              A plan is a board of tasks you can group, assign and schedule. Start from scratch or pick a template.
+            </p>
             <Button size="sm" onClick={() => setCreating(true)} className="mt-4 gap-1.5">
-              <Plus className="h-3.5 w-3.5" aria-hidden /> Create your first plan
+              Create your first plan
             </Button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((plan) => {
-            const Icon = planIcon(plan.icon);
-            const color = planColor(plan.color);
-            const progress = plan.task_count ? (plan.completed_count / plan.task_count) * 100 : 0;
-
-            return (
-              // The delete control is a sibling of the Link, not a child — a button
-              // nested inside an anchor is invalid HTML and breaks keyboard nav.
-              <div key={plan.id} className="group relative">
-              <Link
-                href={`/dashboard/plans/${plan.id}?view=${plan.default_view}`}
-                className={cn(
-                  "flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition",
-                  "hover:border-primary/40 hover:shadow",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-2.5">
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border", color.chip)}>
-                      <Icon className="h-5 w-5" aria-hidden />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{plan.name}</p>
-                      <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">
-                        {plan.description || "No description"}
-                      </p>
-                    </div>
-                  </div>
-                  {plan.plan_type === "premium" ? (
-                    <span className="shrink-0 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground">
-                      Premium
-                    </span>
-                  ) : null}
-                </div>
-
-                <ProgressIndicator value={progress} />
-
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="tabular-nums">
-                    {plan.completed_count}/{plan.task_count} task{plan.task_count === 1 ? "" : "s"} done
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-3 w-3" aria-hidden />
-                    <span className="tabular-nums">{plan.member_count}</span>
-                    <span className="sr-only">members</span>
-                  </span>
-                </div>
-
-                <p className="truncate border-t border-border pt-2 pr-8 text-xs text-muted-foreground">
-                  {plan.owner_id === owner.id ? "Owned by you" : `Owned by ${plan.owner?.name ?? "someone else"}`}
-                  {plan.visibility === "private" ? " · Private" : ""}
-                </p>
-              </Link>
-
-              {plan.can_manage ? (
-                <button
-                  type="button"
-                  onClick={() => setDeleting(plan)}
-                  aria-label={`Delete ${plan.name}`}
-                  title={`Delete ${plan.name}`}
-                  className={cn(
-                    "absolute bottom-3 right-3 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition",
-                    "hover:bg-destructive/10 hover:text-destructive",
-                    // Hidden until hover, but always reachable by keyboard.
-                    "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  )}
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              ) : null}
-              </div>
-            );
-          })}
-        </div>
-      )}
+          </div>
+        }
+      />
 
       <CreatePlanDialog
         open={creating}
@@ -218,31 +189,40 @@ export function PlansIndexClient({
       />
 
       <Dialog
-        open={Boolean(deleting)}
+        open={deleting.length > 0}
         onOpenChange={(open) => {
           if (!open && !busy) {
-            setDeleting(null);
+            setDeleting([]);
             setError(null);
           }
         }}
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete this plan?</DialogTitle>
+            <DialogTitle>{deleting.length > 1 ? `Delete ${deleting.length} plans?` : "Delete this plan?"}</DialogTitle>
             <DialogDescription>
               {/* Deletion cascades, so say exactly what goes with it. */}
-              <span className="font-medium text-foreground">{deleting?.name}</span> and its{" "}
-              {deleting?.task_count ?? 0} task{deleting?.task_count === 1 ? "" : "s"}, groups, labels and activity history will
-              be permanently deleted. This cannot be undone.
+              {deleting.length === 1 ? (
+                <>
+                  <span className="font-medium text-foreground">{deleting[0].name}</span> and its {deleting[0].task_count} task
+                  {deleting[0].task_count === 1 ? "" : "s"}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-foreground">{deleting.map((p) => p.name).join(", ")}</span> and their{" "}
+                  {deleting.reduce((s, p) => s + p.task_count, 0)} tasks
+                </>
+              )}
+              , groups, labels and activity history will be permanently deleted. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setDeleting(null)} disabled={busy}>
+            <Button variant="ghost" onClick={() => setDeleting([])} disabled={busy}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={busy}>
-              {busy ? "Deleting…" : "Delete plan"}
+              {busy ? "Deleting…" : deleting.length > 1 ? `Delete ${deleting.length} plans` : "Delete plan"}
             </Button>
           </DialogFooter>
         </DialogContent>

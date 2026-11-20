@@ -39,14 +39,7 @@ export default async function EmailInboxHubPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent messages</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <EmailHistoryTable rows={rows} emptyMessage="No emails synced yet." mode="inbox" />
-        </CardContent>
-      </Card>
+      <EmailHistoryTable rows={rows} emptyMessage="No emails synced yet." mode="inbox" />
 
       {data.error ? <p className="text-sm text-destructive">{data.error}</p> : null}
     </div>

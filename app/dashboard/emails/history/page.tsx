@@ -1,7 +1,6 @@
 import { SectionHeader } from "@/components/dashboard/section-header";
 import { EmailHistoryTable, type EmailHistoryRow } from "@/components/emails/email-history-table";
 import { EmailTabs } from "@/components/emails/email-tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEmailMessageHistoryData } from "@/lib/email/inbox";
 import { getEmailTemplateData, renderTemplate } from "@/lib/email/templates";
 
@@ -43,18 +42,10 @@ export default async function EmailHistoryPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Emails" description="Review sent and received email history." />
+      <SectionHeader title="Emails" description="Review sent and received email history — SMTP logs and received inbox messages in one audit trail." />
       <EmailTabs active="history" />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>History</CardTitle>
-          <CardDescription>Sent SMTP logs and received inbox messages in one audit trail.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <EmailHistoryTable rows={history} emptyMessage="No email history yet." mode="history" />
-        </CardContent>
-      </Card>
+      <EmailHistoryTable rows={history} emptyMessage="No email history yet." mode="history" />
 
       {templateData.error || inboxData.error ? <p className="text-sm text-destructive">{templateData.error ?? inboxData.error}</p> : null}
     </div>

@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2, FilePen, MessageSquareText, Pencil, Undo2 } from "lucide-react";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { DEFAULT_SMS_FIELDS } from "@/lib/sms/constants";
 import { smsSegmentCount, extractSmsFields } from "@/lib/sms/templates";
 
@@ -49,6 +52,7 @@ export function SmsTemplateBuilder({ templates: initialTemplates }: SmsTemplateB
   const [status, setStatus] = useState("draft");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const segments = smsSegmentCount(body);
   const fields = extractSmsFields(body);
@@ -61,6 +65,7 @@ export function SmsTemplateBuilder({ templates: initialTemplates }: SmsTemplateB
     setCategory("general");
     setStatus("draft");
     setSaveMsg("");
+    setEditorOpen(true);
   }
 
   function startEdit(tpl: SmsTemplate) {
@@ -70,10 +75,32 @@ export function SmsTemplateBuilder({ templates: initialTemplates }: SmsTemplateB
     setCategory(tpl.category);
     setStatus(tpl.status);
     setSaveMsg("");
+    setEditorOpen(true);
   }
 
   function insertField(field: string) {
     setBody((prev) => prev + `{{${field}}}`);
+  }
+
+  async function saveTemplate(input: { id: string | null; name: string; body: string; category: string; status: string }) {
+    const res = await fetch("/api/admin/sms/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionToken: token, ...input }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? "Failed to save.");
+    return data as { id: string };
+  }
+
+  async function refresh() {
+    const freshRes = await fetch("/api/admin/sms/templates?status=all", {
+      headers: { "x-sig-action-token": token ?? "" },
+    });
+    const freshData = await freshRes.json();
+    const next: SmsTemplate[] = freshData.templates ?? [];
+    setTemplates(next);
+    return next;
   }
 
   async function handleSave() {
@@ -81,72 +108,91 @@ export function SmsTemplateBuilder({ templates: initialTemplates }: SmsTemplateB
     setSaving(true);
     setSaveMsg("");
     try {
-      const res = await fetch("/api/admin/sms/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          actionToken: token,
-          id: editing?.id ?? null,
-          name,
-          body,
-          category,
-          status,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSaveMsg("Template saved.");
-        const freshRes = await fetch("/api/admin/sms/templates?status=all", {
-          headers: { "x-sig-action-token": token ?? "" },
-        });
-        const freshData = await freshRes.json();
-        setTemplates(freshData.templates ?? []);
-      } else {
-        setSaveMsg(data.error ?? "Failed to save.");
-      }
+      const saved = await saveTemplate({ id: editing?.id ?? null, name, body, category, status });
+      setSaveMsg("Template saved.");
+      const next = await refresh();
+      // Keep editing the saved row so a second save updates instead of creating a duplicate.
+      setEditing(next.find((t) => t.id === saved.id) ?? editing);
+    } catch (e) {
+      setSaveMsg(e instanceof Error ? e.message : "Failed to save.");
     } finally {
       setSaving(false);
     }
   }
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_1.5fr]">
-      {/* Template list */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Saved templates</h3>
-          <Button size="sm" variant="outline" onClick={startNew}>New template</Button>
-        </div>
-        <div className="space-y-2">
-          {templates.length === 0 && (
-            <p className="text-sm text-muted-foreground">No templates yet. Create your first one.</p>
-          )}
-          {templates.map((tpl) => (
-            <div
-              key={tpl.id}
-              className={`cursor-pointer rounded-lg border p-3 transition-colors hover:bg-accent ${editing?.id === tpl.id ? "border-primary bg-accent" : ""}`}
-              onClick={() => startEdit(tpl)}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium">{tpl.name}</span>
-                <Badge variant={tpl.status === "active" ? "default" : "secondary"} className="text-xs">
-                  {tpl.status}
-                </Badge>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground truncate">{tpl.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+  async function setStatusFor(list: SmsTemplate[], next: "active" | "draft") {
+    for (const t of list.filter((x) => x.status !== next)) {
+      await saveTemplate({ id: t.id, name: t.name, body: t.body, category: t.category, status: next });
+    }
+    await refresh();
+  }
 
+  const columns: DataColumn<SmsTemplate>[] = [
+    { id: "name", label: "Name", required: true, width: 240, sort: (t) => t.name, cell: (t) => <span className="font-medium">{t.name}</span> },
+    { id: "body", label: "Message", width: 360, exportValue: (t) => t.body, cell: (t) => <span className="text-muted-foreground">{t.body}</span> },
+    { id: "category", label: "Category", width: 140, sort: (t) => categoryLabel(t.category), cell: (t) => categoryLabel(t.category) },
+    { id: "segments", label: "Segments", width: 100, align: "right", sort: (t) => smsSegmentCount(t.body), cell: (t) => smsSegmentCount(t.body) },
+    { id: "status", label: "Status", width: 110, sort: (t) => t.status, cell: (t) => <StatusBadge status={t.status} /> },
+    { id: "fields", label: "Fields", width: 200, defaultHidden: true, exportValue: (t) => (t.available_fields ?? []).join("; "), cell: (t) => (t.available_fields ?? []).join(", ") || "—" },
+    { id: "updated", label: "Updated", width: 140, sort: (t) => t.updated_at, cell: (t) => (t.updated_at ? new Date(t.updated_at).toLocaleDateString() : "—") },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <DataView<SmsTemplate>
+        storageKey="sms-templates"
+        exportName="sig-sms-templates"
+        noun={["template", "templates"]}
+        defaultView="list"
+        items={templates}
+        getId={(t) => t.id}
+        title={(t) => t.name}
+        subtitle={(t) => t.body}
+        media={() => (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-background text-primary">
+            <MessageSquareText className="h-4 w-4" />
+          </span>
+        )}
+        badge={(t) => <StatusBadge status={t.status} />}
+        meta={(t) => `${categoryLabel(t.category)} · ${smsSegmentCount(t.body)} seg`}
+        columns={columns}
+        searchText={(t) => `${t.name} ${t.body} ${t.category} ${t.status}`}
+        stats={[
+          { label: "Templates", value: templates.length, icon: MessageSquareText },
+          { label: "Active", value: templates.filter((t) => t.status === "active").length, icon: CheckCircle2 },
+          { label: "Drafts", value: templates.filter((t) => t.status === "draft").length, icon: FilePen },
+        ]}
+        filters={[
+          { id: "all", label: "All", test: () => true },
+          { id: "active", label: "Active", test: (t) => t.status === "active" },
+          { id: "draft", label: "Drafts", test: (t) => t.status === "draft" },
+        ]}
+        selectFilters={[{ id: "category", label: "Category", options: CATEGORIES, get: (t) => t.category }]}
+        board={{
+          lanes: [{ id: "draft", label: "Draft" }, { id: "active", label: "Active" }],
+          get: (t) => (t.status === "active" ? "active" : "draft"),
+          onMove: (t, lane) => setStatusFor([t], lane as "active" | "draft").catch((e) => window.alert(e instanceof Error ? e.message : "Could not update template.")),
+        }}
+        onOpen={startEdit}
+        add={{ label: "New template", onClick: startNew }}
+        actions={[
+          { label: "Edit", icon: Pencil, single: true, run: (sel) => startEdit(sel[0]) },
+          { label: "Activate", icon: CheckCircle2, show: (sel) => sel.some((t) => t.status !== "active"), run: (sel) => setStatusFor(sel, "active") },
+          { label: "Move to draft", icon: Undo2, show: (sel) => sel.some((t) => t.status !== "draft"), run: (sel) => setStatusFor(sel, "draft") },
+        ]}
+        empty="No templates yet. Create your first one."
+      />
+
+      <Sheet open={editorOpen} onOpenChange={setEditorOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-xl">
+          <SheetHeader className="border-b p-5 text-left">
+            <SheetTitle>{editing ? `Editing: ${editing.name}` : "New template"}</SheetTitle>
+            <SheetDescription>Use {"{{field_name}}"} for dynamic personalization</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 p-5">
       {/* Editor */}
-      <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle>{editing ? `Editing: ${editing.name}` : "New template"}</CardTitle>
-            <CardDescription>Use {"{{field_name}}"} for dynamic personalization</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Template name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Check-In Reminder" className="mt-1" />
@@ -229,7 +275,25 @@ export function SmsTemplateBuilder({ templates: initialTemplates }: SmsTemplateB
             </CardContent>
           </Card>
         )}
-      </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
+  );
+}
+
+const CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "reminder", label: "Reminder" },
+  { value: "follow_up", label: "Follow-up" },
+  { value: "announcement", label: "Announcement" },
+];
+const categoryLabel = (c: string) => CATEGORIES.find((x) => x.value === c)?.label ?? c;
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={status === "active" ? "default" : "secondary"} className="shrink-0 text-xs capitalize">
+      {status}
+    </Badge>
   );
 }

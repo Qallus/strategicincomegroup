@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Archive, Briefcase, CheckCircle2, Church, CircleDot, Compass, Inbox, Mail, MessageSquare, Phone, Trash2, Users,
+  Archive, Briefcase, CheckCircle2, Church, CircleDot, Compass, EyeOff, Inbox, Mail, MessageSquare, Phone, RotateCcw, Trash2, Users,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export type Submission = {
   payload: Record<string, unknown> | null;
   assigned_to: string | null;
   hidden_at: string | null;
+  removed_at?: string | null;
   created_at: string;
 };
 
@@ -46,7 +47,8 @@ const ago = (iso: string) => {
   if (m < 1440) return `${Math.round(m / 60)}h ago`;
   return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
 };
-const open = (r: Submission) => r.status !== "done" && r.status !== "spam";
+const archived = (r: Submission) => Boolean(r.removed_at);
+const open = (r: Submission) => !archived(r) && r.status !== "done" && r.status !== "spam";
 
 function StatusPill({ status }: { status: string }) {
   return <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", STATUS_CLASS[status] ?? "bg-muted")}>{statusLabel(status)}</span>;
@@ -81,7 +83,7 @@ export function FormInbox({ submissions, staff }: { submissions: Submission[]; s
         return json.submission as Submission | undefined;
       }),
     );
-    if (body.action === "delete" || body.action === "remove") setRows((r) => r.filter((x) => !ids.includes(x.id)));
+    if (body.action === "delete") setRows((r) => r.filter((x) => !ids.includes(x.id)));
     else setRows((r) => r.map((x) => results.find((s) => s?.id === x.id) ?? x));
     router.refresh();
   }
@@ -123,8 +125,9 @@ export function FormInbox({ submissions, staff }: { submissions: Submission[]; s
       ]}
       filters={[
         { id: "open", label: "Open", test: open },
-        { id: "all", label: "All", test: () => true },
-        ...SUBMISSION_STATUSES.map((s) => ({ id: s.value, label: s.label, test: (r: Submission) => r.status === s.value })),
+        { id: "all", label: "All", test: (r: Submission) => !archived(r) },
+        ...SUBMISSION_STATUSES.map((s) => ({ id: s.value, label: s.label, test: (r: Submission) => !archived(r) && r.status === s.value })),
+        { id: "archived", label: "Archived", test: archived },
       ]}
       selectFilters={[
         { id: "type", label: "Form", options: Object.entries(FORM_TYPES).map(([value, m]) => ({ value, label: m.label })), get: (r) => r.form_type },
@@ -140,15 +143,17 @@ export function FormInbox({ submissions, staff }: { submissions: Submission[]; s
         { label: "In progress", icon: CircleDot, run: (sel) => act(sel.map((r) => r.id), { action: "status", status: "in_progress" }) },
         { label: "Mark done", icon: CheckCircle2, run: (sel) => act(sel.map((r) => r.id), { action: "status", status: "done" }) },
         { label: "Reply", icon: Mail, single: true, show: (sel) => Boolean(sel[0]?.email), run: (sel) => window.open(`mailto:${sel[0].email}`) },
-        { label: "Archive", icon: Archive, run: (sel) => act(sel.map((r) => r.id), { action: "remove" }) },
+        { label: "Hide", icon: EyeOff, show: (sel) => sel.some((r) => !r.hidden_at), run: (sel) => act(sel.map((r) => r.id), { action: "hide" }).then(() => "Hidden.") },
+        { label: "Archive", icon: Archive, show: (sel) => sel.some((r) => !archived(r)), run: (sel) => act(sel.map((r) => r.id), { action: "remove" }).then(() => "Archived — find them under the Archived filter.") },
+        { label: "Restore", icon: RotateCcw, show: (sel) => sel.some((r) => archived(r) || r.hidden_at), run: (sel) => act(sel.map((r) => r.id), { action: "show" }).then(() => "Restored.") },
         {
           label: "Delete",
           icon: Trash2,
           destructive: true,
-          run: (sel) => (window.confirm(`Delete ${sel.length} submission${sel.length === 1 ? "" : "s"}?`) ? act(sel.map((r) => r.id), { action: "delete" }) : undefined),
+          run: (sel) => (window.confirm(`Delete ${sel.length} submission${sel.length === 1 ? "" : "s"}?`) ? act(sel.map((r) => r.id), { action: "delete" }) : false),
         },
       ]}
-      preview={(r, close) => <SubmissionDetail row={r} staff={staff} onAct={(b) => act([r.id], b).then(() => (b.action === "delete" || b.action === "remove" ? close() : undefined))} />}
+      preview={(r, close) => <SubmissionDetail row={r} staff={staff} onAct={(b) => act([r.id], b).then(() => (b.action === "delete" ? close() : undefined))} />}
       empty="Nothing here yet. Submissions from the website’s contact page and newsletter land in this inbox."
     />
   );

@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import {
-  Bell, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Columns3, Contact,
+  Bell, CalendarDays, Camera, CheckCircle2, CircleDot, Contact,
   Copy, EyeOff, FileDown, FileText, GanttChartSquare, LayoutTemplate, List as ListIcon, Loader2, Lock, Mic,
-  Paperclip, Plus, Pencil, Save, StickyNote, Table2, Trash2, User, UserPlus, Users, UsersRound, X, Link2,
+  Paperclip, Plus, Pencil, Save, StickyNote, Trash2, UserPlus, Users, UsersRound, X, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
+import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import type {
   DependencyType, ItemVisibility, LinkType, ProjectItemAttachment, ProjectItemLink, ProjectLinkOptions,
   ProjectManagerData, ProjectScheduleDependency, ProjectScheduleItem,
@@ -70,15 +71,13 @@ const PRIORITY_OPTS = opts(PRIORITIES);
 const TYPE_OPTS = opts(TYPES);
 const DEP_TYPE_OPTS = opts(DEP_TYPES);
 
-type ProjectView = "list" | "table" | "kanban" | "gantt" | "calendar" | "templates" | "my_tasks";
+// List / table / board / calendar (and "My tasks" as a filter) live on the shared
+// DataView under "Items"; the Gantt and the template gallery stay their own modes.
+type ProjectView = "items" | "gantt" | "templates";
 const VIEWS: { key: ProjectView; label: string; icon: React.ElementType }[] = [
-  { key: "list", label: "List", icon: ListIcon },
-  { key: "table", label: "Table", icon: Table2 },
-  { key: "kanban", label: "Kanban", icon: Columns3 },
+  { key: "items", label: "Items", icon: ListIcon },
   { key: "gantt", label: "Gantt", icon: GanttChartSquare },
-  { key: "calendar", label: "Calendar", icon: CalendarDays },
   { key: "templates", label: "Templates", icon: LayoutTemplate },
-  { key: "my_tasks", label: "My Tasks", icon: User },
 ];
 
 type ItemDraft = {
@@ -118,7 +117,7 @@ export function ProjectManagerClient({
   const [templateTasks] = React.useState<ProjectTemplateTask[]>(initialData.templateTasks);
   const [attachments, setAttachments] = React.useState<ProjectItemAttachment[]>(initialData.attachments);
   const [links, setLinks] = React.useState<ProjectItemLink[]>(initialData.links);
-  const [view, setView] = React.useState<ProjectView>("list");
+  const [view, setView] = React.useState<ProjectView>("items");
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("");
   const [editing, setEditing] = React.useState<ItemDraft | null>(null);
@@ -165,6 +164,19 @@ export function ProjectManagerClient({
     try { await send(`/api/project-manager/schedule/${id}`, "DELETE", {}); await reload(); }
     catch (err) { setError(err instanceof Error ? err.message : "Delete failed."); }
     finally { setBusy(false); }
+  }
+
+  async function deleteItems(list: ProjectScheduleItem[]) {
+    if (!list.length) return;
+    if (!window.confirm(list.length === 1 ? "Delete this item? Its dependencies are removed too." : `Delete ${list.length} items? Their dependencies are removed too.`)) return;
+    setBusy(true); setError(null);
+    try { for (const i of list) await send(`/api/project-manager/schedule/${i.id}`, "DELETE", {}); }
+    catch (err) { setError(err instanceof Error ? err.message : "Delete failed."); }
+    finally { await reload(); setBusy(false); }
+  }
+
+  async function setStatuses(list: ProjectScheduleItem[], status: ScheduleStatus) {
+    await Promise.all(list.filter((i) => i.status !== status).map((i) => quickStatus(i, status)));
   }
 
   async function quickStatus(item: ProjectScheduleItem, status: ScheduleStatus) {
@@ -264,7 +276,7 @@ export function ProjectManagerClient({
     setBusy(true); setError(null);
     try {
       await send("/api/project-manager/apply-template", "POST", { template_id: tpl.id, project_title, start_date });
-      setApplyTpl(null); setView("list");
+      setApplyTpl(null); setView("items");
       await reload();
     } catch (err) { setError(err instanceof Error ? err.message : "Apply failed."); }
     finally { setBusy(false); }
@@ -286,52 +298,55 @@ export function ProjectManagerClient({
   const visible = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((i) => {
-      if (statusFilter && i.status !== statusFilter) return false;
+      if (statusFilter && i.status !== statusFilter) return false; // Gantt toolbar filters
       if (q && !`${i.title} ${i.project_title ?? ""} ${i.phase ?? ""} ${i.assignee ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [items, search, statusFilter]);
 
-  const myItems = React.useMemo(() => {
+  const isMine = React.useCallback((i: ProjectScheduleItem) => {
     const me = currentUserName.trim().toLowerCase();
     const myEmail = currentUserEmail.trim().toLowerCase();
-    if (!me && !myEmail) return [];
-    return items.filter((i) => {
-      const hay = `${i.assignee ?? ""} ${i.participants ?? ""}`.toLowerCase();
-      return (me && hay.includes(me)) || (myEmail && hay.includes(myEmail));
-    });
-  }, [items, currentUserName, currentUserEmail]);
+    if (!me && !myEmail) return false;
+    const hay = `${i.assignee ?? ""} ${i.participants ?? ""}`.toLowerCase();
+    return Boolean((me && hay.includes(me)) || (myEmail && hay.includes(myEmail)));
+  }, [currentUserName, currentUserEmail]);
 
   const incomingDeps = (itemId: string) => deps.filter((d) => d.target_item_id === itemId);
 
   return (
     <div>
-      {/* Toolbar */}
+      {/* Mode switcher: Items (DataView) · Gantt · Templates */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap items-center rounded-lg border border-border bg-card p-0.5 text-xs">
+        <div role="tablist" aria-label="Mode" className="flex max-w-full items-center overflow-x-auto rounded-lg border border-border bg-card p-0.5 text-xs [scrollbar-width:none]">
           {VIEWS.map((v) => (
-            <button key={v.key} onClick={() => setView(v.key)} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium", view === v.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
+            <button key={v.key} role="tab" aria-selected={view === v.key} onClick={() => setView(v.key)} className={cn("flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 font-medium", view === v.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
               <v.icon className="h-3.5 w-3.5" />{v.label}
             </button>
           ))}
         </div>
-        {view !== "templates" && (
+        {view === "gantt" && (
           <>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="h-8 w-44" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="h-8 w-full min-w-0 sm:w-44" />
             <div className="w-40"><FieldSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTS} className="h-8" /></div>
           </>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setView("templates")}><LayoutTemplate className="h-3.5 w-3.5" /> Templates</Button>
-          <Button size="sm" onClick={() => setEditing(toDraft())}><Plus className="h-3.5 w-3.5" /> New item</Button>
-        </div>
+        {view !== "items" && (
+          <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" onClick={() => setEditing(toDraft())}><Plus className="h-3.5 w-3.5" /> New item</Button>
+          </div>
+        )}
       </div>
 
-      {error && <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
+      {error && <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span className="min-w-0 break-words">{error}</span><button aria-label="Dismiss" onClick={() => setError(null)}><X className="h-3.5 w-3.5" /></button></div>}
 
-      {view === "list" && <ListView items={visible} onEdit={(i) => setEditing(toDraft(i))} onDelete={deleteItem} depCount={(id) => incomingDeps(id).length} />}
-      {view === "table" && <TableView items={visible} onEdit={(i) => setEditing(toDraft(i))} onDelete={deleteItem} />}
-      {view === "kanban" && <KanbanView items={visible} onEdit={(i) => setEditing(toDraft(i))} onStatus={quickStatus} />}
+      {view === "items" && (
+        <ItemsList
+          items={items} isMine={isMine} currentUserName={currentUserName} depCount={(id) => incomingDeps(id).length}
+          onNew={() => setEditing(toDraft())} onEdit={(i) => setEditing(toDraft(i))}
+          onStatus={setStatuses} onDuplicate={duplicateItem} onDelete={deleteItems}
+        />
+      )}
       {view === "gantt" && (
         <GanttView
           items={visible} deps={deps}
@@ -340,8 +355,6 @@ export function ProjectManagerClient({
           onAttach={pickAndUpload} onConnect={connectItems}
         />
       )}
-      {view === "calendar" && <CalendarView items={visible} onEdit={(i) => setEditing(toDraft(i))} />}
-      {view === "my_tasks" && <ListView items={myItems} onEdit={(i) => setEditing(toDraft(i))} onDelete={deleteItem} depCount={(id) => incomingDeps(id).length} emptyLabel={currentUserName ? `No tasks assigned to ${currentUserName}.` : "Your profile name is not set."} />}
       {view === "templates" && <TemplatesView templates={templates} tasks={templateTasks} onApply={setApplyTpl} />}
 
       {editing && (
@@ -383,169 +396,114 @@ function groupByProject(items: ProjectScheduleItem[]) {
   return Array.from(map.entries());
 }
 
-function ListView({ items, onEdit, onDelete, depCount, emptyLabel }: { items: ProjectScheduleItem[]; onEdit: (i: ProjectScheduleItem) => void; onDelete: (id: string) => void; depCount: (id: string) => number; emptyLabel?: string }) {
-  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
-  const groups = groupByProject(items);
-  if (!items.length) return <Empty label={emptyLabel ?? "No items yet. Create one or apply a template."} />;
-  return (
-    <div className="space-y-3">
-      {groups.map(([name, group]) => {
-        const done = group.filter((i) => i.status === "complete").length;
-        const open = !collapsed[name];
-        return (
-          <div key={name} className="overflow-hidden rounded-xl border border-border">
-            <button onClick={() => setCollapsed((c) => ({ ...c, [name]: !c[name] }))} className="flex w-full items-center gap-2 bg-card px-4 py-2.5 text-left">
-              {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-              <span className="font-semibold">{name}</span>
-              <span className="text-xs text-muted-foreground">{done}/{group.length} complete</span>
-            </button>
-            {open && (
-              <div className="divide-y divide-border">
-                {group.map((i) => (
-                  <div key={i.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">{i.title}</span>
-                        {i.type !== "task" && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{i.type}</span>}
-                        {i.type === "project" && i.visibility && i.visibility !== "team" && <Lock className="h-3 w-3 text-muted-foreground" aria-label={i.visibility === "private" ? "Private" : "Role-limited"} />}
-                        {depCount(i.id) > 0 && <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground"><Link2 className="h-3 w-3" />{depCount(i.id)}</span>}
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        {i.phase && <span>{i.phase}</span>}
-                        {i.assignee && <span>· {i.assignee}</span>}
-                        <span>· {fmtDate(i.start_date)}–{fmtDate(i.end_date)}</span>
-                        <span className={cn("· capitalize", priorityClass[i.priority ?? "normal"])}>· {label(i.priority ?? "normal")}</span>
-                      </div>
-                    </div>
-                    <div className="hidden w-24 sm:block"><Progress value={i.progress} /></div>
-                    <StatusPill status={i.status} />
-                    <button onClick={() => onEdit(i)} className="text-muted-foreground hover:text-primary"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => onDelete(i.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+const groupOf = (i: ProjectScheduleItem) => i.schedule_group_key || i.project_title || "Ungrouped";
+const isOpen = (i: ProjectScheduleItem) => i.status !== "complete" && i.status !== "canceled";
+// Date-only values are pinned to local noon so the calendar never shifts them a day.
+const calDate = (s: string) => (s ? `${dateOnly(s)}T12:00:00` : null);
 
-function TableView({ items, onEdit, onDelete }: { items: ProjectScheduleItem[]; onEdit: (i: ProjectScheduleItem) => void; onDelete: (id: string) => void }) {
-  const [sort, setSort] = React.useState<{ key: keyof ProjectScheduleItem; dir: 1 | -1 }>({ key: "start_date", dir: 1 });
-  const sorted = React.useMemo(() => {
-    return [...items].sort((a, b) => {
-      const av = String(a[sort.key] ?? ""); const bv = String(b[sort.key] ?? "");
-      return av < bv ? -sort.dir : av > bv ? sort.dir : 0;
-    });
-  }, [items, sort]);
-  if (!items.length) return <Empty label="No items yet." />;
-  const head = (key: keyof ProjectScheduleItem, text: string) => (
-    <th className="cursor-pointer px-3 py-2 text-left font-semibold" onClick={() => setSort((s) => ({ key, dir: s.key === key && s.dir === 1 ? -1 : 1 }))}>{text}</th>
-  );
-  return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full text-sm">
-        <thead className="border-b border-border bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
-          <tr>{head("title", "Title")}{head("project_title", "Project")}{head("phase", "Phase")}{head("assignee", "Assignee")}{head("status", "Status")}{head("priority", "Priority")}{head("start_date", "Start")}{head("end_date", "End")}<th className="px-3 py-2 text-left font-semibold">Progress</th><th /></tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {sorted.map((i) => (
-            <tr key={i.id} className="hover:bg-muted/30">
-              <td className="px-3 py-2 font-medium">{i.title}</td>
-              <td className="px-3 py-2 text-muted-foreground">{i.project_title || "—"}</td>
-              <td className="px-3 py-2 text-muted-foreground">{i.phase || "—"}</td>
-              <td className="px-3 py-2 text-muted-foreground">{i.assignee || "—"}</td>
-              <td className="px-3 py-2"><StatusPill status={i.status} /></td>
-              <td className={cn("px-3 py-2 capitalize", priorityClass[i.priority ?? "normal"])}>{label(i.priority ?? "normal")}</td>
-              <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{fmtDate(i.start_date)}</td>
-              <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{fmtDate(i.end_date)}</td>
-              <td className="px-3 py-2"><div className="flex items-center gap-2"><div className="w-16"><Progress value={i.progress} /></div><span className="text-[11px] text-muted-foreground">{i.progress}%</span></div></td>
-              <td className="px-3 py-2"><div className="flex gap-2"><button onClick={() => onEdit(i)} className="text-muted-foreground hover:text-primary"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => onDelete(i.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></div></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+function ItemsList({ items, isMine, currentUserName, depCount, onNew, onEdit, onStatus, onDuplicate, onDelete }: {
+  items: ProjectScheduleItem[];
+  isMine: (i: ProjectScheduleItem) => boolean;
+  currentUserName: string;
+  depCount: (id: string) => number;
+  onNew: () => void;
+  onEdit: (i: ProjectScheduleItem) => void;
+  onStatus: (list: ProjectScheduleItem[], s: ScheduleStatus) => Promise<void>;
+  onDuplicate: (i: ProjectScheduleItem) => Promise<void>;
+  onDelete: (list: ProjectScheduleItem[]) => Promise<void>;
+}) {
+  const today = todayStr();
+  const weekAhead = new Date(Date.now() + 7 * dayMs).toISOString().slice(0, 10);
+  const groups = Array.from(new Set(items.map(groupOf))).sort((a, b) => a.localeCompare(b));
+  const assignees = Array.from(new Set(items.map((i) => (i.assignee ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const overdue = (i: ProjectScheduleItem) => isOpen(i) && dateOnly(i.end_date) < today;
 
-function KanbanView({ items, onEdit, onStatus }: { items: ProjectScheduleItem[]; onEdit: (i: ProjectScheduleItem) => void; onStatus: (i: ProjectScheduleItem, s: ScheduleStatus) => void }) {
-  const [dragId, setDragId] = React.useState<string | null>(null);
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {STATUSES.map((s) => {
-        const col = items.filter((i) => i.status === s);
-        return (
-          <div key={s} className="flex w-64 shrink-0 flex-col rounded-xl border border-border bg-card"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => { const it = items.find((x) => x.id === dragId); if (it && it.status !== s) onStatus(it, s); setDragId(null); }}>
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", statusClass[s])}>{label(s)}</span>
-              <span className="text-[11px] text-muted-foreground">{col.length}</span>
-            </div>
-            <div className="flex-1 space-y-2 p-2">
-              {col.map((i) => (
-                <div key={i.id} draggable onDragStart={() => setDragId(i.id)} onClick={() => onEdit(i)} className="cursor-grab rounded-lg border border-border bg-background p-2.5 active:cursor-grabbing">
-                  <div className="text-sm font-medium">{i.title}</div>
-                  {i.project_title && <div className="mt-0.5 text-[11px] text-muted-foreground">{i.project_title}</div>}
-                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>{fmtDate(i.start_date)}–{fmtDate(i.end_date)}</span>
-                    <span className={cn("capitalize", priorityClass[i.priority ?? "normal"])}>{label(i.priority ?? "normal")}</span>
-                  </div>
-                </div>
-              ))}
-              {!col.length && <div className="py-6 text-center text-[11px] text-muted-foreground">Drop here</div>}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+  const columns: DataColumn<ProjectScheduleItem>[] = [
+    {
+      id: "title", label: "Title", required: true, width: 260, sort: (i) => i.title,
+      cell: (i) => (
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium">{i.title}</span>
+          {i.type !== "task" && <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{i.type}</span>}
+          {i.type === "project" && i.visibility && i.visibility !== "team" && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label={i.visibility === "private" ? "Private" : "Role-limited"} />}
+          {depCount(i.id) > 0 && <span className="flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground"><Link2 className="h-3 w-3" />{depCount(i.id)}</span>}
+        </span>
+      ),
+    },
+    { id: "project", label: "Project", width: 180, cell: (i) => <span className="text-muted-foreground">{groupOf(i)}</span>, sort: groupOf },
+    { id: "status", label: "Status", width: 140, cell: (i) => <StatusPill status={i.status} />, sort: (i) => STATUSES.indexOf(i.status), exportValue: (i) => cap(i.status) },
+    { id: "assignee", label: "Assignee", width: 170, cell: (i) => i.assignee || "—", sort: (i) => i.assignee ?? "" },
+    { id: "start", label: "Start", width: 110, cell: (i) => fmtDate(i.start_date), sort: (i) => i.start_date, exportValue: (i) => dateOnly(i.start_date) },
+    { id: "end", label: "End", width: 110, cell: (i) => <span className={cn(overdue(i) && "font-medium text-destructive")}>{fmtDate(i.end_date)}</span>, sort: (i) => i.end_date, exportValue: (i) => dateOnly(i.end_date) },
+    { id: "priority", label: "Priority", width: 130, cell: (i) => <span className={cn("capitalize", priorityClass[i.priority ?? "normal"])}>{label(i.priority ?? "normal")}</span>, sort: (i) => PRIORITIES.indexOf((i.priority ?? "normal") as SchedulePriority), exportValue: (i) => cap(i.priority ?? "normal") },
+    { id: "progress", label: "Progress", width: 150, cell: (i) => <div className="flex items-center gap-2"><div className="w-16"><Progress value={i.progress} /></div><span className="text-[11px] text-muted-foreground">{i.progress}%</span></div>, sort: (i) => i.progress },
+    { id: "phase", label: "Phase", width: 150, defaultHidden: true, cell: (i) => i.phase || "—", sort: (i) => i.phase ?? "" },
+    { id: "type", label: "Type", width: 110, defaultHidden: true, cell: (i) => cap(i.type), sort: (i) => i.type },
+    { id: "client", label: "Client", width: 160, defaultHidden: true, cell: (i) => i.client || "—", sort: (i) => i.client ?? "" },
+    { id: "participants", label: "Participants", width: 200, defaultHidden: true, cell: (i) => i.participants || "—", sort: (i) => i.participants ?? "" },
+    { id: "deps", label: "Depends on", width: 110, align: "right", defaultHidden: true, cell: (i) => depCount(i.id) || "—", sort: (i) => depCount(i.id) },
+    { id: "blocker", label: "Blocker", width: 200, defaultHidden: true, cell: (i) => (i.is_blocked ? i.blocker_reason || "Blocked" : "—"), sort: (i) => (i.is_blocked ? i.blocker_reason || "Blocked" : "") },
+  ];
 
-function CalendarView({ items, onEdit }: { items: ProjectScheduleItem[]; onEdit: (i: ProjectScheduleItem) => void }) {
-  const [month, setMonth] = React.useState(() => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); });
-  const year = month.getUTCFullYear(); const mon = month.getUTCMonth();
-  const first = new Date(Date.UTC(year, mon, 1));
-  const startDow = first.getUTCDay();
-  const gridStart = new Date(first); gridStart.setUTCDate(1 - startDow);
-  const cells = Array.from({ length: 42 }, (_, k) => { const d = new Date(gridStart); d.setUTCDate(gridStart.getUTCDate() + k); return d.toISOString().slice(0, 10); });
-  const monthLabel = month.toLocaleDateString([], { month: "long", year: "numeric", timeZone: "UTC" });
-  const itemsOn = (day: string) => items.filter((i) => dateOnly(i.start_date) <= day && day <= dateOnly(i.end_date));
   return (
-    <div className="rounded-xl border border-border">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <div className="font-semibold">{monthLabel}</div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setMonth(new Date(Date.UTC(year, mon - 1, 1)))} className="rounded p-1 hover:bg-muted"><ChevronLeft className="h-4 w-4" /></button>
-          <button onClick={() => { const d = new Date(); setMonth(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))); }} className="rounded px-2 py-1 text-xs hover:bg-muted">Today</button>
-          <button onClick={() => setMonth(new Date(Date.UTC(year, mon + 1, 1)))} className="rounded p-1 hover:bg-muted"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-      </div>
-      <div className="grid grid-cols-7 border-b border-border text-center text-[11px] font-medium text-muted-foreground">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <div key={d} className="py-1.5">{d}</div>)}
-      </div>
-      <div className="grid grid-cols-7">
-        {cells.map((day) => {
-          const inMonth = Number(day.slice(5, 7)) === mon + 1;
-          const dayItems = itemsOn(day);
-          const isToday = day === todayStr();
-          return (
-            <div key={day} className={cn("min-h-[84px] border-b border-r border-border p-1 last:border-r-0", !inMonth && "bg-muted/30")}>
-              <div className={cn("mb-1 text-right text-[10px]", isToday ? "font-bold text-primary" : "text-muted-foreground")}>{Number(day.slice(8, 10))}</div>
-              <div className="space-y-0.5">
-                {dayItems.slice(0, 3).map((i) => (
-                  <button key={i.id} onClick={() => onEdit(i)} className={cn("block w-full truncate rounded px-1 py-0.5 text-left text-[10px]", statusClass[i.status])}>{i.title}</button>
-                ))}
-                {dayItems.length > 3 && <div className="text-[10px] text-muted-foreground">+{dayItems.length - 3} more</div>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <DataView<ProjectScheduleItem>
+      storageKey="project-manager-items"
+      exportName="sig-project-items"
+      noun={["item", "items"]}
+      defaultView="list"
+      views={["list", "table", "cards"]}
+      items={items}
+      getId={(i) => i.id}
+      title={(i) => i.title}
+      subtitle={(i) => [groupOf(i), i.phase, i.assignee].filter(Boolean).join(" · ")}
+      badge={(i) => <StatusPill status={i.status} />}
+      meta={(i) => (
+        <span className="flex items-center gap-2">
+          <span className={cn(overdue(i) && "font-medium text-destructive")}>{fmtDate(i.start_date)}–{fmtDate(i.end_date)}</span>
+          <span className={cn("capitalize", priorityClass[i.priority ?? "normal"])}>{label(i.priority ?? "normal")}</span>
+        </span>
+      )}
+      columns={columns}
+      searchText={(i) => [i.title, i.project_title, i.schedule_group_key, i.phase, i.assignee, i.participants, i.client, i.description].join(" ")}
+      stats={[
+        { label: "Open items", value: items.filter(isOpen).length, icon: ListIcon, hint: `${items.length} total` },
+        { label: "Due this week", value: items.filter((i) => isOpen(i) && dateOnly(i.end_date) >= today && dateOnly(i.end_date) <= weekAhead).length, icon: CalendarDays },
+        { label: "Overdue", value: items.filter(overdue).length, icon: Bell },
+        { label: "Blocked", value: items.filter((i) => i.status === "blocked" || i.is_blocked).length, icon: Lock },
+        { label: "Complete", value: items.filter((i) => i.status === "complete").length, icon: CheckCircle2 },
+      ]}
+      filters={[
+        { id: "all", label: "All", test: () => true },
+        { id: "open", label: "Open", test: isOpen },
+        { id: "mine", label: "My tasks", test: isMine },
+        { id: "overdue", label: "Overdue", test: overdue },
+      ]}
+      selectFilters={[
+        { id: "status", label: "Status", options: STATUS_OPTS.map((o) => ({ value: o.value, label: o.label })), get: (i) => i.status },
+        { id: "project", label: "Project", options: groups.map((g) => ({ value: g, label: g })), get: groupOf },
+        { id: "assignee", label: "Assignee", options: assignees.map((a) => ({ value: a, label: a })), get: (i) => (i.assignee ?? "").trim() || null },
+        { id: "priority", label: "Priority", options: PRIORITY_OPTS.map((o) => ({ value: o.value, label: o.label })), get: (i) => i.priority ?? "normal" },
+        { id: "type", label: "Type", options: TYPE_OPTS.map((o) => ({ value: o.value, label: o.label })), get: (i) => i.type },
+      ]}
+      board={{
+        lanes: STATUSES.map((s) => ({ id: s, label: cap(s) })),
+        get: (i) => i.status,
+        onMove: (i, lane) => onStatus([i], lane as ScheduleStatus),
+      }}
+      date={(i) => calDate(i.start_date)}
+      onOpen={onEdit}
+      add={{ label: "New item", onClick: onNew }}
+      actions={[
+        { label: "Edit", icon: Pencil, single: true, run: (sel) => onEdit(sel[0]) },
+        { label: "Duplicate", icon: Copy, single: true, run: (sel) => onDuplicate(sel[0]) },
+        { label: "In progress", icon: CircleDot, run: (sel) => onStatus(sel, "in_progress") },
+        { label: "Complete", icon: CheckCircle2, run: (sel) => onStatus(sel, "complete") },
+        { label: "Blocked", icon: Lock, run: (sel) => onStatus(sel, "blocked") },
+        { label: "Cancel", icon: X, run: (sel) => onStatus(sel, "canceled") },
+        { label: "Delete", icon: Trash2, destructive: true, run: (sel) => onDelete(sel) },
+      ]}
+      empty="No items yet. Create one or apply a template."
+    />
   );
 }
 

@@ -10,6 +10,7 @@ import { contactTools } from "./tools-contacts";
 import { eventTools } from "./tools-events";
 import { formTools } from "./tools-forms";
 import { systemTools } from "./tools-system";
+import { teamTools } from "./tools-team";
 import { websiteTools } from "./tools-website";
 import { toolVisible, type McpTool } from "./types";
 
@@ -27,6 +28,7 @@ export function allTools(): McpTool[] {
       ...eventTools(),
       ...blogTools(),
       ...websiteTools(),
+      ...teamTools(),
     ];
   }
   return cache;

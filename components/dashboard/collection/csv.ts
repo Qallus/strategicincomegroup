@@ -4,7 +4,9 @@ export function toCsv(headers: string[], rows: (string | number | null | undefin
   const cell = (v: string | number | null | undefined) => {
     const s = v == null ? "" : String(v);
     // Guard against spreadsheet formula injection when the file is opened in Excel/Sheets.
-    const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+    // Phone numbers and negatives ("+1 (480)…", "-12.5") are left alone; only formula-like values are guarded.
+    const looksNumeric = /^[+-][\d\s().-]+$/.test(s);
+    const safe = /^[=+\-@]/.test(s) && !looksNumeric ? `'${s}` : s;
     return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   return [headers, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");

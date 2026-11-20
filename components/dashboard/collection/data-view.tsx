@@ -58,6 +58,10 @@ export type DataSelectFilter<T> = {
 export type DataAction<T> = {
   label: string;
   icon: LucideIcon;
+  /**
+   * Return a string to show it as a success message (e.g. "Link copied"). Return `false`
+   * when the user backed out (e.g. cancelled a confirm) so a destructive action keeps the selection.
+   */
   run: (rows: T[]) => unknown;
   destructive?: boolean;
   /** Only when exactly one row is ticked. */
@@ -75,6 +79,8 @@ export type DataViewProps<T> = {
   title: (row: T) => string;
   subtitle?: (row: T) => React.ReactNode;
   media?: (row: T) => React.ReactNode;
+  /** Large cover image URL for cards view (blog featured images, media thumbnails). */
+  cardImage?: (row: T) => string | null | undefined;
   badge?: (row: T) => React.ReactNode;
   meta?: (row: T) => React.ReactNode;
   columns: DataColumn<T>[];
@@ -525,7 +531,9 @@ export function DataView<T>(p: DataViewProps<T>) {
               onClick={() =>
                 start(async () => {
                   try {
-                    await a.run(picked);
+                    const result = await a.run(picked);
+                    if (result === false) return; // backed out (cancelled confirm)
+                    if (typeof result === "string" && result) setMessage({ text: result });
                     if (a.destructive) setSelected(new Set());
                   } catch (e) {
                     setMessage({ text: e instanceof Error ? e.message : `${a.label} failed.`, error: true });
@@ -598,7 +606,7 @@ function ListView<T>(p: ViewProps<T>) {
               </div>
               {p.subtitle ? <p className="truncate text-xs text-muted-foreground">{p.subtitle(r)}</p> : null}
             </div>
-            {p.meta ? <div className="hidden shrink-0 text-xs text-muted-foreground md:block">{p.meta(r)}</div> : null}
+            {p.meta ? <div className="hidden min-w-0 max-w-[40%] truncate text-xs text-muted-foreground md:block">{p.meta(r)}</div> : null}
             {p.onOpen || p.preview ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /> : null}
           </li>
         );
@@ -614,7 +622,15 @@ function CardsView<T>(p: ViewProps<T>) {
       {p.rows.map((r) => {
         const id = p.getId(r);
         return (
-          <div key={id} {...clickable(p, r)} className={cn("flex flex-col rounded-xl border bg-card p-4 transition", (p.onOpen || p.preview) && "cursor-pointer hover:border-primary/40 hover:shadow-md", p.selected.has(id) && "border-primary/50 ring-1 ring-primary/30")}>
+          <div key={id} {...clickable(p, r)} className={cn("flex flex-col overflow-hidden rounded-xl border bg-card p-4 transition", (p.onOpen || p.preview) && "cursor-pointer hover:border-primary/40 hover:shadow-md", p.selected.has(id) && "border-primary/50 ring-1 ring-primary/30")}>
+            {p.cardImage ? (
+              <div className="-mx-4 -mt-4 mb-4 aspect-[16/9] overflow-hidden border-b bg-muted">
+                {p.cardImage(r) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.cardImage(r)!} alt="" loading="lazy" className="h-full w-full object-cover" />
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex items-start gap-3">
               <Pick p={p} row={r} />
               {p.media?.(r)}
@@ -751,8 +767,21 @@ function TableView<T>(
 
 function BoardView<T>(p: ViewProps<T> & { board: NonNullable<DataViewProps<T>["board"]> }) {
   const [over, setOver] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
+  async function move(row: T, lane: string) {
+    setError(null);
+    try {
+      await p.board.onMove?.(row, lane);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn’t move that item.");
+    }
+  }
   return (
+    <div>
+    {error ? (
+      <p role="alert" className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+    ) : null}
     <div className="flex gap-3 overflow-x-auto pb-2">
       {p.board.lanes.map((lane) => {
         const items = p.rows.filter((r) => p.board.get(r) === lane.id);
@@ -768,7 +797,7 @@ function BoardView<T>(p: ViewProps<T> & { board: NonNullable<DataViewProps<T>["b
             onDrop={() => {
               setOver(null);
               const row = p.items.find((r) => p.getId(r) === dragId.current);
-              if (row && p.board.get(row) !== lane.id) void p.board.onMove?.(row, lane.id);
+              if (row && p.board.get(row) !== lane.id) void move(row, lane.id);
             }}
             className={cn("flex w-72 shrink-0 flex-col rounded-xl border bg-muted/30 sm:w-80", over === lane.id && "border-primary/50 bg-primary/5")}
           >
@@ -803,6 +832,7 @@ function BoardView<T>(p: ViewProps<T> & { board: NonNullable<DataViewProps<T>["b
         );
       })}
     </div>
+    </div>
   );
 }
 
@@ -816,7 +846,10 @@ function CalendarView<T>(p: ViewProps<T> & { date: (row: T) => string | null | u
     for (const r of p.rows) {
       const iso = p.date(r);
       if (!iso) continue;
-      const d = new Date(iso);
+      // Date-only values ("2026-12-02") are calendar days, not UTC midnight — parse them locally
+      // so they don't land a day early west of UTC (Arizona).
+      const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+      const d = dateOnly ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])) : new Date(iso);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       m.set(key, [...(m.get(key) ?? []), r]);
     }

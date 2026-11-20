@@ -1,30 +1,16 @@
 import Link from "next/link";
 import { SectionHeader } from "@/components/dashboard/section-header";
-import { StatCardRow } from "@/components/dashboard/stat-card-row";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { InviteUserForm } from "@/components/user-management/invite-user-form";
-import { DeleteUserButton } from "@/components/user-management/delete-user-button";
-import { ROLE_LABELS, ROLES, isAppRole, normalizeAppRole, type AppRole } from "@/lib/rbac/roles";
+import { UsersList } from "./users-list";
+import { ROLE_LABELS, ROLES, isAppRole } from "@/lib/rbac/roles";
 import { getCurrentProfile } from "@/lib/auth/server";
 import { getUserManagementData } from "@/lib/user-management/repository";
 
 export default async function UserManagementPage() {
   const [data, profile] = await Promise.all([getUserManagementData(), getCurrentProfile()]);
   const currentUserId = profile?.id ?? null;
-  const OWNER_EMAIL = "jeremy@strategicincomegroup.com";
-
-  // Count site-wide profiles assigned to each user role (admins/super-admins are
-  // intentionally not surfaced here — they're covered by the Profiles total).
-  const roleCount = (role: AppRole) => data.profiles.filter((p: any) => normalizeAppRole(p.role) === role).length;
-  const roleCards = [
-    { label: "Participants", value: roleCount(ROLES.PARTICIPANT) },
-    { label: "Pastor/Elders", value: roleCount(ROLES.PASTOR_ELDER_REVIEWER) },
-    { label: "Team Members (Team Leaders)", value: roleCount(ROLES.TEAM_MEMBER) },
-    { label: "Facilitators", value: roleCount(ROLES.FACILITATOR) },
-  ];
-
   // Link each participant to its user account (if any) — matched by the profile's
   // related_participant_id or a shared email — so the Participants table can show the
   // account's role, status, and last login alongside the participant's own fields.
@@ -44,85 +30,18 @@ export default async function UserManagementPage() {
     <div className="space-y-6">
       <SectionHeader title="User Management" description="Invite admins, team members, content reviewers, Pastor/Elder reviewers, and future participants." />
 
-      <StatCardRow className="grid gap-4 md:grid-cols-4">
-        {roleCards.map((card) => (
-          <SummaryCard key={card.label} label={card.label} value={card.value} />
-        ))}
-      </StatCardRow>
+      <UsersList
+        profiles={data.profiles as any[]}
+        invitations={data.invitations as any[]}
+        currentUserId={currentUserId}
+        currentUserRole={profile?.role}
+      />
 
-      <StatCardRow className="grid gap-4 md:grid-cols-4">
-        <SummaryCard label="Profiles" value={data.profiles.length} />
-        <SummaryCard label="Invitations" value={data.invitations.length} />
-        <SummaryCard label="Form submissions" value={data.submissions.length} />
-        <SummaryCard label="Participant links" value={data.links.length} />
-      </StatCardRow>
-
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Link href="/dashboard/user-management/communications" className="inline-flex items-center gap-2 rounded-md border bg-card px-4 py-2 text-sm font-medium hover:bg-accent transition-colors">
           Communications & Opt-In Management →
         </Link>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Invite user</CardTitle>
-          {profile?.role === ROLES.SUPER_ADMIN ? (
-            <p className="text-sm text-muted-foreground">As a Super Admin you can also invite another Super Admin.</p>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          <InviteUserForm currentUserRole={profile?.role} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Users and profiles</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Participant</TableHead>
-                <TableHead>Last login</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.profiles.map((profile: any) => (
-                <TableRow key={profile.id}>
-                  <TableCell className="font-medium">{profile.full_name || `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "-"}</TableCell>
-                  <TableCell>{profile.email}</TableCell>
-                  <TableCell>{profile.phone ?? "-"}</TableCell>
-                  <TableCell>{roleLabel(profile.role)}</TableCell>
-                  <TableCell><StatusBadge status={profile.status} /></TableCell>
-                  <TableCell>{profile.participants ? `${profile.participants.first_name} ${profile.participants.last_name}` : "-"}</TableCell>
-                  <TableCell>{profile.last_login_at ? new Date(profile.last_login_at).toLocaleDateString() : "-"}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-4">
-                      <Link className="text-sm font-medium text-primary hover:underline" href={`/dashboard/user-management/${profile.id}`}>
-                        Edit
-                      </Link>
-                      {profile.id !== currentUserId && String(profile.email ?? "").toLowerCase() !== OWNER_EMAIL ? (
-                        <DeleteUserButton
-                          userId={profile.id}
-                          userName={profile.full_name || `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || profile.email || "this user"}
-                        />
-                      ) : null}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!data.profiles.length ? <TableRow><TableCell colSpan={8}>No Supabase profiles found yet.</TableCell></TableRow> : null}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -176,48 +95,7 @@ export default async function UserManagementPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Invitations</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead>Invite link</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.invitations.map((invite: any) => (
-                  <TableRow key={invite.id}>
-                    <TableCell>{invite.email ?? invite.phone}</TableCell>
-                    <TableCell>{roleLabel(invite.role)}</TableCell>
-                    <TableCell>{invite.invite_method}</TableCell>
-                    <TableCell><StatusBadge status={invite.invite_status} /></TableCell>
-                    <TableCell>{invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : "-"}</TableCell>
-                    <TableCell>
-                      {invite.metadata?.inviteUrl ? (
-                        <Link className="text-sm font-medium text-primary hover:underline" href={invite.metadata.inviteUrl}>
-                          Open
-                        </Link>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {!data.invitations.length ? <TableRow><TableCell colSpan={6}>No invitations yet.</TableCell></TableRow> : null}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Recent activity</CardTitle>
@@ -281,17 +159,6 @@ export default async function UserManagementPage() {
 
       {data.error ? <p className="text-sm text-destructive">{data.error}</p> : null}
     </div>
-  );
-}
-
-function SummaryCard({ label, value }: { label: string; value: number }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="mt-2 text-2xl font-semibold">{value}</p>
-      </CardContent>
-    </Card>
   );
 }
 

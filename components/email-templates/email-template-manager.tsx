@@ -3,15 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  Archive, Copy, Eye, FlaskConical, MoreHorizontal, Pencil, Plus, Send, Trash2, Workflow, Zap,
+  Archive, CheckCircle2, Copy, Eye, FilePen, FileText, FlaskConical, Pencil, Send, Trash2, Workflow, Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { EMAIL_EVENT_KEYS } from "@/lib/email/constants";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { cn } from "@/lib/utils";
@@ -60,45 +59,54 @@ const CATEGORY_ORDER = [
 ];
 
 const catLabel = (c: string) => CATEGORY_LABELS[c] ?? c.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+const catOf = (t: EmailTemplateRow) => t.category || "general";
 const EVENT_LABEL = new Map<string, string>(EMAIL_EVENT_KEYS.map((e) => [e.key, e.label]));
-
-type StatusFilter = "all" | "live" | "draft" | "test" | "archived";
-const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "live", label: "Live" },
-  { key: "draft", label: "Drafts" },
-  { key: "test", label: "Test" },
-  { key: "archived", label: "Archived" },
+const STATUS_LANES = [
+  { id: "active", label: "Live" },
+  { id: "draft", label: "Drafts" },
+  { id: "archived", label: "Archived" },
 ];
 
-// Fixed-position menu anchored to a button — avoids table overflow clipping.
-// Flips upward when there isn't room below (rows near the bottom of the page).
-type MenuPos = { right: number; top?: number; bottom?: number };
-const MENU_EST_HEIGHT = 360;
-function anchorFrom(el: HTMLElement): MenuPos {
-  const r = el.getBoundingClientRect();
-  const right = window.innerWidth - r.right;
-  if (window.innerHeight - r.bottom < MENU_EST_HEIGHT && r.top > MENU_EST_HEIGHT) {
-    return { right, bottom: window.innerHeight - r.top + 4 };
-  }
-  return { right, top: r.bottom + 4 };
+type Automation = { key: string; label: string; enabled: boolean };
+
+function TestBadge() {
+  return (
+    <Badge variant="outline" className="shrink-0 border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+      <FlaskConical className="mr-1 h-3 w-3" />Test
+    </Badge>
+  );
+}
+
+function AutomationPills({ autos }: { autos: Automation[] }) {
+  if (!autos.length) return <span className="text-xs text-muted-foreground">— Manual</span>;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {autos.map((a) => (
+        <span
+          key={a.key}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+            a.enabled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-muted text-muted-foreground",
+          )}
+          title={a.enabled ? "Automation active" : "Automation inactive"}
+        >
+          <Zap className="h-3 w-3" />
+          {a.label} · {a.enabled ? "Active" : "Inactive"}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 export function EmailTemplateManager({ templates, mappings, defaultEmail = "" }: { templates: EmailTemplateRow[]; mappings: MappingRow[]; defaultEmail?: string }) {
   const actionToken = useDashboardActionToken();
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplateRow | null>(null);
-  const [rowMenu, setRowMenu] = useState<{ template: EmailTemplateRow; pos: MenuPos } | null>(null);
   const [automationDialog, setAutomationDialog] = useState<{ presetTemplateId?: string } | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   // template_id -> [{ key, label, enabled }]
   const automationsByTemplate = useMemo(() => {
-    const map = new Map<string, { key: string; label: string; enabled: boolean }[]>();
+    const map = new Map<string, Automation[]>();
     for (const m of mappings) {
       if (!m.template_id) continue;
       const label = EVENT_LABEL.get(m.event_key) ?? m.event_key;
@@ -108,262 +116,164 @@ export function EmailTemplateManager({ templates, mappings, defaultEmail = "" }:
     }
     return map;
   }, [mappings]);
+  const autosFor = (t: EmailTemplateRow) => automationsByTemplate.get(t.id) ?? [];
 
   const categories = useMemo(() => {
-    const present = new Set(templates.map((t) => t.category || "general"));
+    const present = new Set(templates.map(catOf));
     // Always show the 6-Week Challenge tags (program is being prepared).
     present.add("six_week_challenge");
     present.add("six_week_challenge_participant");
     present.add("six_week_challenge_facilitator");
-    return CATEGORY_ORDER.filter((c) => present.has(c)).concat(
-      [...present].filter((c) => !CATEGORY_ORDER.includes(c)).sort(),
-    );
+    return CATEGORY_ORDER.filter((c) => present.has(c)).concat([...present].filter((c) => !CATEGORY_ORDER.includes(c)).sort());
   }, [templates]);
-
-  const matchesStatus = (t: EmailTemplateRow) => {
-    switch (statusFilter) {
-      case "live": return t.status === "active";
-      case "draft": return t.status === "draft";
-      case "archived": return t.status === "archived";
-      case "test": return !!t.is_test;
-      default: return true;
-    }
-  };
-
-  const visibleTemplates = templates.filter((t) => {
-    if (category !== "all" && (t.category || "general") !== category) return false;
-    if (!matchesStatus(t)) return false;
-    const hay = `${t.name} ${t.subject} ${t.category} ${t.status}`.toLowerCase();
-    return hay.includes(search.toLowerCase());
-  });
-
-  const statusCount = (key: StatusFilter) =>
-    templates.filter((t) =>
-      key === "all" ? true
-      : key === "live" ? t.status === "active"
-      : key === "draft" ? t.status === "draft"
-      : key === "archived" ? t.status === "archived"
-      : !!t.is_test,
-    ).length;
 
   async function post(url: string, body: Record<string, unknown>, method = "POST") {
     setActionMessage(null);
-    setActionError(null);
-    setBusy(true);
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json", "x-sig-action-token": actionToken },
-        body: JSON.stringify({ ...body, actionToken }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload.error ?? "Action failed.");
-      return payload;
-    } finally {
-      setBusy(false);
-    }
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", "x-sig-action-token": actionToken },
+      body: JSON.stringify({ ...body, actionToken }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error ?? "Action failed.");
+    return payload;
   }
 
-  async function duplicateTemplate(t: EmailTemplateRow) {
-    try {
-      await post("/api/admin/email/templates", {
+  const saveBody = (t: EmailTemplateRow, patch: Partial<{ status: EmailTemplateRow["status"]; isTest: boolean }>) => ({
+    id: t.id, name: t.name, subject: t.subject, category: t.category,
+    status: patch.status ?? t.status, htmlBody: t.html_body, textBody: t.text_body,
+    ...(patch.isTest !== undefined ? { isTest: patch.isTest } : {}),
+  });
+
+  // Bulk actions run per template, then reload once (the server page re-reads templates + mappings).
+  async function each(list: EmailTemplateRow[], fn: (t: EmailTemplateRow) => Promise<unknown>) {
+    for (const t of list) await fn(t);
+    window.location.reload();
+  }
+
+  const duplicate = (list: EmailTemplateRow[]) =>
+    each(list, (t) =>
+      post("/api/admin/email/templates", {
         name: `${t.name} Copy`, subject: t.subject, category: t.category,
         status: "draft", htmlBody: t.html_body, textBody: t.text_body,
-      });
-      setActionMessage("Template duplicated as a draft.");
-      window.location.reload();
-    } catch (e) { setActionError(e instanceof Error ? e.message : "Could not duplicate."); }
-  }
+      }),
+    );
+  const setStatus = (list: EmailTemplateRow[], status: EmailTemplateRow["status"]) =>
+    each(list.filter((t) => t.status !== status), (t) => post("/api/admin/email/templates", saveBody(t, { status })));
+  const setTest = (list: EmailTemplateRow[], isTest: boolean) => each(list, (t) => post("/api/admin/email/templates", saveBody(t, { isTest })));
 
-  async function saveWith(t: EmailTemplateRow, patch: Partial<{ status: EmailTemplateRow["status"]; isTest: boolean }>) {
-    try {
-      await post("/api/admin/email/templates", {
-        id: t.id, name: t.name, subject: t.subject, category: t.category,
-        status: patch.status ?? t.status, htmlBody: t.html_body, textBody: t.text_body,
-        ...(patch.isTest !== undefined ? { isTest: patch.isTest } : {}),
-      });
-      setActionMessage(patch.isTest !== undefined ? (patch.isTest ? "Marked as test." : "Removed test flag.") : "Template archived.");
-      window.location.reload();
-    } catch (e) { setActionError(e instanceof Error ? e.message : "Could not update template."); }
-  }
-
-  async function deleteTemplate(t: EmailTemplateRow) {
-    if (!window.confirm(`Permanently delete the template “${t.name}”? This cannot be undone.`)) return;
-    try {
-      await post("/api/admin/email/templates", { id: t.id }, "DELETE");
-      setActionMessage("Template deleted.");
-      window.location.reload();
-    } catch (e) { setActionError(e instanceof Error ? e.message : "Could not delete."); }
+  async function remove(list: EmailTemplateRow[]) {
+    const what = list.length === 1 ? `the template “${list[0].name}”` : `${list.length} templates`;
+    if (!window.confirm(`Permanently delete ${what}? This cannot be undone.`)) return;
+    await each(list, (t) => post("/api/admin/email/templates", { id: t.id }, "DELETE"));
   }
 
   async function sendTest(t: EmailTemplateRow) {
-    try {
-      const payload = await post("/api/admin/email/templates/test-send", { templateId: t.id });
-      setActionMessage(`Test email sent to ${payload.to}.`);
-    } catch (e) { setActionError(e instanceof Error ? e.message : "Could not send test."); }
+    const payload = await post("/api/admin/email/templates/test-send", { templateId: t.id });
+    setActionMessage(`Test email sent to ${payload.to}.`);
   }
+
+  const columns: DataColumn<EmailTemplateRow>[] = [
+    {
+      id: "name",
+      label: "Name",
+      required: true,
+      width: 260,
+      sort: (t) => t.name,
+      cell: (t) => (
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium">{t.name}</span>
+          {t.is_test ? <TestBadge /> : null}
+        </span>
+      ),
+    },
+    { id: "subject", label: "Subject", width: 300, sort: (t) => t.subject, cell: (t) => <span className="text-muted-foreground">{t.subject}</span> },
+    { id: "category", label: "Category", width: 190, sort: (t) => catLabel(catOf(t)), cell: (t) => <Badge variant="secondary" className="whitespace-nowrap">{catLabel(catOf(t))}</Badge> },
+    {
+      id: "automation",
+      label: "Automation",
+      width: 260,
+      sort: (t) => autosFor(t).map((a) => a.label).join(", ") || null,
+      cell: (t) => <AutomationPills autos={autosFor(t)} />,
+    },
+    { id: "status", label: "Status", width: 120, sort: (t) => t.status, cell: (t) => <StatusPill status={t.status} /> },
+    { id: "test", label: "Test", width: 90, defaultHidden: true, sort: (t) => (t.is_test ? "Yes" : "No"), cell: (t) => (t.is_test ? "Yes" : "—") },
+    { id: "slug", label: "Slug", width: 220, defaultHidden: true, sort: (t) => t.slug, cell: (t) => <span className="font-mono text-xs text-muted-foreground">{t.slug}</span> },
+    { id: "fields", label: "Merge fields", width: 240, defaultHidden: true, exportValue: (t) => (t.available_fields ?? []).join("; "), cell: (t) => (t.available_fields ?? []).join(", ") || "—" },
+  ];
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Templates</CardTitle>
-          <CardDescription>
-            Segment templates by use case, see which automation each one powers, and tell real emails from tests at a glance.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Category tabs */}
-          <div className="flex flex-wrap gap-2 rounded-md border bg-card p-1">
-            {["all", ...categories].map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                  category === c && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                )}
-              >
-                {c === "all" ? "All" : catLabel(c)}
-                <span className="ml-1.5 text-xs opacity-70">
-                  {c === "all" ? templates.length : templates.filter((t) => (t.category || "general") === c).length}
-                </span>
-              </button>
-            ))}
-          </div>
+      <DataView<EmailTemplateRow>
+        storageKey="email-templates"
+        exportName="sig-email-templates"
+        noun={["template", "templates"]}
+        defaultView="table"
+        items={templates}
+        getId={(t) => t.id}
+        title={(t) => t.name}
+        subtitle={(t) => t.subject}
+        badge={(t) => (
+          <span className="flex shrink-0 items-center gap-1">
+            {t.is_test ? <TestBadge /> : null}
+            <StatusPill status={t.status} />
+          </span>
+        )}
+        meta={(t) => catLabel(catOf(t))}
+        columns={columns}
+        searchText={(t) => `${t.name} ${t.subject} ${t.category} ${catLabel(catOf(t))} ${t.status} ${autosFor(t).map((a) => a.label).join(" ")}`}
+        stats={[
+          { label: "Templates", value: templates.length, icon: FileText },
+          { label: "Live", value: templates.filter((t) => t.status === "active").length, icon: CheckCircle2 },
+          { label: "Drafts", value: templates.filter((t) => t.status === "draft").length, icon: FilePen },
+          { label: "Automated", value: templates.filter((t) => autosFor(t).length).length, icon: Zap, hint: "Power an automation" },
+          { label: "Test", value: templates.filter((t) => t.is_test).length, icon: FlaskConical },
+        ]}
+        filters={[
+          { id: "all", label: "All", test: () => true },
+          { id: "live", label: "Live", test: (t) => t.status === "active" },
+          { id: "draft", label: "Drafts", test: (t) => t.status === "draft" },
+          { id: "test", label: "Test", test: (t) => Boolean(t.is_test) },
+          { id: "archived", label: "Archived", test: (t) => t.status === "archived" },
+        ]}
+        selectFilters={[
+          { id: "category", label: "Category", options: categories.map((c) => ({ value: c, label: catLabel(c) })), get: catOf },
+          {
+            id: "automation",
+            label: "Automation",
+            options: [{ value: "__manual", label: "Manual (none)" }, ...EMAIL_EVENT_KEYS.map((e) => ({ value: e.key, label: e.label }))],
+            get: (t) => (autosFor(t).length ? autosFor(t).map((a) => a.key) : "__manual"),
+          },
+        ]}
+        board={{
+          lanes: STATUS_LANES,
+          get: (t) => t.status,
+          onMove: (t, lane) => setStatus([t], lane as EmailTemplateRow["status"]).catch((e) => window.alert(e instanceof Error ? e.message : "Could not update template.")),
+        }}
+        onOpen={setPreviewTemplate}
+        add={{ label: "Create template", onClick: () => window.location.assign("/dashboard/emails/editor") }}
+        toolbar={
+          <Button asChild variant="outline" size="sm" className="h-9">
+            <Link href="/dashboard/emails/automations" title="Manage automations">
+              <Zap className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Automations</span>
+            </Link>
+          </Button>
+        }
+        actions={[
+          { label: "Preview", icon: Eye, single: true, run: (sel) => setPreviewTemplate(sel[0]) },
+          { label: "Edit", icon: Pencil, single: true, run: (sel) => window.location.assign(`/dashboard/emails/editor?id=${sel[0].id}`) },
+          { label: "Add to automation", icon: Workflow, single: true, run: (sel) => setAutomationDialog({ presetTemplateId: sel[0].id }) },
+          { label: "Send test to me", icon: Send, single: true, show: (sel) => sel[0]?.status !== "archived", run: (sel) => sendTest(sel[0]) },
+          { label: "Duplicate as draft", icon: Copy, run: duplicate },
+          { label: "Mark as test", icon: FlaskConical, show: (sel) => sel.some((t) => !t.is_test), run: (sel) => setTest(sel.filter((t) => !t.is_test), true) },
+          { label: "Unmark test", icon: FlaskConical, show: (sel) => sel.some((t) => t.is_test), run: (sel) => setTest(sel.filter((t) => t.is_test), false) },
+          { label: "Archive", icon: Archive, show: (sel) => sel.some((t) => t.status !== "archived"), run: (sel) => setStatus(sel, "archived") },
+          { label: "Delete", icon: Trash2, destructive: true, run: remove },
+        ]}
+        empty="No templates yet. Create one in the email editor."
+      />
 
-          {/* Status filter chips + search + create */}
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-1.5">
-              {STATUS_FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setStatusFilter(f.key)}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                    statusFilter === f.key
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:bg-accent",
-                  )}
-                >
-                  {f.label} <span className="opacity-70">({statusCount(f.key)})</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input className="w-full sm:w-64" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search templates..." />
-              <Button asChild>
-                <Link href="/dashboard/emails/editor">Create template</Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Automation</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleTemplates.map((t) => {
-                  const autos = automationsByTemplate.get(t.id) ?? [];
-                  return (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <span>{t.name}</span>
-                          {t.is_test ? (
-                            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                              <FlaskConical className="mr-1 h-3 w-3" />Test
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[22rem] truncate text-muted-foreground">{t.subject}</TableCell>
-                      <TableCell className="whitespace-nowrap"><Badge variant="secondary" className="whitespace-nowrap">{catLabel(t.category || "general")}</Badge></TableCell>
-                      <TableCell>
-                        {autos.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">— Manual</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {autos.map((a) => (
-                              <span
-                                key={a.key}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                                  a.enabled
-                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                    : "bg-muted text-muted-foreground",
-                                )}
-                                title={a.enabled ? "Automation active" : "Automation inactive"}
-                              >
-                                <Zap className="h-3 w-3" />
-                                {a.label} · {a.enabled ? "Active" : "Inactive"}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell><StatusPill status={t.status} /></TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" type="button" variant="outline" onClick={() => setPreviewTemplate(t)}>
-                            <Eye className="h-4 w-4" /> Preview
-                          </Button>
-                          <Button asChild size="sm" type="button" variant="outline">
-                            <Link href={`/dashboard/emails/editor?id=${t.id}`}>
-                              <Pencil className="h-4 w-4" /> Edit
-                            </Link>
-                          </Button>
-                          <Button size="sm" type="button" variant="outline" aria-label="More actions"
-                            onClick={(e) => setRowMenu({ template: t, pos: anchorFrom(e.currentTarget) })}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {!visibleTemplates.length ? (
-                  <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">No templates match this view.</TableCell></TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
-      {actionMessage ? <p className="text-sm text-primary">{actionMessage}</p> : null}
-
-      {/* Row actions menu */}
-      {rowMenu ? (
-        <MenuOverlay pos={rowMenu.pos} onClose={() => setRowMenu(null)}>
-          <MenuItem icon={Workflow} label="Add to automation"
-            onClick={() => { setAutomationDialog({ presetTemplateId: rowMenu.template.id }); setRowMenu(null); }} />
-          <MenuItem icon={Send} label="Send test to me" disabled={busy || rowMenu.template.status === "archived"}
-            onClick={() => { sendTest(rowMenu.template); setRowMenu(null); }} />
-          <MenuItem icon={Copy} label="Duplicate as draft" disabled={busy}
-            onClick={() => { duplicateTemplate(rowMenu.template); setRowMenu(null); }} />
-          <MenuItem icon={FlaskConical} label={rowMenu.template.is_test ? "Unmark as test" : "Mark as test"} disabled={busy}
-            onClick={() => { saveWith(rowMenu.template, { isTest: !rowMenu.template.is_test }); setRowMenu(null); }} />
-          <MenuItem icon={Archive} label="Archive" disabled={busy || rowMenu.template.status === "archived"}
-            onClick={() => { saveWith(rowMenu.template, { status: "archived" }); setRowMenu(null); }} />
-          <MenuItem icon={Trash2} label="Delete" danger disabled={busy}
-            onClick={() => { deleteTemplate(rowMenu.template); setRowMenu(null); }} />
-          <div className="my-1 border-t" />
-          <MenuItem icon={Plus} label="Create template" href="/dashboard/emails/editor" onClick={() => setRowMenu(null)} />
-          <MenuItem icon={Zap} label="Manage automations" href="/dashboard/emails/automations" onClick={() => setRowMenu(null)} />
-        </MenuOverlay>
-      ) : null}
+      {actionMessage ? <p role="status" className="text-sm text-primary">{actionMessage}</p> : null}
 
       {/* Add-to-automation dialog */}
       {automationDialog ? (
@@ -376,16 +286,21 @@ export function EmailTemplateManager({ templates, mappings, defaultEmail = "" }:
         />
       ) : null}
 
-      {/* Preview */}
+      {/* Preview (row click) */}
       {previewTemplate ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3" role="dialog" aria-modal="true">
           <div className="flex h-[92vh] w-full max-w-[92rem] flex-col overflow-hidden rounded-md border bg-background shadow-xl">
-            <div className="flex items-center gap-3 border-b px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">{previewTemplate.name}</p>
+            <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{previewTemplate.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{previewTemplate.subject}</p>
               </div>
-              <Button className="ml-auto" type="button" variant="ghost" onClick={() => setPreviewTemplate(null)}>Close</Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/dashboard/emails/editor?id=${previewTemplate.id}`}>
+                  <Pencil className="h-4 w-4" /> Edit
+                </Link>
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setPreviewTemplate(null)}>Close</Button>
             </div>
             <div className="flex-1 overflow-auto bg-muted p-3">
               <div className="mx-auto w-full max-w-[86rem] overflow-hidden rounded-md border bg-white shadow-sm">
@@ -478,32 +393,6 @@ function StatusPill({ status }: { status: EmailTemplateRow["status"] }) {
     archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
   };
   return <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", styles[status])}>{status}</span>;
-}
-
-function MenuOverlay({ pos, onClose, children }: { pos: MenuPos; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <>
-      <button type="button" aria-label="Close menu" className="fixed inset-0 z-40 cursor-default" onClick={onClose} />
-      <div
-        className="fixed z-50 min-w-[13rem] rounded-md border bg-popover p-1 shadow-lg"
-        style={{ right: pos.right, ...(pos.bottom !== undefined ? { bottom: pos.bottom } : { top: pos.top }) }}
-      >
-        {children}
-      </div>
-    </>
-  );
-}
-
-function MenuItem({
-  icon: Icon, label, onClick, href, danger, disabled,
-}: { icon: typeof Zap; label: string; onClick?: () => void; href?: string; danger?: boolean; disabled?: boolean }) {
-  const cls = cn(
-    "flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors",
-    danger ? "text-destructive hover:bg-destructive/10" : "hover:bg-accent",
-    disabled && "pointer-events-none opacity-50",
-  );
-  if (href) return <Link href={href} className={cls} onClick={onClick}><Icon className="h-4 w-4" />{label}</Link>;
-  return <button type="button" className={cls} disabled={disabled} onClick={onClick}><Icon className="h-4 w-4" />{label}</button>;
 }
 
 function AddAutomationDialog({

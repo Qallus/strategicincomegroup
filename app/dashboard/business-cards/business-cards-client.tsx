@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import {
-  Archive, BarChart3, Copy, ExternalLink, Eye, IdCard, Mail, Pencil, Plus, QrCode,
-  RefreshCw, Trash2, Users,
+  Archive, BarChart3, Copy, ExternalLink, Eye, EyeOff, IdCard, Mail, MousePointerClick, Nfc, Pencil,
+  QrCode, RefreshCw, Save, Send, Share2, Trash2, UserCog, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FieldSelect } from "@/components/ui/field-select";
 import { cn } from "@/lib/utils";
-import { StatCardRow } from "@/components/dashboard/stat-card-row";
+import { DataView, type DataColumn, type DataStat } from "@/components/dashboard/collection";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import type { BusinessCard, CardStats } from "@/lib/business-cards/types";
 import type { StaffOption } from "@/lib/business-cards/data";
@@ -24,18 +26,59 @@ type ApiResponse = {
   staffOptions: StaffOption[];
 };
 
-const STAT_TILES: { key: keyof CardStats; label: string; hint: string }[] = [
-  { key: "products", label: "Cards", hint: "Total cards" },
-  { key: "published", label: "Published", hint: "Live public URLs" },
-  { key: "views", label: "Views", hint: "Public profile loads" },
-  { key: "clicks", label: "Clicks", hint: "Link & button actions" },
-  { key: "nfcReady", label: "NFC ready", hint: "Linked to a tag" },
-  { key: "shares", label: "Shares", hint: "Card shared" },
-  { key: "saves", label: "Saves", hint: "Contacts saved" },
-  { key: "leads", label: "Leads", hint: "Form submissions" },
+const STAT_TILES: { key: keyof CardStats; label: string; hint: string; icon: DataStat["icon"] }[] = [
+  { key: "products", label: "Cards", hint: "Total cards", icon: IdCard },
+  { key: "published", label: "Published", hint: "Live public URLs", icon: Send },
+  { key: "views", label: "Views", hint: "Public profile loads", icon: Eye },
+  { key: "clicks", label: "Clicks", hint: "Link & button actions", icon: MousePointerClick },
+  { key: "nfcReady", label: "NFC ready", hint: "Linked to a tag", icon: Nfc },
+  { key: "shares", label: "Shares", hint: "Card shared", icon: Share2 },
+  { key: "saves", label: "Saves", hint: "Contacts saved", icon: Save },
+  { key: "leads", label: "Leads", hint: "Form submissions", icon: Mail },
 ];
 
 const PUBLIC_BASE = (process.env.NEXT_PUBLIC_APP_URL || "https://my.strategicincomegroup.com").replace(/\/$/, "");
+
+const cardUrl = (c: BusinessCard) => `${PUBLIC_BASE}/c/${c.slug}`;
+const qrSrc = (c: BusinessCard, size: number) => `/api/cards/qr?url=${encodeURIComponent(cardUrl(c))}&size=${size}`;
+const cardName = (c: BusinessCard) => c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.card_name;
+const statusLabel = (s: BusinessCard["status"]) => (s === "published" ? "Published" : s === "archived" ? "Archived" : s === "unpublished" ? "Unpublished" : "Draft");
+
+function StatusPill({ status }: { status: BusinessCard["status"] }) {
+  return (
+    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", status === "published" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>
+      {statusLabel(status)}
+    </span>
+  );
+}
+
+function CardMedia({ card }: { card: BusinessCard }) {
+  return card.profile_photo_url ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={card.profile_photo_url} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+  ) : (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-background text-primary">
+      <IdCard className="h-4 w-4" />
+    </span>
+  );
+}
+
+async function eachLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
+  const queue = [...items];
+  const errors: string[] = [];
+  await Promise.all(
+    Array.from({ length: Math.min(limit, queue.length) }, async () => {
+      for (let item = queue.shift(); item !== undefined; item = queue.shift()) {
+        try {
+          await fn(item);
+        } catch (e) {
+          errors.push(e instanceof Error ? e.message : "Failed.");
+        }
+      }
+    }),
+  );
+  if (errors.length) throw new Error(`${errors.length} of ${items.length} failed: ${errors[0]}`);
+}
 
 export function BusinessCardsClient() {
   const actionToken = useDashboardActionToken();
@@ -44,10 +87,13 @@ export function BusinessCardsClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [scope, setScope] = React.useState<"mine" | "all">("mine");
   const [view, setView] = React.useState<"cards" | "leads">("cards");
-  const [statusFilter, setStatusFilter] = React.useState<"all" | "published" | "draft">("all");
   const [editing, setEditing] = React.useState<BusinessCard | "new" | null>(null);
   const [analyticsCard, setAnalyticsCard] = React.useState<BusinessCard | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
+  const [reassign, setReassign] = React.useState<BusinessCard[] | null>(null);
+  const [owner, setOwner] = React.useState("");
+  const [reassignBusy, setReassignBusy] = React.useState(false);
+  const [reassignError, setReassignError] = React.useState<string | null>(null);
 
   const authGet = React.useCallback(
     (url: string) => fetch(url, { headers: { "x-sig-action-token": actionToken } }),
@@ -72,13 +118,7 @@ export function BusinessCardsClient() {
   React.useEffect(() => { load(scope); }, [scope, load]);
 
   const isAdmin = data?.isAdmin ?? false;
-
-  const filtered = React.useMemo(() => {
-    const cards = data?.cards ?? [];
-    if (statusFilter === "all") return cards;
-    if (statusFilter === "published") return cards.filter((c) => c.status === "published");
-    return cards.filter((c) => c.status !== "published");
-  }, [data, statusFilter]);
+  const cards = data?.cards ?? [];
 
   async function openEdit(card: BusinessCard) {
     const detail = await authGet(`/api/business-cards/detail?id=${card.id}`)
@@ -87,28 +127,58 @@ export function BusinessCardsClient() {
     setEditing(detail?.card ?? card);
   }
 
-  async function copyLink(card: BusinessCard) {
-    const url = `${PUBLIC_BASE}/c/${card.slug}`;
-    try { await navigator.clipboard.writeText(url); setCopied(card.id); setTimeout(() => setCopied(null), 1500); } catch { /* ignore */ }
+  async function copyLinks(list: BusinessCard[]) {
+    try {
+      await navigator.clipboard.writeText(list.map(cardUrl).join("\n"));
+      setCopied(list.length === 1 ? list[0].id : "many");
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      throw new Error("Couldn't copy — your browser blocked clipboard access.");
+    }
   }
 
-  async function setStatus(card: BusinessCard, status: BusinessCard["status"]) {
-    await fetch(`/api/business-cards/${card.id}`, {
-      method: "PATCH",
+  async function call(card: BusinessCard, method: "PATCH" | "DELETE", body: Record<string, unknown> = {}) {
+    const res = await fetch(`/api/business-cards/${card.id}`, {
+      method,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status, actionToken }),
+      body: JSON.stringify({ ...body, actionToken }),
     });
-    load(scope);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `${card.card_name}: that didn't work.`);
   }
 
-  async function remove(card: BusinessCard) {
-    if (!window.confirm(`Delete "${card.card_name}"? This cannot be undone.`)) return;
-    await fetch(`/api/business-cards/${card.id}`, {
-      method: "DELETE",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ actionToken }),
-    });
-    load(scope);
+  async function setStatus(list: BusinessCard[], status: BusinessCard["status"]) {
+    try {
+      await eachLimit(list.filter((c) => c.status !== status), 4, (c) => call(c, "PATCH", { status }));
+    } finally {
+      void load(scope);
+    }
+  }
+
+  async function remove(list: BusinessCard[]) {
+    const msg = list.length === 1 ? `Delete "${list[0].card_name}"? This cannot be undone.` : `Delete ${list.length} cards? This cannot be undone.`;
+    if (!window.confirm(msg)) return false;
+    try {
+      await eachLimit(list, 4, (c) => call(c, "DELETE"));
+    } finally {
+      void load(scope);
+    }
+    return true;
+  }
+
+  async function applyReassign() {
+    if (!reassign) return;
+    setReassignBusy(true);
+    setReassignError(null);
+    try {
+      await eachLimit(reassign, 4, (c) => call(c, "PATCH", { staff_user_id: owner || null }));
+      setReassign(null);
+    } catch (e) {
+      setReassignError(e instanceof Error ? e.message : "Reassign failed.");
+    } finally {
+      setReassignBusy(false);
+      void load(scope);
+    }
   }
 
   if (analyticsCard) {
@@ -129,36 +199,39 @@ export function BusinessCardsClient() {
     );
   }
 
+  const ownerName = (c: BusinessCard) => c.owner?.display_name || "Unassigned";
+  const owners = Array.from(new Map(cards.map((c) => [c.staff_user_id ?? "", ownerName(c)])).entries());
+
+  const columns: DataColumn<BusinessCard>[] = [
+    {
+      id: "name", label: "Card", required: true, width: 240, sort: cardName,
+      cell: (c) => (
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-medium">{cardName(c)}</span>
+          {c.card_name !== cardName(c) ? <span className="truncate text-xs text-muted-foreground">{c.card_name}</span> : null}
+        </span>
+      ),
+    },
+    { id: "status", label: "Status", width: 120, cell: (c) => <StatusPill status={c.status} />, sort: (c) => statusLabel(c.status) },
+    { id: "views", label: "Views", width: 90, align: "right", cell: (c) => c.view_count, sort: (c) => c.view_count },
+    { id: "clicks", label: "Clicks", width: 90, align: "right", cell: (c) => c.click_count, sort: (c) => c.click_count },
+    { id: "owner", label: "Owner", width: 170, cell: ownerName, sort: ownerName, defaultHidden: scope !== "all" },
+    { id: "url", label: "Public URL", width: 280, cell: (c) => <span className="text-muted-foreground">{cardUrl(c).replace(/^https?:\/\//, "")}</span>, sort: cardUrl },
+    { id: "title", label: "Job title", width: 180, cell: (c) => c.job_title ?? "—", sort: (c) => c.job_title, defaultHidden: true },
+    { id: "nfc", label: "NFC", width: 110, cell: (c) => c.nfc_status || "—", sort: (c) => c.nfc_status, defaultHidden: true },
+    { id: "updated", label: "Updated", width: 130, cell: (c) => new Date(c.updated_at).toLocaleDateString(), sort: (c) => c.updated_at, exportValue: (c) => c.updated_at },
+  ];
+
   return (
     <div>
-      {/* Header row */}
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-        {isAdmin && (
-          <div className="mr-auto flex items-center rounded-lg border border-border bg-card p-0.5 text-xs">
-            <button onClick={() => setScope("mine")} className={cn("rounded-md px-3 py-1.5 font-medium", scope === "mine" ? "bg-primary/10 text-primary" : "text-muted-foreground")}>My cards</button>
-            <button onClick={() => setScope("all")} className={cn("flex items-center gap-1 rounded-md px-3 py-1.5 font-medium", scope === "all" ? "bg-primary/10 text-primary" : "text-muted-foreground")}><Users className="h-3.5 w-3.5" />All staff</button>
-          </div>
-        )}
-        {view === "cards" && (
-          <Button size="sm" variant="outline" onClick={() => load(scope)} disabled={loading}>
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Refresh
-          </Button>
-        )}
-        {view === "cards" && (
-          <Button size="sm" onClick={() => setEditing("new")}>
-            <Plus className="h-3.5 w-3.5" /> Create card
-          </Button>
-        )}
-      </div>
-
       {/* View tabs */}
-      <div className="mb-4 flex gap-1 border-b border-border">
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]">
         {(["cards", "leads"] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             className={cn(
-              "-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium capitalize transition",
+              "-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium capitalize transition",
               view === v ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
@@ -171,109 +244,148 @@ export function BusinessCardsClient() {
             )}
           </button>
         ))}
+        {isAdmin && (
+          <div className="ml-auto flex shrink-0 items-center self-center rounded-lg border border-border bg-card p-0.5 text-xs">
+            <button onClick={() => setScope("mine")} className={cn("rounded-md px-3 py-1.5 font-medium", scope === "mine" ? "bg-primary/10 text-primary" : "text-muted-foreground")}>My cards</button>
+            <button onClick={() => setScope("all")} className={cn("flex items-center gap-1 rounded-md px-3 py-1.5 font-medium", scope === "all" ? "bg-primary/10 text-primary" : "text-muted-foreground")}><Users className="h-3.5 w-3.5" />All staff</button>
+          </div>
+        )}
       </div>
 
       {view === "leads" ? (
         <LeadsInbox isAdmin={isAdmin} scope={scope} actionToken={actionToken} onChanged={() => load(scope)} />
       ) : (
-      <div>
-        {/* Stats */}
-        <StatCardRow className="mb-5 grid gap-3 sm:grid-cols-4 xl:grid-cols-8">
-          {STAT_TILES.map((t) => (
-            <div key={t.key} className="rounded-xl border border-border bg-card px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t.label}</div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums">{data ? data.stats[t.key] : "—"}</div>
-              <div className="mt-0.5 text-[10px] text-muted-foreground">{t.hint}</div>
-            </div>
-          ))}
-        </StatCardRow>
-
-        {/* Status filter */}
-        <div className="mb-4 flex items-center gap-2">
-          {(["all", "published", "draft"] as const).map((f) => (
-            <button key={f} onClick={() => setStatusFilter(f)} className={cn("rounded-full border px-3 py-1 text-[12px] font-medium transition", statusFilter === f ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-              {f === "all" ? "All" : f === "published" ? "Published" : "Drafts"}
-            </button>
-          ))}
+        <div className="space-y-4">
+          {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
+          <DataView<BusinessCard>
+            storageKey="business-cards"
+            exportName="sig-business-cards"
+            noun={["card", "cards"]}
+            defaultView="cards"
+            loading={loading}
+            items={cards}
+            getId={(c) => c.id}
+            title={cardName}
+            subtitle={(c) => cardUrl(c).replace(/^https?:\/\//, "")}
+            media={(c) => <CardMedia card={c} />}
+            badge={(c) => <StatusPill status={c.status} />}
+            meta={(c) => (
+              <span className="flex items-center gap-3">
+                {scope === "all" ? <span>{ownerName(c)}</span> : null}
+                <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{c.view_count}</span>
+                <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" />{c.click_count}</span>
+              </span>
+            )}
+            columns={columns}
+            searchText={(c) => [cardName(c), c.card_name, c.slug, c.job_title, c.company_name, c.primary_email, ownerName(c)].join(" ")}
+            stats={STAT_TILES.map((t) => ({ label: t.label, value: data ? data.stats[t.key] : "—", hint: t.hint, icon: t.icon }))}
+            filters={[
+              { id: "all", label: "All", test: () => true },
+              { id: "published", label: "Published", test: (c) => c.status === "published" },
+              { id: "draft", label: "Drafts", test: (c) => c.status === "draft" || c.status === "unpublished" },
+              { id: "archived", label: "Archived", test: (c) => c.status === "archived" },
+            ]}
+            selectFilters={scope === "all" ? [{ id: "owner", label: "Owner", options: owners.map(([value, label]) => ({ value, label })), get: (c) => c.staff_user_id ?? "" }] : undefined}
+            actions={[
+              { label: "Edit", icon: Pencil, single: true, run: (sel) => openEdit(sel[0]) },
+              { label: "Analytics", icon: BarChart3, single: true, run: (sel) => setAnalyticsCard(sel[0]) },
+              { label: copied === "many" ? "Copied!" : "Copy links", icon: Copy, run: (sel) => copyLinks(sel) },
+              { label: "Publish", icon: Send, show: (sel) => sel.some((c) => c.status !== "published"), run: (sel) => setStatus(sel, "published") },
+              { label: "Unpublish", icon: EyeOff, show: (sel) => sel.some((c) => c.status === "published"), run: (sel) => setStatus(sel, "unpublished") },
+              { label: "Archive", icon: Archive, show: (sel) => sel.some((c) => c.status !== "archived"), run: (sel) => setStatus(sel, "archived") },
+              ...(isAdmin
+                ? [{
+                    label: "Reassign", icon: UserCog,
+                    run: (sel: BusinessCard[]) => { setReassign(sel); setOwner(sel[0]?.staff_user_id ?? ""); setReassignError(null); },
+                  }]
+                : []),
+              { label: "Delete", icon: Trash2, destructive: true, run: (sel) => remove(sel) },
+            ]}
+            add={{ label: "Create card", onClick: () => setEditing("new") }}
+            toolbar={
+              <Button size="sm" variant="outline" className="h-9 w-9 px-0" onClick={() => load(scope)} disabled={loading} title="Refresh" aria-label="Refresh">
+                <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              </Button>
+            }
+            preview={(card, close) => {
+              const url = cardUrl(card);
+              const published = card.status === "published";
+              return (
+                <div className="space-y-5">
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 rounded-lg bg-white p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrSrc(card, 320)} alt="QR code" className="h-28 w-28" />
+                    </div>
+                    <dl className="grid min-w-0 flex-1 gap-1.5 text-sm">
+                      <div className="flex items-center gap-2"><StatusPill status={card.status} /></div>
+                      <a href={url} target="_blank" rel="noreferrer" className="break-all text-xs text-primary hover:underline">{url.replace(/^https?:\/\//, "")}</a>
+                      {card.job_title ? <p className="text-muted-foreground">{card.job_title}</p> : null}
+                      {scope === "all" || isAdmin ? <p className="text-xs text-muted-foreground">Owner: {ownerName(card)}</p> : null}
+                      <p className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{card.view_count} views</span>
+                        <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" />{card.click_count} clicks</span>
+                      </p>
+                    </dl>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 border-t pt-4">
+                    <Button size="sm" onClick={() => { close(); void openEdit(card); }}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                    <Button size="sm" variant="outline" onClick={() => { close(); setAnalyticsCard(card); }}><BarChart3 className="h-3.5 w-3.5" /> Analytics</Button>
+                    <Button size="sm" variant="outline" onClick={() => void copyLinks([card]).catch(() => undefined)}><Copy className="h-3.5 w-3.5" /> {copied === card.id ? "Copied!" : "Copy link"}</Button>
+                    {published && (
+                      <Button asChild size="sm" variant="outline">
+                        <a href={url} target="_blank" rel="noreferrer"><Eye className="h-3.5 w-3.5" /> Public page</a>
+                      </Button>
+                    )}
+                    <Button asChild size="sm" variant="outline">
+                      <a href={qrSrc(card, 1024)} download={`${card.slug}-qr.png`}><QrCode className="h-3.5 w-3.5" /> QR PNG</a>
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void setStatus([card], published ? "unpublished" : "published").catch((e) => window.alert(e.message))}>
+                      {published ? <EyeOff className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />} {published ? "Unpublish" : "Publish"}
+                    </Button>
+                    {card.status !== "archived" && (
+                      <Button size="sm" variant="outline" onClick={() => void setStatus([card], "archived").catch((e) => window.alert(e.message))}><Archive className="h-3.5 w-3.5" /> Archive</Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive"
+                      onClick={() => void remove([card]).then((done) => done && close()).catch((e) => window.alert(e.message))}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  </div>
+                </div>
+              );
+            }}
+            empty={
+              <span className="flex flex-col items-center gap-2">
+                <IdCard className="h-8 w-8" />
+                <span>No cards yet. Create a digital business card to get a public QR/NFC profile.</span>
+              </span>
+            }
+          />
         </div>
-
-        {error && <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
-
-        {loading && !data ? (
-          <div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-44 animate-pulse rounded-xl bg-muted" />)}</div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-            <IdCard className="mb-3 h-10 w-10 text-muted-foreground" />
-            <p className="text-sm font-medium">No cards yet</p>
-            <p className="mt-1 max-w-xs text-xs text-muted-foreground">Create a digital business card to get a public QR/NFC profile.</p>
-            <Button size="sm" className="mt-4" onClick={() => setEditing("new")}><Plus className="h-3.5 w-3.5" /> Create card</Button>
-          </div>
-        ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {filtered.map((card) => (
-              <CardRow
-                key={card.id}
-                card={card}
-                showOwner={scope === "all"}
-                copied={copied === card.id}
-                onEdit={() => openEdit(card)}
-                onAnalytics={() => setAnalyticsCard(card)}
-                onCopy={() => copyLink(card)}
-                onDelete={() => remove(card)}
-                onPublishToggle={() => setStatus(card, card.status === "published" ? "unpublished" : "published")}
-                onArchive={() => setStatus(card, "archived")}
-              />
-            ))}
-          </div>
-        )}
-      </div>
       )}
-    </div>
-  );
-}
 
-function CardRow({
-  card, showOwner, copied, onEdit, onAnalytics, onCopy, onDelete, onPublishToggle, onArchive,
-}: {
-  card: BusinessCard; showOwner: boolean; copied: boolean;
-  onEdit: () => void; onAnalytics: () => void; onCopy: () => void; onDelete: () => void; onPublishToggle: () => void; onArchive: () => void;
-}) {
-  const url = `${PUBLIC_BASE}/c/${card.slug}`;
-  const name = card.display_name || [card.first_name, card.last_name].filter(Boolean).join(" ") || card.card_name;
-  const published = card.status === "published";
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="truncate font-semibold">{name}</span>
-            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", published ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>
-              {published ? "Published" : card.status === "archived" ? "Archived" : "Draft"}
-            </span>
-          </div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">{url.replace(/^https?:\/\//, "")}</div>
-          {showOwner && <div className="mt-1 text-[11px] text-muted-foreground">Owner: {card.owner?.display_name || "Unassigned"}</div>}
-          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{card.view_count}</span>
-            <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" />{card.click_count}</span>
-          </div>
-        </div>
-        <div className="shrink-0 rounded-lg bg-white p-1.5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/cards/qr?url=${encodeURIComponent(url)}&size=160`} alt="QR" className="h-16 w-16" />
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <Button size="sm" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
-        <Button size="sm" variant="outline" onClick={onAnalytics}><BarChart3 className="h-3.5 w-3.5" /> Analytics</Button>
-        <Button size="sm" variant="outline" onClick={onCopy}><Copy className="h-3.5 w-3.5" /> {copied ? "Copied!" : "Copy link"}</Button>
-        {published && <a href={url} target="_blank" rel="noreferrer"><Button size="sm" variant="outline"><Eye className="h-3.5 w-3.5" /> Public page</Button></a>}
-        <a href={`/api/cards/qr?url=${encodeURIComponent(url)}&size=1024`} download={`${card.slug}-qr.png`}><Button size="sm" variant="outline"><QrCode className="h-3.5 w-3.5" /> QR PNG</Button></a>
-        <Button size="sm" variant="outline" onClick={onPublishToggle}>{published ? "Unpublish" : "Publish"}</Button>
-        <Button size="sm" variant="outline" onClick={onArchive}><Archive className="h-3.5 w-3.5" /> Archive</Button>
-        <Button size="sm" variant="outline" onClick={onDelete} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
-      </div>
+      <Dialog open={Boolean(reassign)} onOpenChange={(o) => !o && !reassignBusy && setReassign(null)}>
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reassign owner</DialogTitle>
+            <DialogDescription>{reassign ? `${reassign.length} card${reassign.length === 1 ? "" : "s"} selected.` : null}</DialogDescription>
+          </DialogHeader>
+          <FieldSelect
+            value={owner}
+            onChange={setOwner}
+            options={[{ value: "", label: "Unassigned" }, ...(data?.staffOptions ?? []).map((s) => ({ value: s.id, label: s.display_name || s.email || "Unnamed" }))]}
+          />
+          {reassignError ? <p className="text-sm text-destructive">{reassignError}</p> : null}
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setReassign(null)} disabled={reassignBusy}>Cancel</Button>
+            <Button onClick={() => void applyReassign()} disabled={reassignBusy}>{reassignBusy ? "Saving…" : "Apply"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Archive, Eye, EyeOff, MailPlus, Pencil, Rocket, Share2, Trash2 } from "
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -16,6 +17,80 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   } catch {
     return {};
   }
+}
+
+export type BlogPostAction = "draft" | "scheduled" | "published" | "hidden" | "archived" | "deleted" | "convert_to_email";
+
+/** POSTs one action to /api/admin/blog-posts/[id]/actions. Throws with the API's message on failure. */
+export async function runBlogPostAction(postId: string, action: BlogPostAction, actionToken: string) {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/admin/blog-posts/${postId}/actions`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", "x-sig-action-token": actionToken, ...authHeaders },
+    body: JSON.stringify({ action, actionToken }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error ?? "Action failed.");
+  return data as { ok: true; post?: { id: string; status: string }; template?: { id: string } };
+}
+
+const SHARE_TARGETS: { id: string; label: string }[] = [
+  { id: "twitter", label: "Share on X" },
+  { id: "facebook", label: "Share on Facebook" },
+  { id: "linkedin", label: "Share on LinkedIn" },
+  { id: "sms", label: "Send via SMS" },
+  { id: "email", label: "Share via Email" },
+];
+
+function shareLink(platform: string, slug: string, title: string) {
+  const url = encodeURIComponent(`${window.location.origin}/resources/${slug}`);
+  const text = encodeURIComponent(title);
+  const links: Record<string, string> = {
+    twitter: `https://twitter.com/intent/tweet?url=${url}&text=${text}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+    sms: `sms:?body=${text}%20${url}`,
+    email: `mailto:?subject=${text}&body=${text}%0A%0A${url}`,
+  };
+  return links[platform];
+}
+
+/** Share dialog used by the blog list's "Share" quick action (same targets as the card overlay). */
+export function BlogPostShareDialog({ post, onClose }: { post: { slug: string; title: string } | null; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    if (!post) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/resources/${post.slug}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable
+    }
+  }
+  return (
+    <Dialog open={Boolean(post)} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Share post</DialogTitle>
+          <DialogDescription className="truncate">{post?.title}</DialogDescription>
+        </DialogHeader>
+        {post ? (
+          <div className="grid gap-2">
+            <Button variant="outline" className="justify-start" onClick={copy}>
+              <Share2 className="h-4 w-4" /> {copied ? "Copied!" : "Copy link"}
+            </Button>
+            {SHARE_TARGETS.map((t) => (
+              <Button key={t.id} variant="outline" className="justify-start" onClick={() => window.open(shareLink(t.id, post.slug, post.title), "_blank", "noopener,noreferrer")}>
+                {t.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function BlogPostImageActions({ slug, title }: { slug: string; title: string }) {

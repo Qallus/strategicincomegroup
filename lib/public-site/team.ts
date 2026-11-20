@@ -16,6 +16,23 @@ export type TeamMember = {
   hobbies?: string;
   destination?: string;
   why?: string;
+  // ── Added with employee_profiles (lib/team) — absent on the static roster. ──
+  firstName?: string;
+  lastName?: string;
+  bestPurchase?: string;
+  /** Public contact details; the page falls back to the main SIG line/email. */
+  phone?: string;
+  email?: string;
+  linkedin?: string;
+  /** "mon".."sun" */
+  workDays?: string[];
+  /** "HH:MM" 24h */
+  startTime?: string;
+  closeTime?: string;
+  /** YYYY-MM-DD */
+  employmentDate?: string;
+  gallery?: string[];
+  sortOrder?: number;
 };
 
 /** Planner booking pages live at /book?planner=<team slug>, managed in the dashboard. */

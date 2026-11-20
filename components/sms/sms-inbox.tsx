@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Send, Search, ChevronDown, Mail, User as UserIcon } from "lucide-react";
+import { Send, Search, ChevronDown, ChevronLeft, Mail, User as UserIcon } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { SmsContactEmailDialog } from "@/components/sms/sms-contact-email-dialog";
 
@@ -135,9 +135,9 @@ export function SmsInbox() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-lg border">
-      {/* Conversation list */}
-      <div className="w-80 shrink-0 flex flex-col border-r">
+    <div className="flex h-[calc(100vh-12rem)] min-h-[28rem] overflow-hidden rounded-lg border">
+      {/* Conversation list — full width on phones until a conversation is picked; side pane from md up. */}
+      <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-r md:w-72 lg:w-80`}>
         <div className="p-3 border-b">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -192,7 +192,7 @@ export function SmsInbox() {
       </div>
 
       {/* Thread view */}
-      <div className="flex-1 flex flex-col">
+      <div className={`${activeConvId ? "flex" : "hidden md:flex"} min-w-0 flex-1 flex-col`}>
         {!activeConvId ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
             Select a conversation to view messages
@@ -201,6 +201,9 @@ export function SmsInbox() {
           <>
             <div className="border-b">
               <div className="flex items-center gap-3 p-4">
+                <Button variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0 md:hidden" aria-label="Back to conversations" onClick={() => setActiveConvId(null)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
                 <UserAvatar
                   firstName={activeConv?.contact?.firstName}
                   lastName={activeConv?.contact?.lastName}
@@ -258,7 +261,7 @@ export function SmsInbox() {
                   className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
+                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
                       msg.direction === "outbound"
                         ? "bg-primary text-primary-foreground rounded-br-sm"
                         : "bg-muted rounded-bl-sm"

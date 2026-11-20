@@ -1,55 +1,33 @@
-import { FormSubmissionsTable } from "@/components/emails/form-submissions-table";
 import { EmailTabs } from "@/components/emails/email-tabs";
 import { SectionHeader } from "@/components/dashboard/section-header";
-import { StatCardRow } from "@/components/dashboard/stat-card-row";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormInbox, type Submission } from "@/components/forms/form-inbox";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+
+// Emails → Form Submissions renders the same inbox as /dashboard/form-submissions
+// (one inbox, one set of actions and saved view preferences), inside the Emails tab bar.
 export default async function EmailFormSubmissionsPage() {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("form_submissions")
-    .select("*")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  const rows = data ?? [];
-  const contactCount = rows.filter((row: any) => row.form_type === "contact").length;
-  const newsletterCount = rows.filter((row: any) => row.form_type === "newsletter").length;
-  const journeyCount = rows.filter((row: any) => row.form_type === "join_the_journey" || row.form_type === "journey_signup").length;
+  const [{ data, error }, { data: staff }] = await Promise.all([
+    supabase
+      .from("form_submissions")
+      .select("id, form_type, email, phone, source, status, subject, message, payload, assigned_to, hidden_at, removed_at, created_at")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase.from("profiles").select("id, full_name").eq("status", "active").order("full_name"),
+  ]);
 
   return (
     <div className="space-y-6">
       <SectionHeader title="Emails" description="Review public form submissions and reply from the email workflow." />
       <EmailTabs active="form-submissions" />
-
-      <StatCardRow className="grid gap-4 md:grid-cols-3">
-        <SummaryCard title="Contact forms" value={contactCount} />
-        <SummaryCard title="Newsletter forms" value={newsletterCount} />
-        <SummaryCard title="Journey signups" value={journeyCount} />
-      </StatCardRow>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Form Submissions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FormSubmissionsTable submissions={rows as any[]} />
-          {error ? <p className="mt-4 text-sm text-destructive">{error.message}</p> : null}
-        </CardContent>
-      </Card>
+      {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error.message}</p> : null}
+      <FormInbox
+        submissions={(data ?? []) as Submission[]}
+        staff={(staff ?? []).map((s) => ({ id: String(s.id), name: String(s.full_name ?? "Team member") }))}
+      />
     </div>
-  );
-}
-
-function SummaryCard({ title, value }: { title: string; value: number }) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <p className="mt-2 text-3xl font-semibold">{value}</p>
-      </CardContent>
-    </Card>
   );
 }

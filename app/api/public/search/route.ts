@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getAllPosts } from "@/lib/public-site/posts";
-import type { SearchEntry } from "@/lib/public-site/search-index";
+import { teamSearchEntries, type SearchEntry } from "@/lib/public-site/search-index";
+import { getPublishedTeam } from "@/lib/team/data";
 
 export const revalidate = 300;
 
-// Articles for the header search dropdown (pages/team/careers are bundled client-side).
+// Articles + the live team roster for the header search dropdown (pages/careers are
+// bundled client-side; the bundled static team entries are replaced by these).
 export async function GET() {
-  const posts = await getAllPosts();
+  const [posts, team] = await Promise.all([getAllPosts(), getPublishedTeam()]);
   const entries: SearchEntry[] = posts.map((p) => {
     const cats = p.categories.map((c) => c.name).join(" ");
     const isRetirement = /^30\d|retire/i.test(cats);
@@ -20,5 +22,6 @@ export async function GET() {
       keywords: `article blog ${cats}`,
     };
   });
+  entries.push(...teamSearchEntries(team));
   return NextResponse.json(entries, { headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=3600" } });
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/public-site/blocks";
 import { loadBookingTypeBySlug, loadPublicBookingTypes } from "@/lib/booking/data";
-import { getTeamMember } from "@/lib/public-site/team";
+import { getPublishedTeamMember } from "@/lib/team/data";
 import { BookWidget } from "./book-widget";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export default async function BookTypePage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const type = await loadBookingTypeBySlug(slug, { publicOnly: true });
   if (!type) notFound();
-  const planner = type.host_slug ? getTeamMember(type.host_slug) : null;
+  const planner = type.host_slug ? await getPublishedTeamMember(type.host_slug) : null;
   const siblings = planner
     ? (await loadPublicBookingTypes().catch(() => [])).filter((t) => t.host_slug === planner.slug && t.slug !== type.slug)
     : [];

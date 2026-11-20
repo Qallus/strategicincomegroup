@@ -192,6 +192,20 @@ Optional event columns (`event_type`, `series`, `speakers`, `office`, `direction
 | `sig_blog_unpublish` (→ hidden or draft) | high |
 | `sig_blog_delete` (status deleted; restorable) | high |
 
+### Team pages (employee profiles) — `lib/mcp/tools-team.ts`
+The public `strategicincomegroup.com/team/<slug>` pages, stored in `employee_profiles` and edited in Dashboard → My Profile. Every SIG employee (any staff role) can read and edit **their own** page; Super Admins / Admins can list and edit anyone's.
+
+| Tool | Who | Risk |
+| --- | --- | --- |
+| `sig_my_profile_get` — your page, every field, plus what's still empty | any staff | read |
+| `sig_my_profile_update` — change any of your fields; creates the page (hidden) if you don't have one | any staff | write → high when turning `is_published` on/off |
+| `sig_team_profiles_list` — every page with completeness; pass `slug` for one page in full | admins (`admin` area) | read |
+| `sig_team_profile_update` — edit anyone's page, plus `new_slug`, `team_group`, `sort_order`, `booking_href`, `account_email` | admins (`admin` area) | write → high when changing `is_published` or the slug |
+
+Fields: `first_name`, `last_name`, `full_name`, `job_title`, `credentials`, `office` (East/West Valley Office), `employment_date` (YYYY-MM-DD), `experience` (paragraphs separated by a blank line), `inspires`, `hobbies`, `best_purchase` (under $100), `favorite_destination`, `why_love_job`, `favorite_quote`, `phone`, `email`, `linkedin_url`, `work_days` (`mon`…`sun`, replaces the list), `start_time` / `close_time` (24h HH:MM), `photo_url`, `gallery_urls` (replaces the list), `is_published`. Nothing is required; `''` clears a field. Uploading new image files happens in the dashboard (the tools take URLs).
+
+Example prompts: *"Draft my 'Why I love my job' from these notes, then save it"*, *"Set my schedule to Mon–Thu 8 to 4:30"*, *"Which team pages are missing a photo?"* (admin). The assistant should show a draft and save only after the person approves it. Saves refresh `/team` and the person's page immediately.
+
 ### Website pages (`website`, Super Admin) — wraps `lib/website/shepherd-tools.ts`
 | Tool | Risk |
 | --- | --- |

@@ -12,9 +12,8 @@ export default async function FormSubmissionsPage() {
   const [{ data, error }, { data: staff }] = await Promise.all([
     supabase
       .from("form_submissions")
-      .select("id, form_type, email, phone, source, status, subject, message, payload, assigned_to, hidden_at, created_at")
+      .select("id, form_type, email, phone, source, status, subject, message, payload, assigned_to, hidden_at, removed_at, created_at")
       .is("deleted_at", null)
-      .is("removed_at", null)
       .order("created_at", { ascending: false })
       .limit(500),
     supabase.from("profiles").select("id, full_name").eq("status", "active").order("full_name"),

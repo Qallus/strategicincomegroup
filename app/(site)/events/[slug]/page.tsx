@@ -4,7 +4,7 @@ import { ArrowLeft, CalendarDays, Clock, Globe, Lock, MapPin, Navigation, TimerR
 import { Container } from "@/components/public-site/blocks";
 import { loadEventBySlug } from "@/lib/booking/data";
 import { EVENT_AUDIENCE_LABELS, EVENT_TYPE_LABELS } from "@/lib/booking/types";
-import { getTeamMember } from "@/lib/public-site/team";
+import { getPublishedTeam } from "@/lib/team/data";
 import { KidsFedGrid } from "@/components/public-site/impact/impact-charts";
 import { ImpactCounters, MilestoneTrail } from "@/components/public-site/impact/impact-sections";
 import { loadFmscImpact } from "@/lib/impact/fmsc";
@@ -27,6 +27,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   const { slug } = await params;
   const event = await loadEventBySlug(slug, { publicOnly: true });
   if (!event) notFound();
+  const team = event.speakers?.some((s) => s.team_slug) ? await getPublishedTeam() : [];
+  const getTeamMember = (teamSlug: string) => team.find((m) => m.slug === teamSlug) ?? null;
 
   const tz = event.timezone;
   const online = event.location_type === "online";

@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BookOpen, Copy, Download, FileAudio, FileText, ImageIcon, LayoutGrid, LayoutList, LinkIcon, Mic,
-  Pause, Pencil, Play, RotateCcw, Save, Square, Table, Upload, Video, X,
+  BookOpen, Copy, Download, FileAudio, FileText, ImageIcon, LinkIcon, Mic,
+  Pause, Pencil, Play, RotateCcw, Save, Square, Upload, Video, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -17,13 +17,13 @@ import { useDashboardActionToken } from "@/components/layout/dashboard-action-to
 import { SendToClaudeButton } from "@/components/dev-requests/send-to-claude-button";
 import { AskShepherdButton } from "@/components/ai-agent/ask-shepherd-button";
 import { ListenOrderPanel } from "@/components/media-studio/listen-order-panel";
+import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { cn } from "@/lib/utils";
 
 type AssetType = "audio" | "video" | "photo" | "document";
 // "books" is not a media_assets asset_type — it's its own surface (the 3D book builder), so it
 // sits alongside the asset types in the tab row but skips the Studio/Files sub-tabs entirely.
 type MainTab = AssetType;
-type ViewMode = "card" | "list" | "table";
 type SubTab = "studio" | "files";
 type UploadedFile = { url: string; bucket: string; path: string; mimeType: string; fileSize: number };
 
@@ -84,7 +84,6 @@ export function MediaStudioDashboard({
   const effectiveActionToken = actionToken || dashboardActionToken;
   const [active, setActive] = useState<MainTab>("audio");
   const [subTab, setSubTab] = useState<SubTab>("studio");
-  const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [playerAsset, setPlayerAsset] = useState<any | null>(null);
   const editSeq = useRef(0);
   const [audioEditTrigger, setAudioEditTrigger] = useState<{ asset: any; seq: number } | null>(null);
@@ -191,8 +190,6 @@ export function MediaStudioDashboard({
         <MediaLibrary
           active={active}
           assets={visibleAssets}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           onPlay={active === "audio" ? setPlayerAsset : undefined}
           onEdit={active === "audio" ? handleEditAudio : active === "document" ? handleEditDocument : undefined}
           isSuperAdmin={isSuperAdmin}
@@ -1035,266 +1032,147 @@ function ResourceStudio({
   );
 }
 
-// ─── Media Library (card / list / table) ─────────────────────────────────────
+// ─── Media Library (shared DataView: cards / list / table / calendar) ────────
+
+const embedCode = (asset: any) => `<iframe src="/media/${asset.slug}" title="${asset.title}"></iframe>`;
+const copyText = (text: string) => navigator.clipboard?.writeText(text);
+const titleCase = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+const targetLabel = (key: string) => displayTargets.find((t) => t.key === key)?.label ?? titleCase(key);
+const targetsOf = (asset: any): string[] => (Array.isArray(asset.metadata?.display_targets) ? asset.metadata.display_targets : []);
+const optionsOf = (values: (string | null | undefined)[], label: (v: string) => string = titleCase) =>
+  [...new Set(values.filter((v): v is string => Boolean(v)))].sort().map((v) => ({ value: v, label: label(v) }));
+
+function AssetThumb({ asset, active, size = "h-12 w-12" }: { asset: any; active: AssetType; size?: string }) {
+  const thumbnail = asset.metadata?.thumbnail_url || (active === "photo" ? asset.file_url : null);
+  const Icon = typeIconFor(active);
+  return (
+    <div className={cn("shrink-0 overflow-hidden rounded-md border bg-muted", size)}>
+      {thumbnail ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={thumbnail} alt="" loading="lazy" className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full items-center justify-center text-muted-foreground">
+          <Icon className="h-5 w-5" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function MediaLibrary({
   active,
   assets,
-  viewMode,
-  onViewModeChange,
   onPlay,
   onEdit,
   isSuperAdmin = false,
 }: {
   active: AssetType;
   assets: any[];
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onPlay?: (asset: any) => void;
   onEdit?: (asset: any) => void;
   isSuperAdmin?: boolean;
 }) {
   const typeLabel = typeLabelFor(active);
+  const plural = active === "audio" ? "audio files" : active === "document" ? "resources" : `${typeLabel.toLowerCase()}s`;
+  const singular = active === "audio" ? "audio file" : typeLabel.toLowerCase();
+  const resourceTypeLabel = (asset: any) => resourceTypes.find((r) => r.value === asset.metadata?.resource_type)?.label ?? null;
+
+  const columns: DataColumn<any>[] = [
+    {
+      id: "title",
+      label: "Title",
+      required: true,
+      width: 320,
+      sort: (a) => a.title,
+      cell: (a) => (
+        <span className="flex min-w-0 items-center gap-3">
+          <AssetThumb asset={a} active={active} size="h-9 w-9" />
+          <span className="min-w-0">
+            <span className="block truncate font-medium">{a.title}</span>
+            {a.description ? <span className="block truncate text-xs text-muted-foreground">{a.description}</span> : null}
+          </span>
+        </span>
+      ),
+    },
+    ...(active === "document"
+      ? [{ id: "resource_type", label: "Type", width: 170, sort: resourceTypeLabel, cell: (a: any) => resourceTypeLabel(a) ?? "—" }]
+      : []),
+    { id: "status", label: "Status", width: 120, sort: (a) => a.status, cell: (a) => <Badge variant="secondary">{a.status || "draft"}</Badge> },
+    { id: "visibility", label: "Visibility", width: 120, sort: (a) => a.visibility, cell: (a) => <Badge variant="outline">{a.visibility || "private"}</Badge> },
+    ...(active === "audio"
+      ? [{
+          id: "scheduled",
+          label: "Scheduled",
+          width: 190,
+          sort: (a: any) => a.metadata?.publish_at ?? null,
+          cell: (a: any) => <span className="text-muted-foreground">{a.metadata?.publish_at ? formatDate(a.metadata.publish_at) : "—"}</span>,
+        }]
+      : []),
+    { id: "targets", label: "Displays on", width: 220, exportValue: (a) => targetsOf(a).map(targetLabel).join("; "), cell: (a) => targetsOf(a).map(targetLabel).join(", ") || "—" },
+    { id: "updated", label: "Updated", width: 170, sort: (a) => a.updated_at ?? a.created_at, cell: (a) => (a.updated_at ?? a.created_at ? formatDate(a.updated_at ?? a.created_at) : "—") },
+    { id: "slug", label: "Media URL", width: 220, defaultHidden: true, sort: (a) => (a.slug ? `/media/${a.slug}` : null), cell: (a) => (a.slug ? <span className="font-mono text-xs">/media/{a.slug}</span> : "—") },
+    { id: "file", label: "File", width: 260, defaultHidden: true, sort: (a) => a.file_url || a.embed_url, cell: (a) => <span className="text-muted-foreground">{a.metadata?.original_filename || a.file_url || a.embed_url || "—"}</span> },
+  ];
+
+  const statuses = optionsOf(assets.map((a) => a.status || "draft"));
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle>{typeLabel} library</CardTitle>
-            <CardDescription>Each asset has a unique URL and an embed reference for dashboard or frontend use.</CardDescription>
-          </div>
-          <div className="flex shrink-0 items-center gap-1 rounded-md border bg-background p-1">
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === "card" ? "default" : "ghost"}
-              className="h-8 px-2.5"
-              onClick={() => onViewModeChange("card")}
-              title="Card view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-              <span className="ml-1.5 hidden sm:inline">Cards</span>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === "list" ? "default" : "ghost"}
-              className="h-8 px-2.5"
-              onClick={() => onViewModeChange("list")}
-              title="List view"
-            >
-              <LayoutList className="h-4 w-4" />
-              <span className="ml-1.5 hidden sm:inline">List</span>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === "table" ? "default" : "ghost"}
-              className="h-8 px-2.5"
-              onClick={() => onViewModeChange("table")}
-              title="Table view"
-            >
-              <Table className="h-4 w-4" />
-              <span className="ml-1.5 hidden sm:inline">Table</span>
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        {!assets.length ? (
-          <p className="text-sm text-muted-foreground">
-            No {typeLabel.toLowerCase()} files yet. Create one in the {typeLabel} Studio tab.
-          </p>
-        ) : viewMode === "card" ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {assets.map((asset) =>
-              active === "audio" ? (
-                <AudioCard
-                  key={asset.id}
-                  asset={asset}
-                  onPlay={() => onPlay?.(asset)}
-                  onEdit={onEdit ? () => onEdit(asset) : undefined}
-                />
-              ) : active === "document" ? (
-                <ResourceCard
-                  key={asset.id}
-                  asset={asset}
-                  onEdit={onEdit ? () => onEdit(asset) : undefined}
-                  isSuperAdmin={isSuperAdmin}
-                />
-              ) : (
-                <GenericMediaCard key={asset.id} asset={asset} />
-              ),
-            )}
-          </div>
-        ) : viewMode === "list" ? (
-          <div className="divide-y">
-            {assets.map((asset) => (
-              <AssetListRow
-                key={asset.id}
-                active={active}
-                asset={asset}
-                onPlay={onPlay ? () => onPlay(asset) : undefined}
-                onEdit={onEdit ? () => onEdit(asset) : undefined}
-              />
-            ))}
-          </div>
+    <DataView<any>
+      key={active}
+      storageKey={`media-studio-${active}`}
+      exportName={`sig-media-${active}`}
+      noun={[singular, plural]}
+      defaultView="cards"
+      items={assets}
+      getId={(a) => a.id}
+      title={(a) => a.title}
+      subtitle={(a) => a.description || a.metadata?.original_filename || a.file_url || a.embed_url || "No description."}
+      media={(a) => <AssetThumb asset={a} active={active} />}
+      cardImage={(a) => a.metadata?.thumbnail_url || (active === "photo" ? a.file_url : null)}
+      badge={(a) => <Badge variant="secondary" className="shrink-0">{a.status || "draft"}</Badge>}
+      meta={(a) => <span className="block max-w-[14rem] truncate">{a.visibility || "private"}{a.slug ? ` · /media/${a.slug}` : ""}</span>}
+      columns={columns}
+      searchText={(a) => [a.title, a.description, a.slug, a.status, a.visibility, a.metadata?.original_filename, resourceTypeLabel(a), targetsOf(a).map(targetLabel).join(" ")].join(" ")}
+      stats={[
+        { label: typeLabel === "Resource" ? "Resources" : `${typeLabel} files`, value: assets.length, icon: typeIconFor(active) },
+        { label: "Published", value: assets.filter((a) => a.status === "published").length, icon: Upload },
+        { label: "Drafts", value: assets.filter((a) => (a.status || "draft") === "draft").length, icon: Pencil },
+        { label: "Public", value: assets.filter((a) => a.visibility === "public").length, icon: LinkIcon },
+      ]}
+      filters={[{ id: "all", label: "All", test: () => true }, ...statuses.map((s) => ({ id: s.value, label: s.label, test: (a: any) => (a.status || "draft") === s.value }))]}
+      selectFilters={[
+        { id: "visibility", label: "Visibility", options: optionsOf(assets.map((a) => a.visibility || "private")), get: (a) => a.visibility || "private" },
+        ...(active === "document" ? [{ id: "resource_type", label: "Type", options: resourceTypes, get: (a: any) => a.metadata?.resource_type }] : []),
+        ...(assets.some((a) => targetsOf(a).length)
+          ? [{ id: "targets", label: "Displays on", options: optionsOf(assets.flatMap(targetsOf), targetLabel), get: targetsOf }]
+          : []),
+      ]}
+      date={(a) => a.metadata?.publish_at || a.created_at}
+      actions={[
+        ...(onPlay ? [{ label: "Play", icon: Play, single: true, show: (sel: any[]) => Boolean(sel[0]?.file_url), run: (sel: any[]) => onPlay(sel[0]) }] : []),
+        ...(onEdit ? [{ label: "Edit", icon: Pencil, single: true, run: (sel: any[]) => onEdit(sel[0]) }] : []),
+        { label: "Copy embed", icon: Copy, single: true, show: (sel) => Boolean(sel[0]?.slug), run: (sel) => copyText(embedCode(sel[0])) },
+        { label: "Open file", icon: Download, single: true, show: (sel) => Boolean(sel[0]?.file_url), run: (sel) => window.open(sel[0].file_url, "_blank", "noopener,noreferrer") },
+        { label: "Copy link", icon: LinkIcon, single: true, show: (sel) => Boolean(sel[0]?.file_url), run: (sel) => copyText(sel[0].file_url) },
+      ]}
+      preview={(asset, close) =>
+        active === "audio" ? (
+          <AudioCard
+            asset={asset}
+            onPlay={() => {
+              close();
+              onPlay?.(asset);
+            }}
+            onEdit={onEdit ? () => { close(); onEdit(asset); } : undefined}
+          />
+        ) : active === "document" ? (
+          <ResourceCard asset={asset} onEdit={onEdit ? () => { close(); onEdit(asset); } : undefined} isSuperAdmin={isSuperAdmin} />
         ) : (
-          <AssetTable active={active} assets={assets} onPlay={onPlay} onEdit={onEdit} />
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── List row ─────────────────────────────────────────────────────────────────
-
-function AssetListRow({
-  active,
-  asset,
-  onPlay,
-  onEdit,
-}: {
-  active: AssetType;
-  asset: any;
-  onPlay?: () => void;
-  onEdit?: () => void;
-}) {
-  const thumbnail = asset.metadata?.thumbnail_url;
-  return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
-        {thumbnail ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbnail} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            {(() => { const Icon = typeIconFor(active); return <Icon className="h-5 w-5" />; })()}
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{asset.title}</p>
-        <p className="truncate text-sm text-muted-foreground">{asset.description || asset.file_url || "No description."}</p>
-      </div>
-      <div className="hidden shrink-0 items-center gap-2 sm:flex">
-        <Badge variant="secondary">{asset.status}</Badge>
-        <Badge variant="outline">{asset.visibility}</Badge>
-      </div>
-      <div className="flex shrink-0 gap-1">
-        {onPlay ? (
-          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={onPlay} disabled={!asset.file_url} title="Play">
-            <Play className="h-4 w-4" />
-          </Button>
-        ) : null}
-        {onEdit ? (
-          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={onEdit} title="Edit">
-            <Pencil className="h-4 w-4" />
-          </Button>
-        ) : null}
-        {asset.slug ? (
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            title="Copy embed"
-            onClick={() => navigator.clipboard?.writeText(`<iframe src="/media/${asset.slug}" title="${asset.title}"></iframe>`)}
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-// ─── Table view ───────────────────────────────────────────────────────────────
-
-function AssetTable({
-  active,
-  assets,
-  onPlay,
-  onEdit,
-}: {
-  active: AssetType;
-  assets: any[];
-  onPlay?: (asset: any) => void;
-  onEdit?: (asset: any) => void;
-}) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="pb-3 pr-4 font-medium text-muted-foreground">Title</th>
-            <th className="pb-3 pr-4 font-medium text-muted-foreground">Status</th>
-            <th className="pb-3 pr-4 font-medium text-muted-foreground">Visibility</th>
-            {active === "audio" && <th className="pb-3 pr-4 font-medium text-muted-foreground">Scheduled</th>}
-            <th className="pb-3 text-right font-medium text-muted-foreground">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {assets.map((asset) => (
-            <tr key={asset.id} className="hover:bg-muted/30">
-              <td className="py-3 pr-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded bg-muted">
-                    {asset.metadata?.thumbnail_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={asset.metadata.thumbnail_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-muted-foreground">
-                        {(() => { const Icon = typeIconFor(active); return <Icon className="h-4 w-4" />; })()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium">{asset.title}</p>
-                    {asset.description ? <p className="truncate text-xs text-muted-foreground max-w-xs">{asset.description}</p> : null}
-                  </div>
-                </div>
-              </td>
-              <td className="py-3 pr-4"><Badge variant="secondary">{asset.status}</Badge></td>
-              <td className="py-3 pr-4"><Badge variant="outline">{asset.visibility}</Badge></td>
-              {active === "audio" && (
-                <td className="py-3 pr-4 text-muted-foreground">
-                  {asset.metadata?.publish_at ? formatDate(asset.metadata.publish_at) : "—"}
-                </td>
-              )}
-              <td className="py-3 text-right">
-                <div className="flex justify-end gap-1">
-                  {onPlay ? (
-                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => onPlay(asset)} disabled={!asset.file_url} title="Play">
-                      <Play className="h-4 w-4" />
-                    </Button>
-                  ) : null}
-                  {onEdit ? (
-                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => onEdit(asset)} title="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  ) : null}
-                  {asset.slug ? (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      title="Copy embed"
-                      onClick={() => navigator.clipboard?.writeText(`<iframe src="/media/${asset.slug}" title="${asset.title}"></iframe>`)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  ) : null}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          <GenericMediaCard asset={asset} active={active} />
+        )
+      }
+      empty={`No ${typeLabel.toLowerCase()} files yet. Create one in the ${typeLabel} Studio tab.`}
+    />
   );
 }
 
@@ -1361,16 +1239,28 @@ function AudioCard({ asset, onPlay, onEdit }: { asset: any; onPlay: () => void; 
 
 // ─── Generic video/photo card ─────────────────────────────────────────────────
 
-function GenericMediaCard({ asset }: { asset: any }) {
+function GenericMediaCard({ asset, active }: { asset: any; active?: AssetType }) {
   return (
     <div className="grid gap-3 rounded-md border p-4">
+      {active === "photo" && asset.file_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={asset.file_url} alt={asset.title ?? ""} className="max-h-[50vh] w-full rounded-md bg-muted object-contain" />
+      ) : null}
+      {active === "video" && asset.file_url ? (
+        <video src={asset.file_url} controls className="max-h-[50vh] w-full rounded-md bg-black" />
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-semibold">{asset.title}</p>
         <Badge variant="secondary">{asset.status}</Badge>
         <Badge variant="outline">{asset.visibility}</Badge>
       </div>
       <p className="text-sm text-muted-foreground">{asset.description || asset.file_url || asset.embed_url || "No description."}</p>
-      {asset.slug ? <p className="rounded-md bg-muted p-2 font-mono text-xs">/media/{asset.slug}</p> : null}
+      {asset.slug ? <p className="break-all rounded-md bg-muted p-2 font-mono text-xs">/media/{asset.slug}</p> : null}
+      {asset.embed_url ? (
+        <a href={asset.embed_url} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-primary hover:underline">
+          {asset.embed_url}
+        </a>
+      ) : null}
       {asset.slug ? (
         <Button
           size="sm"

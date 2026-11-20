@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import {
-  CalendarClock, CalendarDays, Check, Clock, Copy, ExternalLink, Loader2, Plus, Pencil,
-  Save, SlidersHorizontal, Trash2, Users, X,
+  Ban, CalendarClock, CalendarDays, Check, CheckCircle2, Clock, Copy, ExternalLink, HeartHandshake, Loader2, Mail, Pencil,
+  Phone, Plus, Power, PowerOff, Save, Send, SlidersHorizontal, Trash2, UserX, Users, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FieldSelect, type FieldSelectOption } from "@/components/ui/field-select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
-import { StatCardRow } from "@/components/dashboard/stat-card-row";
+import { DataView, type DataColumn } from "@/components/dashboard/collection";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { zonedToUtc, utcToZonedDate } from "@/lib/booking/availability";
 import {
@@ -142,64 +142,73 @@ export function BookingsClient({ initialData, staffOptions, isAdmin = true }: { 
   const reloadBookings = React.useCallback(async () => { const r = await getJson("/api/booking/bookings"); if (r.bookings) setBookings(r.bookings); }, [getJson]);
   const reloadEvents = React.useCallback(async () => { const r = await getJson("/api/events"); if (r.events) setEvents(r.events); }, [getJson]);
 
-  const stats = React.useMemo(() => {
-    const nowIso = new Date().toISOString();
-    return {
-      activeTypes: types.filter((t) => t.is_active).length,
-      upcoming: bookings.filter((b) => b.end_at >= nowIso && b.status !== "canceled").length,
-      pending: bookings.filter((b) => b.status === "pending").length,
-      events: events.filter((e) => e.status === "published").length,
-    };
-  }, [types, bookings, events]);
-
   async function saveType(draft: Partial<BookingType>) {
     try { await send("/api/booking/types", "POST", draft as Record<string, unknown>); setEditType(null); await reloadTypes(); }
     catch (e) { setError(e instanceof Error ? e.message : "Save failed."); }
   }
-  async function removeType(t: BookingType) {
-    if (!window.confirm(`Delete "${t.name}"? Its bookings and availability are removed too.`)) return;
-    try { await send(`/api/booking/types/${t.id}`, "DELETE", {}); await reloadTypes(); await reloadBookings(); }
+  async function removeTypes(list: BookingType[]) {
+    if (!list.length) return;
+    const what = list.length === 1 ? `"${list[0].name}"` : `${list.length} booking pages`;
+    if (!window.confirm(`Delete ${what}? Their bookings and availability are removed too.`)) return;
+    try { for (const t of list) await send(`/api/booking/types/${t.id}`, "DELETE", {}); }
     catch (e) { setError(e instanceof Error ? e.message : "Delete failed."); }
+    await reloadTypes(); await reloadBookings();
+  }
+  async function setTypesActive(list: BookingType[], is_active: boolean) {
+    const ids = new Set(list.map((t) => t.id));
+    setTypes((prev) => prev.map((t) => (ids.has(t.id) ? { ...t, is_active } : t)));
+    try { await Promise.all(list.map((t) => send("/api/booking/types", "POST", { ...t, is_active }))); }
+    catch (e) { setError(e instanceof Error ? e.message : "Update failed."); }
+    await reloadTypes();
   }
   async function setBookingStatus(b: Booking, status: string) {
     setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, status: status as Booking["status"] } : x)));
     try { await send(`/api/booking/bookings/${b.id}`, "PATCH", { status }); } catch { reloadBookings(); }
   }
-  async function removeBooking(b: Booking) {
-    if (!window.confirm("Delete this booking?")) return;
-    try { await send(`/api/booking/bookings/${b.id}`, "DELETE", {}); await reloadBookings(); }
+  async function setBookingsStatus(list: Booking[], status: string) {
+    await Promise.all(list.map((b) => setBookingStatus(b, status)));
+  }
+  async function removeBookings(list: Booking[]) {
+    if (!list.length) return;
+    if (!window.confirm(list.length === 1 ? "Delete this booking?" : `Delete ${list.length} bookings?`)) return;
+    try { for (const b of list) await send(`/api/booking/bookings/${b.id}`, "DELETE", {}); }
     catch (e) { setError(e instanceof Error ? e.message : "Delete failed."); }
+    await reloadBookings();
   }
   async function saveEvent(draft: Partial<EventItem>) {
     try { await send("/api/events", "POST", draft as Record<string, unknown>); setEditEvent(null); await reloadEvents(); }
     catch (e) { setError(e instanceof Error ? e.message : "Save failed."); }
   }
-  async function removeEvent(ev: EventItem) {
-    if (!window.confirm(`Delete "${ev.title}"? Its registrations are removed too.`)) return;
-    try { await send(`/api/events/${ev.id}`, "DELETE", {}); await reloadEvents(); }
+  async function setEventsStatus(list: EventItem[], status: EventItem["status"]) {
+    const todo = list.filter((ev) => ev.status !== status);
+    if (!todo.length) return;
+    const ids = new Set(todo.map((ev) => ev.id));
+    setEvents((prev) => prev.map((ev) => (ids.has(ev.id) ? { ...ev, status } : ev)));
+    try { await Promise.all(todo.map((ev) => send("/api/events", "POST", { ...ev, status }))); }
+    catch (e) { setError(e instanceof Error ? e.message : "Update failed."); }
+    await reloadEvents();
+  }
+  async function removeEvents(list: EventItem[]) {
+    if (!list.length) return;
+    const what = list.length === 1 ? `"${list[0].title}"` : `${list.length} events`;
+    if (!window.confirm(`Delete ${what}? Their registrations are removed too.`)) return;
+    try { for (const ev of list) await send(`/api/events/${ev.id}`, "DELETE", {}); }
     catch (e) { setError(e instanceof Error ? e.message : "Delete failed."); }
+    await reloadEvents();
   }
 
-  return (
-    <div>
-      {/* Stat cards */}
-      <StatCardRow className="mb-4 grid gap-3 sm:grid-cols-4">
-        <Stat icon={SlidersHorizontal} label="Active types" value={stats.activeTypes} />
-        <Stat icon={CalendarClock} label="Upcoming" value={stats.upcoming} />
-        <Stat icon={Clock} label="Pending" value={stats.pending} />
-        <Stat icon={CalendarDays} label="Live events" value={stats.events} />
-      </StatCardRow>
+  const tabCount: Record<Tab, number> = { types: types.length, bookings: bookings.length, events: events.length };
 
+  return (
+    <div className="min-w-0">
       {/* Tabs */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex items-center rounded-lg border border-border bg-card p-0.5 text-xs">
+        <div role="tablist" aria-label="Section" className="flex max-w-full items-center overflow-x-auto rounded-lg border border-border bg-card p-0.5 text-xs [scrollbar-width:none]">
           {([["types", "Booking Pages"], ["bookings", "Bookings"], ["events", "Events"]] as [Tab, string][]).map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} className={cn("rounded-md px-3 py-1.5 font-medium", tab === k ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>{l}</button>
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 font-medium", tab === k ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
+              {l}<span className="tabular-nums opacity-60">{tabCount[k]}</span>
+            </button>
           ))}
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          {tab === "types" && <Button size="sm" onClick={() => setEditType(newType())}><Plus className="h-3.5 w-3.5" /> New booking page</Button>}
-          {tab === "events" && <Button size="sm" onClick={() => setEditEvent(newEvent())}><Plus className="h-3.5 w-3.5" /> New event</Button>}
         </div>
       </div>
 
@@ -208,11 +217,23 @@ export function BookingsClient({ initialData, staffOptions, isAdmin = true }: { 
           You’re seeing the booking pages, bookings and events you host. A SIG Admin can assign others to you.
         </div>
       )}
-      {error && <div className="mb-3 flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span>{error}</span><button onClick={() => setError(null)}><X className="h-3.5 w-3.5" /></button></div>}
+      {error && <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span className="min-w-0 break-words">{error}</span><button aria-label="Dismiss" onClick={() => setError(null)}><X className="h-3.5 w-3.5" /></button></div>}
 
-      {tab === "types" && <TypesTab types={types} origin={origin} onEdit={setEditType} onAvailability={setAvailFor} onDelete={removeType} />}
-      {tab === "bookings" && <BookingsTab bookings={bookings} onStatus={setBookingStatus} onDelete={removeBooking} />}
-      {tab === "events" && <EventsTab events={events} origin={origin} onEdit={setEditEvent} onRegs={setRegsFor} onDelete={removeEvent} />}
+      {tab === "types" && (
+        <TypesList
+          types={types} bookings={bookings} origin={origin}
+          onNew={() => setEditType(newType())} onEdit={setEditType} onAvailability={setAvailFor}
+          onDelete={removeTypes} onActive={setTypesActive}
+        />
+      )}
+      {tab === "bookings" && <BookingsList bookings={bookings} types={types} onStatus={setBookingsStatus} onDelete={removeBookings} />}
+      {tab === "events" && (
+        <EventsList
+          events={events} origin={origin}
+          onNew={() => setEditEvent(newEvent())} onEdit={setEditEvent} onRegs={setRegsFor}
+          onStatus={setEventsStatus} onDelete={removeEvents}
+        />
+      )}
 
       {editType && <TypeEditor draft={editType} onChange={setEditType} onSave={saveType} onClose={() => setEditType(null)} staffOpts={staffSelectOpts} isAdmin={isAdmin} />}
       {availFor && <AvailabilityModal type={availFor} token={token} onClose={() => setAvailFor(null)} />}
@@ -244,14 +265,6 @@ function newEvent(): Partial<EventItem> {
 }
 
 // ── shared bits ──────────────────────────────────────────────────────────────
-function Stat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number }) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4 w-4" /></div>
-      <div><div className="text-lg font-semibold leading-none">{value}</div><div className="mt-1 text-[11px] text-muted-foreground">{label}</div></div>
-    </div>
-  );
-}
 function Empty({ label }: { label: string }) {
   return <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">{label}</div>;
 }
@@ -304,49 +317,6 @@ function QuestionsEditor({ value, onChange }: { value: IntakeQuestion[]; onChang
         ))}
       </div>
       <Button size="sm" variant="outline" className="mt-2" onClick={add}><Plus className="h-3.5 w-3.5" /> Add question</Button>
-    </div>
-  );
-}
-
-// ── Booking Types tab ──────────────────────────────────────────────────────────
-function TypesTab({ types, origin, onEdit, onAvailability, onDelete }: {
-  types: BookingType[]; origin: string;
-  onEdit: (t: BookingType) => void; onAvailability: (t: BookingType) => void; onDelete: (t: BookingType) => void;
-}) {
-  if (!types.length) return <Empty label="No booking types yet. Create one to start taking appointments." />;
-  return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {types.map((t) => {
-        const url = `${origin}/book/${t.slug}`;
-        return (
-          <div key={t.id} className="flex flex-col rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start gap-2">
-              <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: t.color || "#0f766e" }} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2"><span className="truncate font-semibold">{t.name}</span>{!t.is_active && <Pill status="canceled" />}</div>
-                <div className="mt-0.5 text-[11px] text-muted-foreground">{t.duration_minutes} min · {LOCATION_OPTS.find((o) => o.value === t.location_type)?.label}{t.host_name ? ` · ${t.host_name}` : ""}</div>
-                {(t.host_slug || t.office || (t.audience && t.audience !== "everyone")) && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {t.host_slug && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{plannerName(t.host_slug) ?? t.host_slug}</span>}
-                    {t.office && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{t.office}</span>}
-                    {t.audience && t.audience !== "everyone" && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{BOOKING_AUDIENCE_LABELS[t.audience]}</span>}
-                  </div>
-                )}
-              </div>
-            </div>
-            {t.description && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{t.description}</p>}
-            <div className="mt-2 flex items-center gap-3">
-              {t.is_public ? <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><ExternalLink className="h-3 w-3" />/book/{t.slug}</a> : <span className="text-[11px] text-muted-foreground">Private</span>}
-              {t.is_public && <CopyLink url={url} />}
-            </div>
-            <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-              <Button size="sm" variant="outline" onClick={() => onAvailability(t)}><Clock className="h-3.5 w-3.5" /> Availability</Button>
-              <button onClick={() => onEdit(t)} className="ml-auto text-muted-foreground hover:text-primary"><Pencil className="h-4 w-4" /></button>
-              <button onClick={() => onDelete(t)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -459,75 +429,397 @@ function AvailabilityModal({ type, token, onClose }: { type: BookingType; token:
   );
 }
 
-// ── Bookings tab ────────────────────────────────────────────────────────────────
-function BookingsTab({ bookings, onStatus, onDelete }: { bookings: Booking[]; onStatus: (b: Booking, s: string) => void; onDelete: (b: Booking) => void }) {
-  const [filter, setFilter] = React.useState("");
-  const now = new Date().toISOString();
-  const list = React.useMemo(() => {
-    return bookings.filter((b) => {
-      if (filter === "upcoming") return b.end_at >= now && b.status !== "canceled";
-      if (filter === "past") return b.end_at < now;
-      if (filter && filter !== "upcoming" && filter !== "past") return b.status === filter;
-      return true;
-    });
-  }, [bookings, filter, now]);
-  if (!bookings.length) return <Empty label="No bookings yet. Share a booking type's public link to start receiving them." />;
+// ── List helpers (DataView) ─────────────────────────────────────────────────────
+function Dot({ color, size = "h-3 w-3" }: { color?: string | null; size?: string }) {
+  return <span className={cn("shrink-0 rounded-full", size)} style={{ background: color || "#0f766e" }} aria-hidden />;
+}
+function ActivePill({ active }: { active: boolean }) {
+  return <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", active ? statusClass.confirmed : "bg-muted text-muted-foreground")}>{active ? "Active" : "Inactive"}</span>;
+}
+function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
+  const shown = rows.filter(([, v]) => v !== null && v !== undefined && v !== "" && v !== false);
   return (
-    <div>
-      <div className="mb-3 w-44"><FieldSelect value={filter} onChange={setFilter} options={[{ value: "", label: "All bookings" }, { value: "upcoming", label: "Upcoming" }, { value: "past", label: "Past" }, ...BOOKING_STATUS_OPTS]} className="h-8" /></div>
-      <div className="overflow-hidden rounded-xl border border-border">
-        <div className="divide-y divide-border">
-          {list.map((b) => (
-            <div key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-muted/30">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: b.booking_type?.color || "#0f766e" }} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2"><span className="truncate text-sm font-medium">{b.invitee_name}</span><span className="text-[11px] text-muted-foreground">· {b.booking_type?.name ?? "—"}</span></div>
-                <div className="mt-0.5 text-[11px] text-muted-foreground">{fmtDateTime(b.start_at, b.timezone)} – {timeOf(b.end_at, b.timezone)} · {b.invitee_email || b.invitee_phone || "no contact"} · <span className="font-mono">{b.reference}</span></div>
-              </div>
-              <div className="w-36"><FieldSelect value={b.status} onChange={(v) => onStatus(b, v)} options={BOOKING_STATUS_OPTS} className="h-8" /></div>
-              <button onClick={() => onDelete(b)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          ))}
-          {!list.length && <div className="px-4 py-8 text-center text-sm text-muted-foreground">No bookings match this filter.</div>}
+    <dl className="grid gap-2.5 rounded-xl border border-border bg-muted/30 p-4 text-sm">
+      {shown.map(([k, v]) => (
+        <div key={k} className="grid grid-cols-[110px_minmax(0,1fr)] gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
+          <dt className="text-muted-foreground">{k}</dt>
+          <dd className="min-w-0 break-words">{v}</dd>
         </div>
-      </div>
-    </div>
+      ))}
+    </dl>
+  );
+}
+function PreviewActions({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap gap-2 border-t border-border pt-4">{children}</div>;
+}
+function ExtLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex max-w-full items-center gap-1 truncate text-[11px] text-muted-foreground hover:text-primary">
+      <ExternalLink className="h-3 w-3 shrink-0" /><span className="truncate">{children}</span>
+    </a>
+  );
+}
+const copyText = (text: string) => { void navigator.clipboard?.writeText(text); };
+const locationLabel = (v: string) => LOCATION_OPTS.find((o) => o.value === v)?.label ?? v;
+const eventLocationLabel = (v: string) => EVENT_LOCATION_OPTS.find((o) => o.value === v)?.label ?? v;
+const isoDate = (iso: string | null | undefined) => (iso ? new Date(iso).toISOString() : "");
+
+// ── Booking Pages list ──────────────────────────────────────────────────────────
+function TypesList({ types, bookings, origin, onNew, onEdit, onAvailability, onDelete, onActive }: {
+  types: BookingType[]; bookings: Booking[]; origin: string;
+  onNew: () => void; onEdit: (t: BookingType) => void; onAvailability: (t: BookingType) => void;
+  onDelete: (list: BookingType[]) => Promise<void>; onActive: (list: BookingType[], active: boolean) => Promise<void>;
+}) {
+  const nowIso = React.useMemo(() => new Date().toISOString(), [bookings]); // eslint-disable-line react-hooks/exhaustive-deps
+  const counts = React.useMemo(() => {
+    const m = new Map<string, { total: number; upcoming: number }>();
+    for (const b of bookings) {
+      const c = m.get(b.booking_type_id) ?? { total: 0, upcoming: 0 };
+      c.total += 1;
+      if (b.end_at >= nowIso && b.status !== "canceled") c.upcoming += 1;
+      m.set(b.booking_type_id, c);
+    }
+    return m;
+  }, [bookings, nowIso]);
+  const urlOf = (t: BookingType) => `${origin}/book/${t.slug}`;
+  const planners = Array.from(new Set(types.map((t) => t.host_slug).filter(Boolean) as string[]));
+  const offices = Array.from(new Set(types.map((t) => t.office).filter(Boolean) as string[]));
+
+  const columns: DataColumn<BookingType>[] = [
+    { id: "name", label: "Booking page", required: true, width: 240, cell: (t) => <span className="font-medium">{t.name}</span>, sort: (t) => t.name },
+    { id: "planner", label: "Planner", width: 170, cell: (t) => plannerName(t.host_slug) ?? t.host_slug ?? "—", sort: (t) => plannerName(t.host_slug) ?? t.host_slug ?? "" },
+    { id: "office", label: "Office", width: 170, cell: (t) => t.office || "—", sort: (t) => t.office ?? "" },
+    { id: "format", label: "Format", width: 150, cell: (t) => `${t.duration_minutes} min · ${locationLabel(t.location_type)}`, sort: (t) => t.duration_minutes, exportValue: (t) => `${t.duration_minutes} min ${locationLabel(t.location_type)}` },
+    { id: "audience", label: "Audience", width: 150, cell: (t) => BOOKING_AUDIENCE_LABELS[t.audience ?? "everyone"], sort: (t) => BOOKING_AUDIENCE_LABELS[t.audience ?? "everyone"] },
+    { id: "status", label: "Status", width: 110, cell: (t) => <ActivePill active={t.is_active} />, sort: (t) => (t.is_active ? "Active" : "Inactive") },
+    { id: "upcoming", label: "Upcoming", width: 110, align: "right", cell: (t) => counts.get(t.id)?.upcoming ?? 0, sort: (t) => counts.get(t.id)?.upcoming ?? 0 },
+    { id: "bookings", label: "All bookings", width: 120, align: "right", defaultHidden: true, cell: (t) => counts.get(t.id)?.total ?? 0, sort: (t) => counts.get(t.id)?.total ?? 0 },
+    { id: "host", label: "Host name", width: 180, defaultHidden: true, cell: (t) => t.host_name || "—", sort: (t) => t.host_name ?? "" },
+    { id: "timezone", label: "Timezone", width: 170, defaultHidden: true, cell: (t) => t.timezone.replace(/_/g, " "), sort: (t) => t.timezone },
+    {
+      id: "link", label: "Public link", width: 240,
+      cell: (t) => (t.is_public ? <span className="flex min-w-0 items-center gap-3"><ExtLink href={urlOf(t)}>/book/{t.slug}</ExtLink><CopyLink url={urlOf(t)} /></span> : <span className="text-[11px] text-muted-foreground">Private</span>),
+      exportValue: (t) => (t.is_public ? urlOf(t) : "Private"),
+    },
+  ];
+
+  return (
+    <DataView<BookingType>
+      storageKey="bookings-pages"
+      exportName="sig-booking-pages"
+      noun={["booking page", "booking pages"]}
+      defaultView="cards"
+      items={types}
+      getId={(t) => t.id}
+      title={(t) => t.name}
+      subtitle={(t) => `${t.duration_minutes} min · ${locationLabel(t.location_type)}${t.host_name ? ` · ${t.host_name}` : ""}`}
+      media={(t) => <Dot color={t.color} />}
+      badge={(t) => (!t.is_active ? <ActivePill active={false} /> : null)}
+      meta={(t) => (t.description ? <span className="line-clamp-2">{t.description}</span> : null)}
+      columns={columns}
+      searchText={(t) => [t.name, t.slug, t.description, t.host_name, plannerName(t.host_slug), t.office, t.location_details].join(" ")}
+      stats={[
+        { label: "Active pages", value: types.filter((t) => t.is_active).length, icon: SlidersHorizontal, hint: `${types.length} total` },
+        { label: "Public", value: types.filter((t) => t.is_active && t.is_public).length, icon: ExternalLink, hint: "Bookable on /book" },
+        { label: "Upcoming", value: bookings.filter((b) => b.end_at >= nowIso && b.status !== "canceled").length, icon: CalendarClock, hint: "Appointments on these pages" },
+        { label: "Planners", value: planners.length, icon: Users, hint: "With a booking page" },
+      ]}
+      filters={[
+        { id: "all", label: "All", test: () => true },
+        { id: "active", label: "Active", test: (t) => t.is_active },
+        { id: "inactive", label: "Inactive", test: (t) => !t.is_active },
+      ]}
+      selectFilters={[
+        { id: "planner", label: "Planner", options: [...planners.map((s) => ({ value: s, label: plannerName(s) ?? s })), { value: "__none", label: "No planner page" }], get: (t) => t.host_slug || "__none" },
+        { id: "office", label: "Office", options: offices.map((o) => ({ value: o, label: o })), get: (t) => t.office },
+        { id: "audience", label: "Audience", options: BOOKING_AUDIENCE_OPTS.map((o) => ({ value: o.value, label: o.label })), get: (t) => t.audience ?? "everyone" },
+      ]}
+      add={{ label: "New booking page", onClick: onNew }}
+      actions={[
+        { label: "Activate", icon: Power, show: (sel) => sel.some((t) => !t.is_active), run: (sel) => onActive(sel.filter((t) => !t.is_active), true) },
+        { label: "Deactivate", icon: PowerOff, show: (sel) => sel.some((t) => t.is_active), run: (sel) => onActive(sel.filter((t) => t.is_active), false) },
+        { label: "Availability", icon: Clock, single: true, run: (sel) => onAvailability(sel[0]) },
+        { label: "Edit", icon: Pencil, single: true, run: (sel) => onEdit(sel[0]) },
+        { label: "Copy link", icon: Copy, single: true, show: (sel) => sel.length !== 1 || sel[0].is_public, run: (sel) => copyText(urlOf(sel[0])) },
+        { label: "Delete", icon: Trash2, destructive: true, run: (sel) => onDelete(sel) },
+      ]}
+      preview={(t, close) => {
+        const c = counts.get(t.id);
+        return (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <ActivePill active={t.is_active} />
+              <span className="text-xs text-muted-foreground">{t.is_public ? "Public booking page" : "Private booking page"}</span>
+            </div>
+            {t.description ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{t.description}</p> : null}
+            <Facts rows={[
+              ["Planner", plannerName(t.host_slug) ?? t.host_slug],
+              ["Host name", t.host_name],
+              ["Office", t.office],
+              ["Audience", BOOKING_AUDIENCE_LABELS[t.audience ?? "everyone"]],
+              ["Duration", `${t.duration_minutes} min${t.slot_interval_minutes ? ` · every ${t.slot_interval_minutes} min` : ""}`],
+              ["Buffers", t.buffer_before_minutes || t.buffer_after_minutes ? `${t.buffer_before_minutes} min before · ${t.buffer_after_minutes} min after` : null],
+              ["Location", `${locationLabel(t.location_type)}${t.location_details ? ` — ${t.location_details}` : ""}`],
+              ["Timezone", t.timezone.replace(/_/g, " ")],
+              ["Notice", `${t.min_notice_hours} h minimum · up to ${t.max_advance_days} days ahead`],
+              ["Questions", t.questions?.length ? t.questions.map((q) => q.label).filter(Boolean).join(", ") : null],
+              ["Bookings", `${c?.upcoming ?? 0} upcoming · ${c?.total ?? 0} total`],
+              ["Public link", t.is_public ? <span className="flex flex-wrap items-center gap-3"><ExtLink href={urlOf(t)}>/book/{t.slug}</ExtLink><CopyLink url={urlOf(t)} /></span> : "Private"],
+            ]} />
+            <PreviewActions>
+              <Button size="sm" onClick={() => { close(); onAvailability(t); }}><Clock className="h-4 w-4" /> Availability</Button>
+              <Button size="sm" variant="outline" onClick={() => { close(); onEdit(t); }}><Pencil className="h-4 w-4" /> Edit</Button>
+              <Button size="sm" variant="outline" onClick={() => void onActive([t], !t.is_active)}>{t.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />} {t.is_active ? "Deactivate" : "Activate"}</Button>
+              {t.is_public ? <Button size="sm" variant="outline" onClick={() => copyText(urlOf(t))}><Copy className="h-4 w-4" /> Copy link</Button> : null}
+              <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:text-destructive" onClick={() => void onDelete([t])}><Trash2 className="h-4 w-4" /> Delete</Button>
+            </PreviewActions>
+          </div>
+        );
+      }}
+      empty="No booking pages yet. Create one to start taking appointments."
+    />
   );
 }
 
-// ── Events tab ──────────────────────────────────────────────────────────────────
-function EventsTab({ events, origin, onEdit, onRegs, onDelete }: {
-  events: EventItem[]; origin: string;
-  onEdit: (e: EventItem) => void; onRegs: (e: EventItem) => void; onDelete: (e: EventItem) => void;
+// ── Bookings list ───────────────────────────────────────────────────────────────
+function BookingsList({ bookings, types, onStatus, onDelete }: {
+  bookings: Booking[]; types: BookingType[];
+  onStatus: (list: Booking[], status: string) => Promise<void>; onDelete: (list: Booking[]) => Promise<void>;
 }) {
-  if (!events.length) return <Empty label="No events yet. Create one to start taking registrations." />;
+  const nowIso = new Date().toISOString();
+  const typeById = React.useMemo(() => new Map(types.map((t) => [t.id, t])), [types]);
+  const plannerOf = (b: Booking) => typeById.get(b.booking_type_id)?.host_slug ?? null;
+  const pageName = (b: Booking) => b.booking_type?.name ?? typeById.get(b.booking_type_id)?.name ?? "—";
+  const statusLabel = (s: string) => BOOKING_STATUS_OPTS.find((o) => o.value === s)?.label ?? s;
+  const upcoming = (b: Booking) => b.end_at >= nowIso && b.status !== "canceled";
+  const weekAhead = new Date(Date.now() + 7 * 86400000).toISOString();
+  const pageIds = Array.from(new Set(bookings.map((b) => b.booking_type_id)));
+  const planners = Array.from(new Set(bookings.map(plannerOf).filter(Boolean) as string[]));
+
+  const columns: DataColumn<Booking>[] = [
+    { id: "invitee", label: "Invitee", required: true, width: 200, cell: (b) => <span className="font-medium">{b.invitee_name}</span>, sort: (b) => b.invitee_name },
+    { id: "when", label: "When", width: 220, cell: (b) => `${fmtDateTime(b.start_at, b.timezone)} – ${timeOf(b.end_at, b.timezone)}`, sort: (b) => b.start_at, exportValue: (b) => isoDate(b.start_at) },
+    { id: "status", label: "Status", width: 120, cell: (b) => <Pill status={b.status} />, sort: (b) => statusLabel(b.status) },
+    { id: "page", label: "Booking page", width: 200, cell: (b) => <span className="inline-flex min-w-0 items-center gap-2"><Dot color={b.booking_type?.color} size="h-2.5 w-2.5" /><span className="truncate">{pageName(b)}</span></span>, sort: pageName },
+    { id: "planner", label: "Planner", width: 160, cell: (b) => plannerName(plannerOf(b)) ?? "—", sort: (b) => plannerName(plannerOf(b)) ?? "" },
+    { id: "email", label: "Email", width: 220, cell: (b) => b.invitee_email || "—", sort: (b) => b.invitee_email ?? "" },
+    { id: "phone", label: "Phone", width: 150, cell: (b) => b.invitee_phone || "—", sort: (b) => b.invitee_phone ?? "" },
+    { id: "reference", label: "Reference", width: 130, cell: (b) => <span className="font-mono text-xs">{b.reference}</span>, sort: (b) => b.reference },
+    { id: "location", label: "Location", width: 150, defaultHidden: true, cell: (b) => locationLabel(b.location_type), sort: (b) => locationLabel(b.location_type) },
+    { id: "end", label: "Ends", width: 180, defaultHidden: true, cell: (b) => fmtDateTime(b.end_at, b.timezone), sort: (b) => b.end_at, exportValue: (b) => isoDate(b.end_at) },
+    { id: "source", label: "Source", width: 130, defaultHidden: true, cell: (b) => b.source || "—", sort: (b) => b.source ?? "" },
+    { id: "booked", label: "Booked", width: 160, defaultHidden: true, cell: (b) => (b.created_at ? new Date(b.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "—"), sort: (b) => b.created_at ?? "", exportValue: (b) => isoDate(b.created_at) },
+  ];
+
   return (
-    <div className="space-y-3">
-      {events.map((e) => {
-        const url = `${origin}/events/${e.slug}`;
-        const full = e.capacity != null && (e.registered_count ?? 0) >= e.capacity;
+    <DataView<Booking>
+      storageKey="bookings-appointments"
+      exportName="sig-bookings"
+      noun={["booking", "bookings"]}
+      defaultView="list"
+      items={bookings}
+      getId={(b) => b.id}
+      title={(b) => b.invitee_name}
+      subtitle={(b) => `${pageName(b)} · ${fmtDateTime(b.start_at, b.timezone)}`}
+      media={(b) => <Dot color={b.booking_type?.color} size="h-2.5 w-2.5" />}
+      badge={(b) => <Pill status={b.status} />}
+      meta={(b) => <span className="font-mono">{b.reference}</span>}
+      columns={columns}
+      searchText={(b) => [b.invitee_name, b.invitee_email, b.invitee_phone, b.reference, pageName(b), plannerName(plannerOf(b)), b.internal_notes].join(" ")}
+      stats={[
+        { label: "Upcoming", value: bookings.filter(upcoming).length, icon: CalendarClock },
+        { label: "Next 7 days", value: bookings.filter((b) => upcoming(b) && b.start_at <= weekAhead).length, icon: CalendarDays },
+        { label: "Pending", value: bookings.filter((b) => b.status === "pending").length, icon: Clock, hint: "Awaiting confirmation" },
+        { label: "Completed", value: bookings.filter((b) => b.status === "completed").length, icon: CheckCircle2 },
+        { label: "No-shows", value: bookings.filter((b) => b.status === "no_show").length, icon: UserX },
+      ]}
+      filters={[
+        { id: "all", label: "All", test: () => true },
+        { id: "upcoming", label: "Upcoming", test: upcoming },
+        { id: "past", label: "Past", test: (b) => b.end_at < nowIso },
+      ]}
+      selectFilters={[
+        { id: "status", label: "Status", options: BOOKING_STATUS_OPTS.map((o) => ({ value: o.value, label: o.label })), get: (b) => b.status },
+        { id: "page", label: "Booking page", options: pageIds.map((id) => ({ value: id, label: typeById.get(id)?.name ?? bookings.find((b) => b.booking_type_id === id)?.booking_type?.name ?? "Unknown" })), get: (b) => b.booking_type_id },
+        { id: "planner", label: "Planner", options: planners.map((s) => ({ value: s, label: plannerName(s) ?? s })), get: plannerOf },
+      ]}
+      board={{
+        lanes: BOOKING_STATUS_OPTS.map((o) => ({ id: o.value, label: o.label })),
+        get: (b) => b.status,
+        onMove: (b, lane) => onStatus([b], lane),
+      }}
+      date={(b) => b.start_at}
+      actions={[
+        { label: "Confirm", icon: Check, run: (sel) => onStatus(sel, "confirmed") },
+        { label: "Complete", icon: CheckCircle2, run: (sel) => onStatus(sel, "completed") },
+        { label: "No-show", icon: UserX, run: (sel) => onStatus(sel, "no_show") },
+        { label: "Cancel", icon: Ban, run: (sel) => onStatus(sel, "canceled") },
+        { label: "Email", icon: Mail, single: true, show: (sel) => sel.length !== 1 || Boolean(sel[0].invitee_email), run: (sel) => { if (sel[0].invitee_email) window.location.href = `mailto:${sel[0].invitee_email}`; } },
+        { label: "Delete", icon: Trash2, destructive: true, run: (sel) => onDelete(sel) },
+      ]}
+      preview={(b) => {
+        const answers = Object.entries(b.answers ?? {}).filter(([, v]) => v !== null && v !== undefined && v !== "");
         return (
-          <div key={e.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2"><span className="truncate font-semibold">{e.title}</span><Pill status={e.status} />{full && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Full</span>}{e.impact_meals ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{e.impact_meals.toLocaleString()} meals · {kidsFedForAYear(e.impact_meals)} kids</span> : null}</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {e.event_type ? `${EVENT_TYPE_LABELS[e.event_type]} · ` : ""}{fmtDateTime(e.start_at, e.timezone)} · {EVENT_LOCATION_OPTS.find((o) => o.value === e.location_type)?.label}
-                {e.location_name ? ` · ${e.location_name}` : ""}{e.audience && e.audience !== "public" ? ` · ${EVENT_AUDIENCE_LABELS[e.audience]}` : ""}
-              </div>
-              <div className="mt-1 flex items-center gap-3">
-                {e.status === "published" && e.is_public && <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><ExternalLink className="h-3 w-3" />/events/{e.slug}</a>}
-                {e.status === "published" && e.is_public && <CopyLink url={url} />}
-              </div>
+          <div className="space-y-5">
+            <div className="max-w-xs">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
+              <FieldSelect value={b.status} onChange={(v) => void onStatus([b], v)} options={BOOKING_STATUS_OPTS} />
             </div>
-            <button onClick={() => onRegs(e)} className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs hover:bg-muted/50">
-              <Users className="h-3.5 w-3.5" />{e.registered_count ?? 0}{e.capacity != null ? `/${e.capacity}` : ""}{(e.waitlist_count ?? 0) > 0 ? ` (+${e.waitlist_count} wait)` : ""}
-            </button>
-            <button onClick={() => onEdit(e)} className="text-muted-foreground hover:text-primary"><Pencil className="h-4 w-4" /></button>
-            <button onClick={() => onDelete(e)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+            <Facts rows={[
+              ["When", `${fmtDateTime(b.start_at, b.timezone)} – ${timeOf(b.end_at, b.timezone)}`],
+              ["Timezone", b.timezone.replace(/_/g, " ")],
+              ["Booking page", pageName(b)],
+              ["Planner", plannerName(plannerOf(b))],
+              ["Email", b.invitee_email ? <a className="text-primary hover:underline" href={`mailto:${b.invitee_email}`}>{b.invitee_email}</a> : null],
+              ["Phone", b.invitee_phone ? <a className="text-primary hover:underline" href={`tel:${b.invitee_phone}`}>{b.invitee_phone}</a> : null],
+              ["Location", `${locationLabel(b.location_type)}${b.location_details ? ` — ${b.location_details}` : ""}`],
+              ["Reference", <span key="ref" className="font-mono">{b.reference}</span>],
+              ["Source", b.source],
+              ["Cancel reason", b.cancel_reason],
+              ["Internal notes", b.internal_notes],
+              ...answers.map(([k, v]) => [k.replace(/_/g, " "), String(v)] as [string, React.ReactNode]),
+            ]} />
+            <PreviewActions>
+              {b.invitee_email ? <Button asChild size="sm"><a href={`mailto:${b.invitee_email}`}><Mail className="h-4 w-4" /> Email</a></Button> : null}
+              {b.invitee_phone ? <Button asChild size="sm" variant="outline"><a href={`tel:${b.invitee_phone}`}><Phone className="h-4 w-4" /> Call</a></Button> : null}
+              <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:text-destructive" onClick={() => void onDelete([b])}><Trash2 className="h-4 w-4" /> Delete</Button>
+            </PreviewActions>
           </div>
         );
-      })}
-    </div>
+      }}
+      empty="No bookings yet. Share a booking page's public link to start receiving them."
+    />
+  );
+}
+
+// ── Events list ─────────────────────────────────────────────────────────────────
+function EventsList({ events, origin, onNew, onEdit, onRegs, onStatus, onDelete }: {
+  events: EventItem[]; origin: string;
+  onNew: () => void; onEdit: (e: EventItem) => void; onRegs: (e: EventItem) => void;
+  onStatus: (list: EventItem[], status: EventItem["status"]) => Promise<void>; onDelete: (list: EventItem[]) => Promise<void>;
+}) {
+  const nowIso = new Date().toISOString();
+  const urlOf = (e: EventItem) => `${origin}/events/${e.slug}`;
+  const live = (e: EventItem) => e.status === "published" && e.is_public;
+  const endOf = (e: EventItem) => e.end_at || e.start_at;
+  const isFull = (e: EventItem) => e.capacity != null && (e.registered_count ?? 0) >= e.capacity;
+  const statusLabel = (s: string) => EVENT_STATUS_OPTS.find((o) => o.value === s)?.label ?? s;
+  const regsText = (e: EventItem) => `${e.registered_count ?? 0}${e.capacity != null ? `/${e.capacity}` : ""}${(e.waitlist_count ?? 0) > 0 ? ` (+${e.waitlist_count} wait)` : ""}`;
+  const regsButton = (e: EventItem) => (
+    <button onClick={(ev) => { ev.stopPropagation(); onRegs(e); }} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2 py-0.5 text-xs hover:bg-muted/50" title="Registrations">
+      <Users className="h-3.5 w-3.5" />{regsText(e)}
+    </button>
+  );
+  const types = Array.from(new Set(events.map((e) => e.event_type).filter(Boolean) as string[]));
+  const meals = events.reduce((s, e) => s + (e.impact_meals ?? 0), 0);
+
+  const columns: DataColumn<EventItem>[] = [
+    { id: "title", label: "Event", required: true, width: 260, cell: (e) => <span className="font-medium">{e.title}</span>, sort: (e) => e.title },
+    { id: "when", label: "When", width: 190, cell: (e) => fmtDateTime(e.start_at, e.timezone), sort: (e) => e.start_at, exportValue: (e) => isoDate(e.start_at) },
+    { id: "registrations", label: "Registrations", width: 150, cell: (e) => regsButton(e), sort: (e) => e.registered_count ?? 0, exportValue: (e) => e.registered_count ?? 0 },
+    { id: "status", label: "Status", width: 120, cell: (e) => <span className="inline-flex items-center gap-1"><Pill status={e.status} />{isFull(e) ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Full</span> : null}</span>, sort: (e) => statusLabel(e.status) },
+    { id: "type", label: "Type", width: 200, cell: (e) => (e.event_type ? EVENT_TYPE_LABELS[e.event_type] : "—"), sort: (e) => (e.event_type ? EVENT_TYPE_LABELS[e.event_type] : "") },
+    { id: "audience", label: "Audience", width: 170, cell: (e) => EVENT_AUDIENCE_LABELS[e.audience ?? "public"], sort: (e) => EVENT_AUDIENCE_LABELS[e.audience ?? "public"] },
+    { id: "location", label: "Location", width: 220, cell: (e) => `${eventLocationLabel(e.location_type)}${e.location_name ? ` · ${e.location_name}` : ""}`, sort: (e) => e.location_name ?? "" },
+    { id: "office", label: "Office", width: 160, defaultHidden: true, cell: (e) => e.office || "—", sort: (e) => e.office ?? "" },
+    { id: "series", label: "Series", width: 180, defaultHidden: true, cell: (e) => e.series || "—", sort: (e) => e.series ?? "" },
+    { id: "host", label: "Host", width: 170, defaultHidden: true, cell: (e) => e.host_name || "—", sort: (e) => e.host_name ?? "" },
+    { id: "capacity", label: "Capacity", width: 100, align: "right", defaultHidden: true, cell: (e) => e.capacity ?? "∞", sort: (e) => e.capacity ?? Number.MAX_SAFE_INTEGER, exportValue: (e) => e.capacity ?? "" },
+    { id: "waitlist", label: "Waitlist", width: 100, align: "right", defaultHidden: true, cell: (e) => e.waitlist_count ?? 0, sort: (e) => e.waitlist_count ?? 0 },
+    { id: "meals", label: "Meals packed", width: 160, align: "right", defaultHidden: true, cell: (e) => (e.impact_meals ? `${e.impact_meals.toLocaleString()} · ${kidsFedForAYear(e.impact_meals)} kids` : "—"), sort: (e) => e.impact_meals ?? 0, exportValue: (e) => e.impact_meals ?? "" },
+    {
+      id: "link", label: "Public page", width: 240, defaultHidden: true,
+      cell: (e) => (live(e) ? <span className="flex min-w-0 items-center gap-3"><ExtLink href={urlOf(e)}>/events/{e.slug}</ExtLink><CopyLink url={urlOf(e)} /></span> : <span className="text-[11px] text-muted-foreground">Not live</span>),
+      exportValue: (e) => (live(e) ? urlOf(e) : ""),
+    },
+  ];
+
+  return (
+    <DataView<EventItem>
+      storageKey="bookings-events"
+      exportName="sig-events"
+      noun={["event", "events"]}
+      defaultView="list"
+      items={events}
+      getId={(e) => e.id}
+      title={(e) => e.title}
+      subtitle={(e) => `${e.event_type ? `${EVENT_TYPE_LABELS[e.event_type]} · ` : ""}${fmtDateTime(e.start_at, e.timezone)}${e.location_name ? ` · ${e.location_name}` : ""}`}
+      badge={(e) => (
+        <span className="inline-flex shrink-0 items-center gap-1">
+          <Pill status={e.status} />
+          {isFull(e) ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Full</span> : null}
+          {e.impact_meals ? <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary sm:inline">{e.impact_meals.toLocaleString()} meals · {kidsFedForAYear(e.impact_meals)} kids</span> : null}
+        </span>
+      )}
+      meta={(e) => regsButton(e)}
+      columns={columns}
+      searchText={(e) => [e.title, e.summary, e.series, e.location_name, e.location_address, e.host_name, e.office, e.event_type ? EVENT_TYPE_LABELS[e.event_type] : "", (e.speakers ?? []).map((s) => s.name).join(" ")].join(" ")}
+      stats={[
+        { label: "Live events", value: events.filter((e) => e.status === "published").length, icon: CalendarDays, hint: `${events.filter((e) => e.status === "draft").length} drafts` },
+        { label: "Upcoming", value: events.filter((e) => endOf(e) >= nowIso && e.status !== "canceled").length, icon: CalendarClock },
+        { label: "Registered", value: events.filter((e) => endOf(e) >= nowIso).reduce((s, e) => s + (e.registered_count ?? 0), 0), icon: Users, hint: "Across upcoming events" },
+        { label: "Meals packed", value: meals.toLocaleString(), icon: HeartHandshake, hint: `≈ ${kidsFedForAYear(meals)} kids fed for a year` },
+      ]}
+      filters={[
+        { id: "all", label: "All", test: () => true },
+        { id: "upcoming", label: "Upcoming", test: (e) => endOf(e) >= nowIso },
+        { id: "past", label: "Past", test: (e) => endOf(e) < nowIso },
+      ]}
+      selectFilters={[
+        { id: "type", label: "Type", options: types.map((t) => ({ value: t, label: EVENT_TYPE_LABELS[t as keyof typeof EVENT_TYPE_LABELS] ?? t })), get: (e) => e.event_type },
+        { id: "status", label: "Status", options: EVENT_STATUS_OPTS.map((o) => ({ value: o.value, label: o.label })), get: (e) => e.status },
+        { id: "audience", label: "Audience", options: EVENT_AUDIENCE_OPTS.map((o) => ({ value: o.value, label: o.label })), get: (e) => e.audience ?? "public" },
+      ]}
+      board={{
+        lanes: EVENT_STATUS_OPTS.map((o) => ({ id: o.value, label: o.label })),
+        get: (e) => e.status,
+        onMove: (e, lane) => onStatus([e], lane as EventItem["status"]),
+      }}
+      date={(e) => e.start_at}
+      add={{ label: "New event", onClick: onNew }}
+      actions={[
+        { label: "Registrations", icon: Users, single: true, run: (sel) => onRegs(sel[0]) },
+        { label: "Edit", icon: Pencil, single: true, run: (sel) => onEdit(sel[0]) },
+        { label: "Copy link", icon: Copy, single: true, show: (sel) => sel.length !== 1 || live(sel[0]), run: (sel) => copyText(urlOf(sel[0])) },
+        { label: "Publish", icon: Send, show: (sel) => sel.some((e) => e.status !== "published"), run: (sel) => onStatus(sel, "published") },
+        { label: "Mark completed", icon: CheckCircle2, show: (sel) => sel.some((e) => e.status !== "completed"), run: (sel) => onStatus(sel, "completed") },
+        { label: "Cancel", icon: Ban, show: (sel) => sel.some((e) => e.status !== "canceled"), run: (sel) => onStatus(sel, "canceled") },
+        { label: "Delete", icon: Trash2, destructive: true, run: (sel) => onDelete(sel) },
+      ]}
+      preview={(e, close) => (
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-44">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
+              <FieldSelect value={e.status} onChange={(v) => void onStatus([e], v as EventItem["status"])} options={EVENT_STATUS_OPTS} />
+            </div>
+            {isFull(e) ? <span className="mb-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Full</span> : null}
+          </div>
+          {e.summary ? <p className="text-sm text-muted-foreground">{e.summary}</p> : null}
+          <Facts rows={[
+            ["When", `${fmtDateTime(e.start_at, e.timezone)}${e.end_at ? ` – ${fmtDateTime(e.end_at, e.timezone)}` : ""}`],
+            ["Type", e.event_type ? EVENT_TYPE_LABELS[e.event_type] : null],
+            ["Series", e.series],
+            ["Audience", EVENT_AUDIENCE_LABELS[e.audience ?? "public"]],
+            ["Location", `${eventLocationLabel(e.location_type)}${e.location_name ? ` · ${e.location_name}` : ""}`],
+            ["Address", e.location_address],
+            ["Online", e.online_url ? <a className="break-all text-primary hover:underline" href={e.online_url} target="_blank" rel="noreferrer">{e.online_url}</a> : null],
+            ["Host", e.host_name],
+            ["Speakers", (e.speakers ?? []).map((s) => s.name).filter(Boolean).join(", ")],
+            ["Registrations", regsText(e)],
+            ["Impact", e.impact_meals ? `${e.impact_meals.toLocaleString()} meals · ≈ ${kidsFedForAYear(e.impact_meals)} kids fed for a year${e.impact_participants ? ` · ${e.impact_participants} volunteers` : ""}` : null],
+            ["Public page", live(e) ? <span className="flex flex-wrap items-center gap-3"><ExtLink href={urlOf(e)}>/events/{e.slug}</ExtLink><CopyLink url={urlOf(e)} /></span> : "Not live (publish a public event to share it)"],
+          ]} />
+          <PreviewActions>
+            <Button size="sm" onClick={() => { close(); onRegs(e); }}><Users className="h-4 w-4" /> Registrations</Button>
+            <Button size="sm" variant="outline" onClick={() => { close(); onEdit(e); }}><Pencil className="h-4 w-4" /> Edit</Button>
+            {live(e) ? <Button size="sm" variant="outline" onClick={() => copyText(urlOf(e))}><Copy className="h-4 w-4" /> Copy link</Button> : null}
+            <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:text-destructive" onClick={() => void onDelete([e])}><Trash2 className="h-4 w-4" /> Delete</Button>
+          </PreviewActions>
+        </div>
+      )}
+      empty="No events yet. Create one to start taking registrations."
+    />
   );
 }
 
