@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Camera, X, Sparkles, Inbox, Loader2, Check, Users, ImageIcon, PenSquare, MessageSquareText, Maximize2, Minimize2 } from "lucide-react";
+import { Camera, X, Sparkles, Inbox, Loader2, Check, Users, ImageIcon, PenSquare, MessageSquareText, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldSelect } from "@/components/ui/field-select";
@@ -159,7 +159,7 @@ export function ReviewFab({ me }: { me: { email: string; name: string } }) {
       <div data-fab-ignore className="group fixed bottom-5 right-5 z-[100] hidden md:block print:hidden">
         <button onClick={() => setOpen((o) => !o)} aria-label="Review & messages"
           className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(225_45%_12%)] text-white shadow-xl shadow-black/20 transition hover:scale-105 dark:bg-brand-gold dark:text-[hsl(225_80%_10%)]">
-          {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
+          {open ? <X className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
           {!open && dmUnread > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">{dmUnread > 99 ? "99+" : dmUnread}</span>}
         </button>
         {/* Sits top-LEFT so it never covers the unread badge. Revealed on hover

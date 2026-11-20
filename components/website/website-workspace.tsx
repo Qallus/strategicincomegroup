@@ -6,7 +6,7 @@
 // Siggey panel that can be opened from anywhere in the module.
 
 import * as React from "react";
-import { Sparkles, Globe, ImageIcon, LayoutDashboard, Link2, PanelsTopLeft, Settings, Wand2, X } from "lucide-react";
+import { Globe, ImageIcon, LayoutDashboard, Link2, PanelsTopLeft, Settings, Wand2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFabVisible } from "@/components/layout/fab-visibility";
@@ -99,12 +99,12 @@ export function WebsiteWorkspace({
         <button
           onClick={() => setShepherdOpen(true)}
           className={cn(
-            "fixed bottom-7 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-[hsl(225_45%_12%)] px-4 py-2.5 text-sm font-semibold text-white shadow-xl shadow-black/20 transition hover:scale-105 dark:bg-brand-gold dark:text-[hsl(225_80%_10%)] print:hidden",
+            "fixed bottom-[1.875rem] right-5 z-40 rounded-full border bg-background/95 px-4 py-2.5 text-sm text-[hsl(225_45%_12%)] shadow-lg shadow-black/5 backdrop-blur transition hover:border-primary/40 dark:text-white print:hidden",
             // The FAB is a 56px circle inset 20px (hidden below md); the pill sits 12px to its left, vertically centred.
             fabVisible && "md:right-[5.5rem]",
           )}
         >
-          <Sparkles className="h-4 w-4" /> Ask Siggey
+          Ask <span className="font-semibold text-[hsl(36_60%_42%)] dark:text-brand-gold">Siggey</span>
         </button>
       ) : null}
 
