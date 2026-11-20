@@ -6,7 +6,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  AlertTriangle, Bot, Check, FileEdit, FilePlus2, Globe, ImageIcon, Link2, Loader2, Search,
+  AlertTriangle, Sparkles, Check, FileEdit, FilePlus2, Globe, ImageIcon, Link2, Loader2, Search,
   Upload, User, Wand2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,13 +84,13 @@ export function WebsiteOverview({ nav }: { nav: OverviewNav }) {
         <Stat label="Published" value={stats?.published} icon={Globe} onClick={nav.pages} />
         <Stat label="Drafts" value={stats?.drafts} icon={FileEdit} onClick={nav.pages} />
         <Stat label="Unpublished changes" value={stats?.unpublishedChanges} icon={Upload} tone={stats?.unpublishedChanges ? "amber" : undefined} onClick={nav.pages} />
-        <Stat label="Waiting for approval" value={stats?.pendingChangeSets} icon={Bot} tone={stats?.pendingChangeSets ? "amber" : undefined} />
+        <Stat label="Waiting for approval" value={stats?.pendingChangeSets} icon={Sparkles} tone={stats?.pendingChangeSets ? "amber" : undefined} />
       </StatCardRow>
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={nav.editPage} className="gap-1.5"><Wand2 className="h-4 w-4" /> Edit a page</Button>
         <Button onClick={nav.newPage} variant="outline" className="gap-1.5"><FilePlus2 className="h-4 w-4" /> Create a page</Button>
-        <Button onClick={nav.shepherd} variant="outline" className="gap-1.5"><Bot className="h-4 w-4" /> Ask Shepherd</Button>
+        <Button onClick={nav.shepherd} variant="outline" className="gap-1.5"><Sparkles className="h-4 w-4" /> Ask Siggey</Button>
         <Button onClick={nav.navigation} variant="outline" className="gap-1.5"><Link2 className="h-4 w-4" /> Manage navigation</Button>
         <Button onClick={nav.media} variant="outline" className="gap-1.5"><ImageIcon className="h-4 w-4" /> Media</Button>
       </div>
@@ -146,7 +146,7 @@ export function WebsiteOverview({ nav }: { nav: OverviewNav }) {
                   <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", RISK_PILL[cs.risk])}>{cs.risk} risk</span>
                   <span className="text-sm font-medium">{cs.page_title ?? "A page"}</span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    {cs.source === "shepherd" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />} {relativeTime(cs.created_at)}
+                    {cs.source === "shepherd" ? <Sparkles className="h-3 w-3" /> : <User className="h-3 w-3" />} {relativeTime(cs.created_at)}
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm">{cs.summary}</p>
@@ -191,7 +191,7 @@ export function WebsiteOverview({ nav }: { nav: OverviewNav }) {
                     <span className="block truncate text-xs text-muted-foreground">/{p.slug}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                    {p.source === "shepherd" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />} {relativeTime(p.updated_at)}
+                    {p.source === "shepherd" ? <Sparkles className="h-3 w-3" /> : <User className="h-3 w-3" />} {relativeTime(p.updated_at)}
                   </span>
                   <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", STATUS_PILL[p.status])}>{p.status}</span>
                 </Link>
@@ -209,7 +209,7 @@ export function WebsiteOverview({ nav }: { nav: OverviewNav }) {
           <ul className="divide-y divide-border rounded-lg border border-border">
             {(stats?.recentActivity ?? []).map((log) => (
               <li key={log.id} className="flex gap-2 px-3 py-2.5">
-                {log.actor_type === "shepherd" ? <Bot className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#b88a4a]" /> : <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                {log.actor_type === "shepherd" ? <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#b88a4a]" /> : <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm">{log.summary || log.action}</span>
                   <span className="block text-xs text-muted-foreground">{relativeTime(log.created_at)}</span>

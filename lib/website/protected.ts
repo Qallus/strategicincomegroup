@@ -3,7 +3,7 @@
 // Spec §28/§29: the app shell keeps its own routes. Anything under a protected
 // prefix is code-owned and can never be created, renamed, overwritten or deleted
 // through the editor — by an editor or by the AI agent. Spec §32: every write is classified
-// so the UI and Shepherd know what needs preview vs. explicit confirmation.
+// so the UI and Siggey know what needs preview vs. explicit confirmation.
 
 import type { ChangeRisk } from "./types";
 
@@ -81,7 +81,7 @@ export function isProtectedPath(path: string): boolean {
 }
 
 /**
- * Validate a slug a user or Shepherd wants to use. Returns the cleaned slug, or
+ * Validate a slug a user or Siggey wants to use. Returns the cleaned slug, or
  * throws with an owner-readable reason.
  */
 export function assertUsableSlug(slug: string): string {
@@ -102,7 +102,7 @@ export function assertUsableSlug(slug: string): string {
   return clean;
 }
 
-/** Same check, non-throwing — for UI hints and Shepherd pre-flight answers. */
+/** Same check, non-throwing — for UI hints and Siggey pre-flight answers. */
 export function slugProblem(slug: string): string | null {
   try {
     assertUsableSlug(slug);

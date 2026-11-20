@@ -8,7 +8,7 @@
 
 import * as React from "react";
 import {
-  MousePointerClick, ClipboardList, PanelsTopLeft, Bot, Plus, FileText, CheckCircle2, Clock,
+  MousePointerClick, ClipboardList, PanelsTopLeft, Sparkles, Plus, FileText, CheckCircle2, Clock,
   CalendarDays, Users, Bell, HelpCircle, ArrowRight, RefreshCw, CircleDot, X, SendHorizonal, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -91,7 +91,7 @@ export function CmsOverview({ pages, nav }: { pages: CmsPage[]; nav: CmsNav }) {
     { label: "Frontend Editor", desc: "Review & annotate public pages", icon: MousePointerClick, onClick: nav.editor, primary: true },
     { label: "Edit Requests", desc: "Triage frontend & dashboard requests", icon: ClipboardList, onClick: nav.requests },
     { label: "Pages & Block Builder", desc: "Create & edit CMS pages", icon: PanelsTopLeft, onClick: nav.pages },
-    { label: "Shepherd AI", desc: "Draft pages & changes with AI", icon: Bot, onClick: nav.shepherd },
+    { label: "Siggey AI", desc: "Draft pages & changes with AI", icon: Sparkles, onClick: nav.shepherd },
     { label: "Legal", desc: "Privacy, Terms, SMS & AI Trust documents", icon: Scale, onClick: nav.legal },
   ];
   const stats = [

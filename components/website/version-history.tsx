@@ -5,7 +5,7 @@
 // and itself reversible.
 
 import * as React from "react";
-import { Bot, History, RotateCcw, User } from "lucide-react";
+import { Sparkles, History, RotateCcw, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { diffContent } from "@/lib/website/diff";
@@ -69,8 +69,8 @@ export function VersionHistory({
                 <div className="flex items-center gap-2">
                   <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-semibold">v{version.version_number}</span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    {version.source === "shepherd" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                    {version.source === "shepherd" ? "Shepherd" : version.source === "restore" ? "Restore" : "Manual"}
+                    {version.source === "shepherd" ? <Sparkles className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                    {version.source === "shepherd" ? "Siggey" : version.source === "restore" ? "Restore" : "Manual"}
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground">{formatDateTime(version.created_at)}</span>
                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Bot, X, Paperclip, FileText } from "lucide-react";
+import { Sparkles, X, Paperclip, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AgentChat } from "@/components/ai-agent/agent-chat";
 
@@ -14,9 +14,9 @@ const CMS_SUGGESTIONS = [
 
 const MAX_CHARS = 60000;
 
-// "Shepherd AI" — opens the agent in a modal to author a full CMS page. Supports a
+// "Siggey AI" — opens the agent in a modal to author a full CMS page. Supports a
 // text/voice brief plus an uploaded reference file (JSON, CSV, or text/markdown)
-// that is attached to the first message. Everything Shepherd creates is a DRAFT.
+// that is attached to the first message. Everything Siggey creates is a DRAFT.
 export function AskShepherdCms({ onClose }: { onClose?: () => void }) {
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export function AskShepherdCms({ onClose }: { onClose?: () => void }) {
   return (
     <>
       <Button onClick={() => setOpen(true)} className="shrink-0 gap-1.5">
-        <Bot className="h-4 w-4" /> Shepherd AI
+        <Sparkles className="h-4 w-4" /> Siggey AI
       </Button>
 
       {open && (
@@ -99,7 +99,7 @@ export function AskShepherdCms({ onClose }: { onClose?: () => void }) {
             {uploadError && <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{uploadError}</div>}
 
             <AgentChat
-              title="Shepherd AI"
+              title="Siggey AI"
               subtitle="CMS page builder"
               suggestions={CMS_SUGGESTIONS}
               placeholder="Describe the page you want… (Enter to send, mic to speak)"

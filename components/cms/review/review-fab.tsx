@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { MessageSquarePlus, Camera, X, Bot, Inbox, Loader2, Check, Users, ImageIcon, PenSquare, MessageSquareText, Maximize2, Minimize2 } from "lucide-react";
+import { MessageCircle, Camera, X, Sparkles, Inbox, Loader2, Check, Users, ImageIcon, PenSquare, MessageSquareText, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldSelect } from "@/components/ui/field-select";
@@ -158,8 +158,8 @@ export function ReviewFab({ me }: { me: { email: string; name: string } }) {
           inside the launcher, which is invalid markup. */}
       <div data-fab-ignore className="group fixed bottom-5 right-5 z-[100] hidden md:block print:hidden">
         <button onClick={() => setOpen((o) => !o)} aria-label="Review & messages"
-          className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition hover:scale-105">
-          {open ? <X className="h-5 w-5" /> : <MessageSquarePlus className="h-5 w-5" />}
+          className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(225_45%_12%)] text-white shadow-xl shadow-black/20 transition hover:scale-105 dark:bg-brand-gold dark:text-[hsl(225_80%_10%)]">
+          {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
           {!open && dmUnread > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">{dmUnread > 99 ? "99+" : dmUnread}</span>}
         </button>
         {/* Sits top-LEFT so it never covers the unread badge. Revealed on hover
@@ -177,7 +177,7 @@ export function ReviewFab({ me }: { me: { email: string; name: string } }) {
       {open && (
         <div data-fab-ignore className={cn(
           "fixed z-[100] flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl print:hidden",
-          expanded ? "inset-3 sm:inset-6" : "bottom-20 right-5 max-h-[80vh] w-[420px]",
+          expanded ? "inset-3 sm:inset-6" : "bottom-[5.5rem] right-5 max-h-[80vh] w-[420px]",
         )}>
           <div className="flex items-center gap-1 border-b border-border p-1">
             <button onClick={() => setTab("note")} className={cn("flex-1 rounded-lg px-3 py-1.5 text-xs font-medium", tab === "note" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}>New request</button>
@@ -187,7 +187,7 @@ export function ReviewFab({ me }: { me: { email: string; name: string } }) {
             <button onClick={openMessages} className={cn("flex-1 rounded-lg px-3 py-1.5 text-xs font-medium", tab === "dm" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}>
               <span className="inline-flex items-center gap-1"><MessageSquareText className="h-3.5 w-3.5" /> Messages{dmUnread > 0 && <span className="rounded-full bg-destructive px-1.5 text-[9px] font-bold text-destructive-foreground">{dmUnread}</span>}</span>
             </button>
-            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAgentOpen(true)} title="Ask Shepherd"><Bot className="h-3.5 w-3.5" /></Button>
+            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAgentOpen(true)} title="Ask Siggey"><Sparkles className="h-3.5 w-3.5" /></Button>
             <Button size="sm" variant="outline" className="h-7 px-2" onClick={toggleExpanded} title={expanded ? "Collapse" : "Expand to full page"}>{expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</Button>
           </div>
 
@@ -260,8 +260,8 @@ export function ReviewFab({ me }: { me: { email: string; name: string } }) {
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setAgentOpen(false)} />
           <div className="relative z-10 w-full max-w-2xl">
             <button onClick={() => setAgentOpen(false)} className="absolute -right-3 -top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card shadow hover:bg-muted"><X className="h-4 w-4" /></button>
-            <AgentChat title="Shepherd AI" subtitle={`Reviewing ${pageName}`} audio extraContext={agentContext}
-              placeholder="Ask Shepherd about this page…" heightClassName="h-[68vh] min-h-[420px]"
+            <AgentChat title="Siggey AI" subtitle={`Reviewing ${pageName}`} audio extraContext={agentContext}
+              placeholder="Ask Siggey about this page…" heightClassName="h-[68vh] min-h-[420px]"
               emptyTitle="Ask about this page" emptyHint="I can look things up and draft changes for review — I won't publish or delete anything." />
           </div>
         </div>

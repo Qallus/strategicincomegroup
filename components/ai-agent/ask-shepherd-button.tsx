@@ -1,22 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AgentChat } from "@/components/ai-agent/agent-chat";
 
 /**
- * Reusable "Ask Shepherd" launcher — a button that opens the AI agent in a modal,
+ * Reusable "Ask Siggey" launcher — a button that opens the AI agent in a modal,
  * pre-seeded with entity context (via `extraContext`) and tap-to-run
  * `suggestions`. Use anywhere an individual item (a resource, an edit request)
- * should be triageable by Shepherd in-app.
+ * should be triageable by Siggey in-app.
  */
 export function AskShepherdButton({
-  label = "Ask Shepherd",
+  label = "Ask Siggey",
   size = "sm",
   variant = "outline",
   className,
-  title = "Shepherd",
+  title = "Siggey",
   subtitle,
   suggestions,
   extraContext,
@@ -38,7 +38,7 @@ export function AskShepherdButton({
   return (
     <>
       <Button type="button" onClick={() => setOpen(true)} variant={variant} size={size} className={className}>
-        <Bot className="h-4 w-4" /> {label}
+        <Sparkles className="h-4 w-4" /> {label}
       </Button>
 
       {open && (

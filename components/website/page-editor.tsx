@@ -4,7 +4,7 @@
 //
 //   left   — page structure: add, reorder, duplicate, hide, remove
 //   centre — live preview in a real iframe at desktop / tablet / phone widths
-//   right  — Content · Design · SEO · History · Shepherd
+//   right  — Content · Design · SEO · History · Siggey
 //
 // Editing is local-first with a 1.5s debounced autosave to the DRAFT. The
 // published page is never touched by autosave; publishing is always a deliberate
@@ -14,7 +14,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  AlertTriangle, ArrowLeft, Bot, Check, ChevronLeft, ChevronRight, Cloud, ExternalLink, Eye, History,
+  AlertTriangle, ArrowLeft, Sparkles, Check, ChevronLeft, ChevronRight, Cloud, ExternalLink, Eye, History,
   Loader2, Monitor, MoreHorizontal, Search, Settings2, Share2, Smartphone, Tablet, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -344,10 +344,10 @@ export function PageEditor({ initial }: { initial: PageContext }) {
             <TabButton active={tab === "block"} onClick={() => setTab("block")} icon={Settings2}>Section</TabButton>
             <TabButton active={tab === "page"} onClick={() => setTab("page")} icon={Search}>Page &amp; SEO</TabButton>
             <TabButton active={tab === "history"} onClick={() => setTab("history")} icon={History}>History</TabButton>
-            <TabButton active={tab === "shepherd"} onClick={() => setTab("shepherd")} icon={Bot}>
-              Shepherd
+            <TabButton active={tab === "shepherd"} onClick={() => setTab("shepherd")} icon={Sparkles}>
+              Siggey
               {changeSets.some((c) => c.status === "proposed" || c.status === "draft_applied") ? (
-                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[#b88a4a]" aria-label="Shepherd has proposals waiting" />
+                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[#b88a4a]" aria-label="Siggey has proposals waiting" />
               ) : null}
             </TabButton>
           </div>

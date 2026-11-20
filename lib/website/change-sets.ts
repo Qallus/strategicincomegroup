@@ -1,6 +1,6 @@
-// Frontend Editor — change sets (spec §14) and the Shepherd apply pipeline.
+// Frontend Editor — change sets (spec §14) and the Siggey apply pipeline.
 //
-// A change set is the unit of review. Shepherd never writes a page directly: it
+// A change set is the unit of review. Siggey never writes a page directly: it
 // proposes a change set (before/after snapshot + summary + risk), the change set
 // is applied to the DRAFT, Mike previews it, and only then is it published.
 // That is what makes every AI edit explainable and reversible.
@@ -37,7 +37,7 @@ export type ProposeResult = {
 
 /**
  * Record a proposal. Nothing on the page moves yet — this is the "here is what I
- * would do" step Shepherd shows before touching the draft.
+ * would do" step Siggey shows before touching the draft.
  */
 export async function proposeChangeSet(input: ProposeInput): Promise<ProposeResult> {
   const sb = createSupabaseAdminClient();
@@ -117,7 +117,7 @@ export async function getChangeSet(id: string): Promise<WebsiteChangeSet | null>
 
 /**
  * Apply a proposed change set to the DRAFT. This is the default landing point
- * for every Shepherd edit — the live page is untouched until someone publishes.
+ * for every Siggey edit — the live page is untouched until someone publishes.
  */
 export async function applyChangeSetToDraft(
   id: string,
@@ -192,7 +192,7 @@ export async function rejectChangeSet(
 
 /**
  * Approve AND publish. Reached only from an explicit owner action, or from
- * Shepherd when direct publish is switched on and the page is neither protected
+ * Siggey when direct publish is switched on and the page is neither protected
  * nor legal (spec §16).
  */
 export async function approveAndPublishChangeSet(
@@ -226,7 +226,7 @@ export async function approveAndPublishChangeSet(
 }
 
 /**
- * Whether Shepherd may publish this page on its own right now. Direct publish is
+ * Whether Siggey may publish this page on its own right now. Direct publish is
  * OFF by default and NEVER applies to protected or legal pages, nor to a
  * high-risk change — those always come back to Mike (spec §16).
  */

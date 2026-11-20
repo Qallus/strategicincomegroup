@@ -3,10 +3,10 @@
 // Frontend Editor workspace — the tabbed home of CMS → Editor (spec §5).
 //
 // Overview · Pages · Navigation · Media · Global content · Settings, plus a
-// Shepherd panel that can be opened from anywhere in the module.
+// Siggey panel that can be opened from anywhere in the module.
 
 import * as React from "react";
-import { Bot, Globe, ImageIcon, LayoutDashboard, Link2, PanelsTopLeft, Settings, Wand2, X } from "lucide-react";
+import { Sparkles, Globe, ImageIcon, LayoutDashboard, Link2, PanelsTopLeft, Settings, Wand2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFabVisible } from "@/components/layout/fab-visibility";
@@ -29,9 +29,9 @@ const SHEPHERD_CONTEXT =
 
 const SHEPHERD_PROMPTS = [
   "What pages are on the website and which have unpublished changes?",
-  "Create a new page called Shepherd AI explaining what it does, with a pricing call to action.",
+  "Create a new page called Siggey AI explaining what it does, with a pricing call to action.",
   "Rewrite the hero on the Retirement Planning page.",
-  "Add Shepherd AI under Resources in the navigation.",
+  "Add Siggey AI under Resources in the navigation.",
   "Which pages are missing an SEO title or description?",
   "Check the site for broken internal links.",
   "Show me what changed on the website this week.",
@@ -58,7 +58,7 @@ export function WebsiteWorkspace({
         <h1 className="mt-1 text-2xl font-semibold tracking-normal sm:text-3xl">Website Editor</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Manage the public website — pages, sections, navigation, media and SEO — without touching code. Everything you
-          or Shepherd change lands in a draft first, is previewable, is versioned, and can be rolled back.
+          or Siggey change lands in a draft first, is previewable, is versioned, and can be rolled back.
         </p>
       </div>
 
@@ -99,12 +99,12 @@ export function WebsiteWorkspace({
         <button
           onClick={() => setShepherdOpen(true)}
           className={cn(
-            "fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-[#b88a4a] px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:opacity-90",
-            // The FAB is a 48px circle inset 20px, and is hidden below md.
+            "fixed bottom-7 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-[hsl(225_45%_12%)] px-4 py-2.5 text-sm font-semibold text-white shadow-xl shadow-black/20 transition hover:scale-105 dark:bg-brand-gold dark:text-[hsl(225_80%_10%)] print:hidden",
+            // The FAB is a 56px circle inset 20px (hidden below md); the pill sits 12px to its left, vertically centred.
             fabVisible && "md:right-[5.5rem]",
           )}
         >
-          <Bot className="h-4 w-4" /> Ask Shepherd
+          <Sparkles className="h-4 w-4" /> Ask Siggey
         </button>
       ) : null}
 
@@ -120,14 +120,14 @@ export function WebsiteWorkspace({
               <X className="h-4 w-4" />
             </button>
             <AgentChat
-              title="Shepherd"
+              title="Siggey"
               subtitle="Website editor"
               audio
               extraContext={SHEPHERD_CONTEXT}
               suggestions={SHEPHERD_PROMPTS}
-              placeholder="Ask Shepherd about the website…"
+              placeholder="Ask Siggey about the website…"
               heightClassName="h-[68vh] min-h-[420px]"
-              emptyTitle="Shepherd — website editor"
+              emptyTitle="Siggey — website editor"
               emptyHint="I can read the site, draft pages and propose changes. Everything lands in a draft for you to preview; I never publish without your approval."
             />
           </div>

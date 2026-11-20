@@ -8,7 +8,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, Bot, Copy, ExternalLink, Eye, FilePlus2, Loader2, MoreHorizontal, RotateCcw,
+  AlertTriangle, Sparkles, Copy, ExternalLink, Eye, FilePlus2, Loader2, MoreHorizontal, RotateCcw,
   Search, Trash2, Upload, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ const FILTERS = [
 
 const SOURCE_FILTERS = [
   { value: "any", label: "Anyone" },
-  { value: "shepherd", label: "Edited by Shepherd" },
+  { value: "shepherd", label: "Edited by Siggey" },
   { value: "manual", label: "Edited manually" },
 ] as const;
 
@@ -157,7 +157,7 @@ export function PagesList({ initialPages }: { initialPages: WebsitePageSummary[]
                   </td>
                   <td className="px-3 py-2.5">
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      {page.last_edited_source === "shepherd" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                      {page.last_edited_source === "shepherd" ? <Sparkles className="h-3 w-3" /> : <User className="h-3 w-3" />}
                       {relativeTime(page.updated_at)}
                     </span>
                     {page.updated_by_label ? <span className="block text-xs text-muted-foreground">{page.updated_by_label}</span> : null}
@@ -178,7 +178,7 @@ export function PagesList({ initialPages }: { initialPages: WebsitePageSummary[]
             {!visible.length ? (
               <tr>
                 <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                  No pages match those filters yet. Create one, or ask Shepherd to draft one for you.
+                  No pages match those filters yet. Create one, or ask Siggey to draft one for you.
                 </td>
               </tr>
             ) : null}

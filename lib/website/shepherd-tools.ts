@@ -1,6 +1,6 @@
-// Frontend Editor — Shepherd's controlled tool layer (spec §12.2).
+// Frontend Editor — Siggey's controlled tool layer (spec §12.2).
 //
-// This is the ONLY way Shepherd can touch the website. There is no SQL, no file
+// This is the ONLY way Siggey can touch the website. There is no SQL, no file
 // write, no shell and no repository access behind any of it; every tool goes
 // through the same validated data layer the dashboard uses, so the same rules
 // apply whether a change came from a click or from a sentence:
@@ -230,7 +230,7 @@ const globalsTool: AgentTool = {
 
 const versionsTool: AgentTool = {
   name: "website_list_versions",
-  description: "List the saved versions of a page (number, date, who made it, whether it came from Shepherd, and a summary) so a previous version can be restored.",
+  description: "List the saved versions of a page (number, date, who made it, whether it came from Siggey, and a summary) so a previous version can be restored.",
   parameters: {
     type: "object",
     properties: { page: { type: "string", description: "Page id, address or title." } },
@@ -271,7 +271,7 @@ const linksTool: AgentTool = {
 
 const historyTool: AgentTool = {
   name: "website_history",
-  description: "Read the website change history — what changed, when, and whether a person or Shepherd did it. Use this for questions like 'what changed last week'.",
+  description: "Read the website change history — what changed, when, and whether a person or Siggey did it. Use this for questions like 'what changed last week'.",
   parameters: {
     type: "object",
     properties: { limit: { type: "number", description: "How many entries (default 40, max 200)." } },
@@ -568,7 +568,7 @@ const publishTool: AgentTool = {
   execute: async (args, ctx) => {
     const page = await resolvePage(args.page);
     const { page: published, version, issues } = await publishPage(page.id, {
-      actorId: ctx.actorId, actorType: "shepherd", summary: str(args.summary) || "Published by Shepherd.",
+      actorId: ctx.actorId, actorType: "shepherd", summary: str(args.summary) || "Published by Siggey.",
     });
     return {
       ...pageSummary(published),
@@ -827,7 +827,7 @@ const requestComponentTool: AgentTool = {
       args.acceptanceCriteria ? `## Acceptance criteria\n${str(args.acceptanceCriteria)}` : "",
       "## Integration\nRegister the component in lib/website/registry.ts with its field schema, add the matching React " +
         "component under components/website/blocks, and map it in components/website/page-renderer.tsx. It then appears " +
-        "in the Add Section picker and becomes available to Shepherd automatically.",
+        "in the Add Section picker and becomes available to Siggey automatically.",
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -885,7 +885,7 @@ export const WEBSITE_TOOLS: AgentTool[] = [
 ];
 
 /**
- * A compact site map for Shepherd's system prompt (spec §30 — retrieval, not the
+ * A compact site map for Siggey's system prompt (spec §30 — retrieval, not the
  * whole website). Titles, addresses and status only; content comes from the read
  * tools on demand.
  */
@@ -910,5 +910,5 @@ export function renderComponentsForPrompt(): string {
 }
 
 // Re-exported so the confirmation UI and tests can reach the same deletion guard
-// Shepherd deliberately does not have.
+// Siggey deliberately does not have.
 export { deletePage as ownerOnlyDeletePage, getPage as _getPage };

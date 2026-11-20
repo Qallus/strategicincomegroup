@@ -3,7 +3,7 @@
 import * as React from "react";
 import {
   Monitor, Tablet, Smartphone, RefreshCw, MousePointerClick, Crosshair, ListTree, Trash2, Loader2, Check, X, Plus,
-  ArrowLeft, Download, Bot, Bookmark,
+  ArrowLeft, Download, Sparkles, Bookmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,7 +253,7 @@ export function FrontendEdits({ pages, onBack, onOpenRequests }: { pages: Fronte
         <div className="ml-auto flex items-center gap-2">
           {onOpenRequests && <Button variant="outline" size="sm" onClick={onOpenRequests} title="Saved edit requests"><Bookmark className="h-4 w-4" /> Reviews</Button>}
           <Button variant="outline" size="sm" onClick={exportNotes} disabled={notes.length === 0} title="Export this page's requests as Markdown"><Download className="h-4 w-4" /> Export</Button>
-          <Button variant="outline" size="sm" onClick={() => setShepherdOpen(true)} title="Ask Shepherd to draft the changes"><Bot className="h-4 w-4" /> Send to Shepherd</Button>
+          <Button variant="outline" size="sm" onClick={() => setShepherdOpen(true)} title="Ask Siggey to draft the changes"><Sparkles className="h-4 w-4" /> Send to Siggey</Button>
           <Button variant="outline" size="sm" onClick={() => { setNonce((n) => n + 1); }} title="Reload preview"><RefreshCw className="h-4 w-4" /></Button>
         </div>
       </div>
@@ -372,9 +372,9 @@ export function FrontendEdits({ pages, onBack, onOpenRequests }: { pages: Fronte
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShepherdOpen(false)} />
           <div className="relative z-10 w-full max-w-2xl">
             <button onClick={() => setShepherdOpen(false)} className="absolute -right-3 -top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card shadow hover:bg-muted"><X className="h-4 w-4" /></button>
-            <AgentChat title="Shepherd AI" subtitle={`Drafting edits for ${page.label}`} audio extraContext={shepherdContext}
-              placeholder="Ask Shepherd to draft these edit requests…" heightClassName="h-[68vh] min-h-[420px]"
-              emptyTitle="Draft these edits with Shepherd" emptyHint="I can turn this page's saved edit requests into CMS draft changes for review — I won't publish or touch the live site." />
+            <AgentChat title="Siggey AI" subtitle={`Drafting edits for ${page.label}`} audio extraContext={shepherdContext}
+              placeholder="Ask Siggey to draft these edit requests…" heightClassName="h-[68vh] min-h-[420px]"
+              emptyTitle="Draft these edits with Siggey" emptyHint="I can turn this page's saved edit requests into CMS draft changes for review — I won't publish or touch the live site." />
           </div>
         </div>
       )}

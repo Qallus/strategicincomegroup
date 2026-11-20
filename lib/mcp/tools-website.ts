@@ -1,4 +1,4 @@
-// Website pages managed by the Frontend Editor. These wrap Shepherd's website
+// Website pages managed by the Frontend Editor. These wrap Siggey's website
 // tools (lib/website/shepherd-tools.ts) one-for-one rather than re-implement
 // them, so the same validation, protected-route rules, draft/publish split
 // and website audit trail apply. The Frontend Editor is Super-Admin-only in

@@ -1,4 +1,4 @@
-// Frontend Editor — SIG brand context for Shepherd (spec §30, §56).
+// Frontend Editor — SIG brand context for Siggey (spec §30, §56).
 //
 // Kept small and retrieved rather than dumped: the page-editing tools inject
 // this plus the registry, not the whole website.
@@ -42,7 +42,7 @@ export const SHEPHERD_WEBSITE_RULES = `FRONTEND EDITOR RULES (these override you
    desktop-only layout.
 10. Never reveal secrets, environment variables, API keys, database structure or server internals.`;
 
-/** The context block injected into Shepherd's system prompt for website work. */
+/** The context block injected into Siggey's system prompt for website work. */
 export function renderWebsiteContextForPrompt(siteMap: string, registry: string): string {
   return ["\n\n", SHEPHERD_WEBSITE_RULES, "\n\n", SIG_BRAND_VOICE, "\n\n", siteMap, "\n\n", registry].join("");
 }

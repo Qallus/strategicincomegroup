@@ -4,7 +4,7 @@
 // CONNECTS to it rather than creating a second one, so an image uploaded in
 // Media Studio is immediately pickable here and usage stays in one place.
 //
-// Shepherd may search and attach existing media and edit alt text. It may not
+// Siggey may search and attach existing media and edit alt text. It may not
 // invent assets — every attach goes through an id that must already exist.
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AgentChat } from "@/components/ai-agent/agent-chat";
 
@@ -12,14 +12,14 @@ const PM_SUGGESTIONS = [
   "Connect the CMS task so it waits on the CMS and Experience project.",
 ];
 
-// "Ask Shepherd" — opens the AI agent in a modal, scoped/branded for the Project
+// "Ask Siggey" — opens the AI agent in a modal, scoped/branded for the Project
 // Manager and with PM tools available. Text or voice (mic + read-aloud).
 export function AskShepherd() {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button onClick={() => setOpen(true)} variant="outline" className="shrink-0 gap-1.5">
-        <Bot className="h-4 w-4" /> Ask Shepherd
+        <Sparkles className="h-4 w-4" /> Ask Siggey
       </Button>
 
       {open && (
@@ -34,10 +34,10 @@ export function AskShepherd() {
               <X className="h-4 w-4" />
             </button>
             <AgentChat
-              title="Shepherd"
+              title="Siggey"
               subtitle="Project Manager assistant"
               suggestions={PM_SUGGESTIONS}
-              placeholder="Ask Shepherd about your projects… (Enter to send, mic to speak)"
+              placeholder="Ask Siggey about your projects… (Enter to send, mic to speak)"
               audio
               heightClassName="h-[72vh] min-h-[440px]"
               emptyTitle="How can I help with your projects?"

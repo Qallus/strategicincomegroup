@@ -1257,7 +1257,7 @@ const updateProjectItem: AgentTool = {
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
-// CMS authoring (Super-Admin only; Shepherd can only ever produce DRAFTS)
+// CMS authoring (Super-Admin only; Siggey can only ever produce DRAFTS)
 // ──────────────────────────────────────────────────────────────────────────────
 
 // CMS is Super-Admin-only at every layer. The chat route admits any admin+, so

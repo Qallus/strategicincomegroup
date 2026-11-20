@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, Send, Loader2, Check, X, ShieldAlert, Wrench, Sparkles, RefreshCw, Mic, Volume2, VolumeX } from "lucide-react";
+import { Send, Loader2, Check, X, ShieldAlert, Wrench, Sparkles, RefreshCw, Mic, Volume2, VolumeX } from "lucide-react";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,10 +48,10 @@ function friendlyToolName(name: string) {
 }
 
 export function AgentChat({
-  title = "Shepherd",
+  title = "Siggey",
   subtitle = "AI Operations Agent",
   suggestions = DEFAULT_SUGGESTIONS,
-  placeholder = "Ask Shepherd… (Enter to send, Shift+Enter for a new line)",
+  placeholder = "Ask Siggey… (Enter to send, Shift+Enter for a new line)",
   audio = false,
   heightClassName = "h-[calc(100vh-220px)] min-h-[480px]",
   emptyTitle = "How can I help?",
@@ -220,7 +220,7 @@ export function AgentChat({
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Bot className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" />
           </div>
           <div>
             <p className="text-sm font-semibold leading-none">{title}</p>

@@ -47,7 +47,7 @@ export function canWebsite(role: string | null | undefined, capability: WebsiteC
   return websiteCapabilities(role).includes(capability);
 }
 
-/** Throwing form for server actions and Shepherd tools. */
+/** Throwing form for server actions and Siggey tools. */
 export function assertWebsiteCapability(role: string | null | undefined, capability: WebsiteCapability): void {
   if (!canWebsite(role, capability)) {
     throw new Error(`Your role cannot ${CAPABILITY_VERBS[capability]} website content.`);
@@ -66,6 +66,6 @@ const CAPABILITY_VERBS: Record<WebsiteCapability, string> = {
   manageGlobals: "change global content on",
   manageSeo: "change SEO for",
   manageSettings: "change settings for",
-  useShepherd: "use Shepherd on",
+  useShepherd: "use Siggey on",
   viewAuditLog: "review the history of",
 };
