@@ -1,7 +1,7 @@
 // Frontend Editor — before/after comparison (spec §18).
 //
 // Produces a structured change list (block added / removed / moved / edited,
-// plus SEO and settings changes) and the one-sentence summary Siggey quotes
+// plus SEO and settings changes) and the one-sentence summary Siggy quotes
 // back to Mike. Client-safe so the review panel and the server both use it.
 
 import { blockLabel, blockPreviewText } from "./registry";

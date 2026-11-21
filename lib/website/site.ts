@@ -250,8 +250,8 @@ export async function setEditorSettings(
     action: "settings.updated",
     resourceType: "settings",
     summary: next.allowShepherdDirectPublish
-      ? "Turned ON direct publishing for Siggey. Protected and legal pages still require your approval."
-      : "Turned OFF direct publishing for Siggey. Every change now waits for your approval.",
+      ? "Turned ON direct publishing for Siggy. Protected and legal pages still require your approval."
+      : "Turned OFF direct publishing for Siggy. Every change now waits for your approval.",
   });
   return next;
 }

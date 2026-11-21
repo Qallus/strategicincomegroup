@@ -6,7 +6,7 @@
 // Where it goes depends on what kind of page it is, and the panel says so BEFORE
 // you start writing rather than after you press send:
 //
-//   Editor-managed page → Siggey reads the page, proposes a change set, and
+//   Editor-managed page → Siggy reads the page, proposes a change set, and
 //                         applies it to the draft for preview and publishing.
 //   Code-owned page     → the description is queued as a developer request.
 //                         Nothing can rewrite a hand-built page from here, and
@@ -191,7 +191,7 @@ export function EditAPage({ pages }: { pages: WebsitePageSummary[] }) {
 
               {selected.kind === "managed" ? (
                 <p className="mt-1.5 text-sm text-muted-foreground">
-                  Siggey will read this page, propose your change, and apply it to the draft. You preview it and decide
+                  Siggy will read this page, propose your change, and apply it to the draft. You preview it and decide
                   whether to publish — nothing reaches the live site on its own.
                 </p>
               ) : (
@@ -277,7 +277,7 @@ export function EditAPage({ pages }: { pages: WebsitePageSummary[] }) {
           <div className="flex flex-wrap items-center gap-2">
             {selected.kind === "managed" ? (
               <Button onClick={sendToShepherd} disabled={!canSend} className="gap-1.5">
-                <Sparkles className="h-4 w-4" /> Send to Siggey
+                <Sparkles className="h-4 w-4" /> Send to Siggy
               </Button>
             ) : (
               <Button onClick={queueForDeveloper} disabled={!canSend || queueing} className="gap-1.5">
@@ -297,7 +297,7 @@ export function EditAPage({ pages }: { pages: WebsitePageSummary[] }) {
         </div>
       ) : null}
 
-      {/* Siggey, pre-loaded with the page and the instruction */}
+      {/* Siggy, pre-loaded with the page and the instruction */}
       {shepherdPrompt && selected ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShepherdPrompt(null)} aria-hidden />
@@ -310,7 +310,7 @@ export function EditAPage({ pages }: { pages: WebsitePageSummary[] }) {
               <X className="h-4 w-4" />
             </button>
             <AgentChat
-              title="Siggey"
+              title="Siggy"
               subtitle={selected.label}
               audio
               initialMessage={shepherdPrompt}
@@ -319,7 +319,7 @@ export function EditAPage({ pages }: { pages: WebsitePageSummary[] }) {
                 "Read it with website_get_page before proposing anything, then use website_propose_change or " +
                 "website_edit_section so the change lands in the draft for review. Do not publish unless asked."
               }
-              placeholder="Add more detail or answer Siggey…"
+              placeholder="Add more detail or answer Siggy…"
               heightClassName="h-[70vh] min-h-[440px]"
               emptyTitle="Working on it"
               emptyHint="Reading the page…"

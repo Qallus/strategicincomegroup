@@ -6,17 +6,17 @@ import { Button } from "@/components/ui/button";
 import { AgentChat } from "@/components/ai-agent/agent-chat";
 
 /**
- * Reusable "Ask Siggey" launcher — a button that opens the AI agent in a modal,
+ * Reusable "Ask Siggy" launcher — a button that opens the AI agent in a modal,
  * pre-seeded with entity context (via `extraContext`) and tap-to-run
  * `suggestions`. Use anywhere an individual item (a resource, an edit request)
- * should be triageable by Siggey in-app.
+ * should be triageable by Siggy in-app.
  */
 export function AskShepherdButton({
-  label = "Ask Siggey",
+  label = "Ask Siggy",
   size = "sm",
   variant = "outline",
   className,
-  title = "Siggey",
+  title = "Siggy",
   subtitle,
   suggestions,
   extraContext,

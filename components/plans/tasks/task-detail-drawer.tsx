@@ -366,7 +366,7 @@ export function TaskDetailDrawer({
               </div>
             </div>
           ) : (
-            // Left-aligned on purpose: the Siggey FAB is fixed to the bottom-right
+            // Left-aligned on purpose: the Siggy FAB is fixed to the bottom-right
             // and was sitting on top of Save.
             <div className="flex items-center gap-2 pr-16">
               {canEdit ? (

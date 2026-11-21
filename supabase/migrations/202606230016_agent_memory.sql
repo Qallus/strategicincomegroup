@@ -1,4 +1,4 @@
--- Siggey AI agent durable memory.
+-- Siggy AI agent durable memory.
 -- Stores small, non-sensitive facts the agent should recall across sessions
 -- (e.g. ongoing tasks, preferences, "the blog post we drafted"). Recalled into
 -- the system prompt at the start of each conversation.

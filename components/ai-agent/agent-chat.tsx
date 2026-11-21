@@ -48,10 +48,10 @@ function friendlyToolName(name: string) {
 }
 
 export function AgentChat({
-  title = "Siggey",
+  title = "Siggy",
   subtitle = "AI Operations Agent",
   suggestions = DEFAULT_SUGGESTIONS,
-  placeholder = "Ask Siggey… (Enter to send, Shift+Enter for a new line)",
+  placeholder = "Ask Siggy… (Enter to send, Shift+Enter for a new line)",
   audio = false,
   heightClassName = "h-[calc(100vh-220px)] min-h-[480px]",
   emptyTitle = "How can I help?",

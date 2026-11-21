@@ -41,7 +41,7 @@ export function SettingsPanel() {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-border p-4">
-        <h2 className="font-semibold">Siggey</h2>
+        <h2 className="font-semibold">Siggy</h2>
         {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
 
         <label className="mt-3 flex cursor-pointer items-start gap-3">
@@ -53,11 +53,11 @@ export function SettingsPanel() {
           />
           <span>
             <span className="block text-sm font-medium">
-              Let Siggey publish low-risk changes without asking
+              Let Siggy publish low-risk changes without asking
               {busy ? <Loader2 className="ml-2 inline h-3 w-3 animate-spin" /> : null}
             </span>
             <span className="mt-1 block text-sm text-muted-foreground">
-              Off by default. With this on, Siggey can still only publish a change it has already validated, it still
+              Off by default. With this on, Siggy can still only publish a change it has already validated, it still
               records a version and an audit entry, and it still cannot publish a protected page, a legal page or
               anything classed as high risk — those always come back to you.
             </span>
@@ -67,7 +67,7 @@ export function SettingsPanel() {
         {settings?.allowShepherdDirectPublish ? (
           <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            Direct publishing is on. Siggey&rsquo;s low-risk edits will go live as soon as it makes them.
+            Direct publishing is on. Siggy&rsquo;s low-risk edits will go live as soon as it makes them.
           </p>
         ) : null}
       </section>
@@ -75,7 +75,7 @@ export function SettingsPanel() {
       <section className="rounded-lg border border-border p-4">
         <h2 className="flex items-center gap-1.5 font-semibold"><ShieldCheck className="h-4 w-4" /> Protected addresses</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          These belong to the application itself. No page created here — by you or by Siggey — can take one of these
+          These belong to the application itself. No page created here — by you or by Siggy — can take one of these
           addresses, and nothing here can edit or delete them.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -106,7 +106,7 @@ function AuditLog() {
     <section className="rounded-lg border border-border">
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
         <h2 className="font-semibold">History</h2>
-        <p className="text-sm text-muted-foreground">Every change to the website, by you or by Siggey.</p>
+        <p className="text-sm text-muted-foreground">Every change to the website, by you or by Siggy.</p>
         <div className="ml-auto flex gap-1">
           {(["all", "user", "shepherd"] as const).map((f) => (
             <button
@@ -117,7 +117,7 @@ function AuditLog() {
                 filter === f ? "bg-[#b88a4a] text-white" : "bg-muted text-muted-foreground hover:text-foreground",
               )}
             >
-              {f === "user" ? "By people" : f === "shepherd" ? "By Siggey" : "All"}
+              {f === "user" ? "By people" : f === "shepherd" ? "By Siggy" : "All"}
             </button>
           ))}
         </div>

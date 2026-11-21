@@ -18,7 +18,7 @@ import type { CmsPage } from "@/lib/cms/types";
 type View = "overview" | "pages" | "editor" | "requests" | "completed" | "legal";
 
 const SHEPHERD_CONTEXT =
-  "You are Siggey helping with the SIG CMS. You can list, create, and update CMS DRAFT pages and answer questions about pages and edit requests. Everything you author is a draft for a Super Admin to review — never publish or edit the live site. You have no access to the Legal documents and must not draft, edit, or advise on publishing them — those are attorney-review drafts and a Super Admin edits them directly.";
+  "You are Siggy helping with the SIG CMS. You can list, create, and update CMS DRAFT pages and answer questions about pages and edit requests. Everything you author is a draft for a Super Admin to review — never publish or edit the live site. You have no access to the Legal documents and must not draft, edit, or advise on publishing them — those are attorney-review drafts and a Super Admin edits them directly.";
 
 export function CmsWorkspace({ initialPages, frontendPages, displayName }: { initialPages: CmsPage[]; frontendPages: FrontendPage[]; displayName?: string }) {
   const [view, setView] = React.useState<View>("overview");
@@ -98,10 +98,10 @@ export function CmsWorkspace({ initialPages, frontendPages, displayName }: { ini
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShepherdOpen(false)} />
           <div className="relative z-10 w-full max-w-2xl">
             <button onClick={() => setShepherdOpen(false)} className="absolute -right-3 -top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card shadow hover:bg-muted"><X className="h-4 w-4" /></button>
-            <AgentChat title="Siggey AI" subtitle="CMS assistant" audio extraContext={SHEPHERD_CONTEXT}
+            <AgentChat title="Siggy AI" subtitle="CMS assistant" audio extraContext={SHEPHERD_CONTEXT}
               suggestions={["What edit requests are still open?", "Create a draft landing page for the Three Phases of Wealth.", "Summarize the requests for the Home page.", "List my CMS pages and their status."]}
-              placeholder="Ask Siggey about pages or requests…" heightClassName="h-[68vh] min-h-[420px]"
-              emptyTitle="Siggey — CMS assistant" emptyHint="I can draft & edit CMS pages and answer questions about pages and edit requests. Drafts only — I won't publish or touch the live site." />
+              placeholder="Ask Siggy about pages or requests…" heightClassName="h-[68vh] min-h-[420px]"
+              emptyTitle="Siggy — CMS assistant" emptyHint="I can draft & edit CMS pages and answer questions about pages and edit requests. Drafts only — I won't publish or touch the live site." />
           </div>
         </div>
       )}

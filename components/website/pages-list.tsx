@@ -32,7 +32,7 @@ const FILTERS = [
 
 const SOURCE_FILTERS = [
   { value: "any", label: "Anyone" },
-  { value: "shepherd", label: "Edited by Siggey" },
+  { value: "shepherd", label: "Edited by Siggy" },
   { value: "manual", label: "Edited manually" },
 ] as const;
 
@@ -178,7 +178,7 @@ export function PagesList({ initialPages }: { initialPages: WebsitePageSummary[]
             {!visible.length ? (
               <tr>
                 <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                  No pages match those filters yet. Create one, or ask Siggey to draft one for you.
+                  No pages match those filters yet. Create one, or ask Siggy to draft one for you.
                 </td>
               </tr>
             ) : null}

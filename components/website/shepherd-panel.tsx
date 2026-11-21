@@ -1,9 +1,9 @@
 "use client";
 
-// The Siggey panel inside the page editor (spec §13, §50).
+// The Siggy panel inside the page editor (spec §13, §50).
 //
-// Two halves: the proposals Siggey has made for THIS page (apply to draft /
-// reject / publish), and the chat itself. Siggey always reads the page first,
+// Two halves: the proposals Siggy has made for THIS page (apply to draft /
+// reject / publish), and the chat itself. Siggy always reads the page first,
 // proposes, and leaves the decision here — nothing on this panel publishes
 // without an explicit click.
 
@@ -70,7 +70,7 @@ export function ShepherdPanel({
     }
   }
 
-  // Siggey is told exactly which page is open so "this page" is never ambiguous.
+  // Siggy is told exactly which page is open so "this page" is never ambiguous.
   const context =
     `The user is editing the website page "${page.title}" (id: ${page.id}, address: /${page.slug}, ` +
     `status: ${page.status}${page.is_legal ? ", LEGAL PAGE" : ""}${page.is_protected ? ", PROTECTED PAGE" : ""}). ` +
@@ -135,19 +135,19 @@ export function ShepherdPanel({
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center gap-1.5 border-b border-border px-4 py-2.5">
           <Sparkles className="h-4 w-4 text-[#b88a4a]" />
-          <h3 className="text-sm font-semibold">Ask Siggey</h3>
+          <h3 className="text-sm font-semibold">Ask Siggy</h3>
           <span className="ml-auto text-[11px] text-muted-foreground">Draft-first</span>
         </div>
         <div className="min-h-0 flex-1">
           <AgentChat
-            title="Siggey"
+            title="Siggy"
             subtitle={page.title}
             audio
             extraContext={context}
             suggestions={QUICK_PROMPTS}
-            placeholder="Ask Siggey to change this page…"
+            placeholder="Ask Siggy to change this page…"
             heightClassName="h-full min-h-[320px]"
-            emptyTitle="Ask Siggey to change this page"
+            emptyTitle="Ask Siggy to change this page"
             emptyHint="I read the page first, then propose a change you can preview. I never publish without your approval."
           />
         </div>

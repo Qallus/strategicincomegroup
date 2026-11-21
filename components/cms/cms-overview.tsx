@@ -91,7 +91,7 @@ export function CmsOverview({ pages, nav }: { pages: CmsPage[]; nav: CmsNav }) {
     { label: "Frontend Editor", desc: "Review & annotate public pages", icon: MousePointerClick, onClick: nav.editor, primary: true },
     { label: "Edit Requests", desc: "Triage frontend & dashboard requests", icon: ClipboardList, onClick: nav.requests },
     { label: "Pages & Block Builder", desc: "Create & edit CMS pages", icon: PanelsTopLeft, onClick: nav.pages },
-    { label: "Siggey AI", desc: "Draft pages & changes with AI", icon: Sparkles, onClick: nav.shepherd },
+    { label: "Siggy AI", desc: "Draft pages & changes with AI", icon: Sparkles, onClick: nav.shepherd },
     { label: "Legal", desc: "Privacy, Terms, SMS & AI Trust documents", icon: Scale, onClick: nav.legal },
   ];
   const stats = [

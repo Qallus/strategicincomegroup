@@ -1,6 +1,6 @@
 // Frontend Editor — the approved component registry (spec §10).
 //
-// This file is the allow-list. Mike and Siggey can only place block types that
+// This file is the allow-list. Mike and Siggy can only place block types that
 // appear here, and only set props that appear in a block's field list; anything
 // else is dropped by validateProps() before it ever reaches storage or the
 // renderer. Adding a new approved component later means adding one entry here
@@ -19,9 +19,9 @@ export type ComponentDefinition = {
   label: string;
   description: string;
   category: BlockCategory;
-  /** Field list — validation, Siggey's schema, and the property panel. */
+  /** Field list — validation, Siggy's schema, and the property panel. */
   fields: FieldDef[];
-  /** Siggey may create/modify this block type. */
+  /** Siggy may create/modify this block type. */
   shepherdEditable: boolean;
   /** The owner-facing editor exposes this block type. */
   ownerEditable: boolean;
@@ -759,7 +759,7 @@ export type ContentValidation = { content: WebsiteContent; issues: ValidationIss
 
 /**
  * Validate a whole content document. Invalid blocks are dropped (with an issue
- * recorded) rather than failing the entire save, so one bad block from Siggey
+ * recorded) rather than failing the entire save, so one bad block from Siggy
  * can never wipe a page. Duplicate ids are re-issued.
  */
 export function validateContent(raw: unknown): ContentValidation {
@@ -779,7 +779,7 @@ export function validateContent(raw: unknown): ContentValidation {
 }
 
 /**
- * The registry rendered for Siggey's system context (spec §30) — every block
+ * The registry rendered for Siggy's system context (spec §30) — every block
  * type it may use, with the exact prop names and shapes.
  */
 export function renderRegistryForPrompt(): string {

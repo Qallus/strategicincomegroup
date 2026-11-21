@@ -6,10 +6,10 @@ import { ArrowLeft, CalendarDays, ChevronRight, Mail, MessageCircle, Send, Spark
 import { CONTACT } from "@/lib/public-site/site-data";
 import { cn } from "@/lib/utils";
 
-type Msg = { from: "siggey" | "you"; text: string; link?: { href: string; label: string } };
+type Msg = { from: "siggy" | "you"; text: string; link?: { href: string; label: string } };
 
 const MENU = [
-  { key: "siggey", icon: Sparkles, title: "Talk to Siggey", copy: "Our SIG guide — ask about planning and services" },
+  { key: "siggy", icon: Sparkles, title: "Talk to Siggy", copy: "Our SIG guide — ask about planning and services" },
   { key: "planner", icon: Users, title: "Talk to a Planner", copy: "Meet a CFP® professional or Wealth Advisor", href: "/team" },
   { key: "schedule", icon: CalendarDays, title: "Schedule Online", copy: "Book a consultation in a couple of clicks", href: "/book" },
   { key: "contact", icon: Mail, title: "Contact Us", copy: `Questions? Call ${CONTACT.phone}`, href: "/contact" },
@@ -17,7 +17,7 @@ const MENU = [
 
 const SUGGESTIONS = ["What services do you offer?", "What are the Three Phases of Wealth?", "Where are your offices?", "How do I get started?"];
 
-// Siggey's preview answers come from the site's own pages. When the SIG AI agent
+// Siggy's preview answers come from the site's own pages. When the SIG AI agent
 // (Phase 8) is live, swap `answer()` for a call to its public chat endpoint.
 const ANSWERS: { match: RegExp; text: string; link?: Msg["link"] }[] = [
   {
@@ -73,20 +73,20 @@ const ANSWERS: { match: RegExp; text: string; link?: Msg["link"] }[] = [
 
 function answer(q: string): Msg {
   const hit = ANSWERS.find((a) => a.match.test(q));
-  if (hit) return { from: "siggey", text: hit.text, link: hit.link };
+  if (hit) return { from: "siggy", text: hit.text, link: hit.link };
   return {
-    from: "siggey",
+    from: "siggy",
     text: `Good question — that's one for a planner. You can call ${CONTACT.phone} or book a time that suits you.`,
     link: { href: "/book", label: "Schedule online" },
   };
 }
 
-/** Floating help button on every public page: Siggey (SIG AI guide), planners, scheduling and contact. */
+/** Floating help button on every public page: Siggy (SIG AI guide), planners, scheduling and contact. */
 export function SiteFab() {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"menu" | "chat">("menu");
   const [messages, setMessages] = useState<Msg[]>([
-    { from: "siggey", text: "Hi, I’m Siggey, Strategic Income Group’s guide. Ask me about our services, the Three Phases of Wealth, or how to get started." },
+    { from: "siggy", text: "Hi, I’m Siggy, Strategic Income Group’s guide. Ask me about our services, the Three Phases of Wealth, or how to get started." },
   ]);
   const [input, setInput] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
@@ -106,7 +106,7 @@ export function SiteFab() {
     };
   }, [open]);
 
-  // The header search's "Ask Siggey" opens the chat with the visitor's question.
+  // The header search's "Ask Siggy" opens the chat with the visitor's question.
   useEffect(() => {
     const onAsk = (e: Event) => {
       const q = String((e as CustomEvent).detail ?? "").trim();
@@ -114,8 +114,8 @@ export function SiteFab() {
       setOpen(true);
       if (q) setMessages((m) => [...m, { from: "you", text: q }, answer(q)]);
     };
-    window.addEventListener("sig:ask-siggey", onAsk);
-    return () => window.removeEventListener("sig:ask-siggey", onAsk);
+    window.addEventListener("sig:ask-siggy", onAsk);
+    return () => window.removeEventListener("sig:ask-siggy", onAsk);
   }, []);
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export function SiteFab() {
           {view === "menu" ? (
             <>
               <div className="border-b px-5 pb-4 pt-5">
-                <p className="font-serif text-2xl">Siggey</p>
+                <p className="font-serif text-2xl">Siggy</p>
                 <p className="mt-1 text-sm text-muted-foreground">Your guide to planning a financial life of purpose.</p>
               </div>
               <ul className="divide-y overflow-y-auto">
@@ -178,7 +178,7 @@ export function SiteFab() {
                   <Sparkles className="h-4 w-4" />
                 </span>
                 <div className="leading-tight">
-                  <p className="text-sm font-semibold">Siggey</p>
+                  <p className="text-sm font-semibold">Siggy</p>
                   <p className="text-[11px] text-muted-foreground">SIG AI guide · preview</p>
                 </div>
               </div>
@@ -220,8 +220,8 @@ export function SiteFab() {
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask Siggey a question…"
-                  aria-label="Message Siggey"
+                  placeholder="Ask Siggy a question…"
+                  aria-label="Message Siggy"
                   className="h-10 min-w-0 flex-1 rounded-full border bg-background px-4 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 />
                 <button type="submit" aria-label="Send" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-50" disabled={!input.trim()}>
@@ -229,7 +229,7 @@ export function SiteFab() {
                 </button>
               </form>
               <p className="px-4 pb-3 text-[10px] leading-snug text-muted-foreground">
-                Siggey shares general information only, not personalized financial advice.
+                Siggy shares general information only, not personalized financial advice.
               </p>
             </>
           )}

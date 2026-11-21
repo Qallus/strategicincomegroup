@@ -1,7 +1,7 @@
 // Frontend Editor — shared types (docs/frontend-editor/frontend-editor.md).
 //
 // Client-safe: no node/server imports, so the dashboard editor, the public
-// renderer and the Siggey tool layer can all share one vocabulary.
+// renderer and the Siggy tool layer can all share one vocabulary.
 
 export type WebsitePageStatus = "draft" | "published" | "scheduled" | "archived";
 export type WebsitePageType = "page" | "landing" | "resource" | "marketing" | "legal" | "system";

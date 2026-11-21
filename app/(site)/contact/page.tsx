@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Briefcase, CalendarDays, Clock, Facebook, Linkedin, Mail, Phone } from "lucide-react";
 import { Container, PlannerGrid } from "@/components/public-site/blocks";
-import { AskSiggeyCard } from "@/components/public-site/ask-siggey-card";
+import { AskSiggyCard } from "@/components/public-site/ask-siggy-card";
 import { ContactExperience } from "@/components/public-site/contact-form";
 import { OfficeMapCard } from "@/components/public-site/office-map";
 import { getLiveJobs } from "@/lib/careers/server";
@@ -100,7 +100,7 @@ export default async function ContactPage({ searchParams }: Props) {
               </Link>
             </div>
 
-            <AskSiggeyCard />
+            <AskSiggyCard />
           </aside>
         </div>
       </Container>

@@ -4,7 +4,7 @@
 //
 //   left   — page structure: add, reorder, duplicate, hide, remove
 //   centre — live preview in a real iframe at desktop / tablet / phone widths
-//   right  — Content · Design · SEO · History · Siggey
+//   right  — Content · Design · SEO · History · Siggy
 //
 // Editing is local-first with a 1.5s debounced autosave to the DRAFT. The
 // published page is never touched by autosave; publishing is always a deliberate
@@ -345,9 +345,9 @@ export function PageEditor({ initial }: { initial: PageContext }) {
             <TabButton active={tab === "page"} onClick={() => setTab("page")} icon={Search}>Page &amp; SEO</TabButton>
             <TabButton active={tab === "history"} onClick={() => setTab("history")} icon={History}>History</TabButton>
             <TabButton active={tab === "shepherd"} onClick={() => setTab("shepherd")} icon={Sparkles}>
-              Siggey
+              Siggy
               {changeSets.some((c) => c.status === "proposed" || c.status === "draft_applied") ? (
-                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[#b88a4a]" aria-label="Siggey has proposals waiting" />
+                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[#b88a4a]" aria-label="Siggy has proposals waiting" />
               ) : null}
             </TabButton>
           </div>

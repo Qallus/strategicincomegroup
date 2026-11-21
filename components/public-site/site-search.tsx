@@ -10,13 +10,13 @@ import { cn } from "@/lib/utils";
 
 let articleCache: SearchEntry[] | null = null;
 
-/** Opens the help FAB's Siggey chat with a question (SiteFab listens for this event). */
-export function askSiggey(question: string) {
-  window.dispatchEvent(new CustomEvent("sig:ask-siggey", { detail: question }));
+/** Opens the help FAB's Siggy chat with a question (SiteFab listens for this event). */
+export function askSiggy(question: string) {
+  window.dispatchEvent(new CustomEvent("sig:ask-siggy", { detail: question }));
 }
 
 /**
- * Header search dropdown: category tabs, a search field with "Ask Siggey",
+ * Header search dropdown: category tabs, a search field with "Ask Siggy",
  * and popular destinations (or ranked results) in a two-column grid.
  */
 export function SiteSearchPanel({ onClose }: { onClose: () => void }) {
@@ -69,7 +69,7 @@ export function SiteSearchPanel({ onClose }: { onClose: () => void }) {
         router.push(hit.href);
         onClose();
       } else if (query.trim()) {
-        askSiggey(query.trim());
+        askSiggy(query.trim());
         onClose();
       }
     }
@@ -118,12 +118,12 @@ export function SiteSearchPanel({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() => {
-              askSiggey(query.trim());
+              askSiggy(query.trim());
               onClose();
             }}
             className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[hsl(225_45%_12%)] px-4 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-brand-gold dark:text-[hsl(225_80%_10%)]"
           >
-            <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Ask Siggey</span>
+            <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Ask Siggy</span>
           </button>
         </div>
 
@@ -153,12 +153,12 @@ export function SiteSearchPanel({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() => {
-              askSiggey(query.trim());
+              askSiggy(query.trim());
               onClose();
             }}
             className="mt-2 flex w-full items-center gap-3 rounded-xl border border-dashed p-4 text-left text-sm hover:bg-muted"
           >
-            <Sparkles className="h-4 w-4 text-gold" /> Ask Siggey “{query.trim()}”
+            <Sparkles className="h-4 w-4 text-gold" /> Ask Siggy “{query.trim()}”
           </button>
         ) : null}
 

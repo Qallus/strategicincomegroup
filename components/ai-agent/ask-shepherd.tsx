@@ -12,14 +12,14 @@ const PM_SUGGESTIONS = [
   "Connect the CMS task so it waits on the CMS and Experience project.",
 ];
 
-// "Ask Siggey" — opens the AI agent in a modal, scoped/branded for the Project
+// "Ask Siggy" — opens the AI agent in a modal, scoped/branded for the Project
 // Manager and with PM tools available. Text or voice (mic + read-aloud).
 export function AskShepherd() {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button onClick={() => setOpen(true)} variant="outline" className="shrink-0 gap-1.5">
-        <Sparkles className="h-4 w-4" /> Ask Siggey
+        <Sparkles className="h-4 w-4" /> Ask Siggy
       </Button>
 
       {open && (
@@ -34,10 +34,10 @@ export function AskShepherd() {
               <X className="h-4 w-4" />
             </button>
             <AgentChat
-              title="Siggey"
+              title="Siggy"
               subtitle="Project Manager assistant"
               suggestions={PM_SUGGESTIONS}
-              placeholder="Ask Siggey about your projects… (Enter to send, mic to speak)"
+              placeholder="Ask Siggy about your projects… (Enter to send, mic to speak)"
               audio
               heightClassName="h-[72vh] min-h-[440px]"
               emptyTitle="How can I help with your projects?"

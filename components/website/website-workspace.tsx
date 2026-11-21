@@ -3,7 +3,7 @@
 // Frontend Editor workspace — the tabbed home of CMS → Editor (spec §5).
 //
 // Overview · Pages · Navigation · Media · Global content · Settings, plus a
-// Siggey panel that can be opened from anywhere in the module.
+// Siggy panel that can be opened from anywhere in the module.
 
 import * as React from "react";
 import { Globe, ImageIcon, LayoutDashboard, Link2, PanelsTopLeft, Settings, Wand2, X } from "lucide-react";
@@ -29,9 +29,9 @@ const SHEPHERD_CONTEXT =
 
 const SHEPHERD_PROMPTS = [
   "What pages are on the website and which have unpublished changes?",
-  "Create a new page called Siggey AI explaining what it does, with a pricing call to action.",
+  "Create a new page called Siggy AI explaining what it does, with a pricing call to action.",
   "Rewrite the hero on the Retirement Planning page.",
-  "Add Siggey AI under Resources in the navigation.",
+  "Add Siggy AI under Resources in the navigation.",
   "Which pages are missing an SEO title or description?",
   "Check the site for broken internal links.",
   "Show me what changed on the website this week.",
@@ -58,7 +58,7 @@ export function WebsiteWorkspace({
         <h1 className="mt-1 text-2xl font-semibold tracking-normal sm:text-3xl">Website Editor</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Manage the public website — pages, sections, navigation, media and SEO — without touching code. Everything you
-          or Siggey change lands in a draft first, is previewable, is versioned, and can be rolled back.
+          or Siggy change lands in a draft first, is previewable, is versioned, and can be rolled back.
         </p>
       </div>
 
@@ -104,7 +104,7 @@ export function WebsiteWorkspace({
             fabVisible && "md:right-[5.5rem]",
           )}
         >
-          Ask <span className="font-semibold text-[hsl(36_60%_42%)] dark:text-brand-gold">Siggey</span>
+          Ask <span className="font-semibold text-[hsl(36_60%_42%)] dark:text-brand-gold">Siggy</span>
         </button>
       ) : null}
 
@@ -120,14 +120,14 @@ export function WebsiteWorkspace({
               <X className="h-4 w-4" />
             </button>
             <AgentChat
-              title="Siggey"
+              title="Siggy"
               subtitle="Website editor"
               audio
               extraContext={SHEPHERD_CONTEXT}
               suggestions={SHEPHERD_PROMPTS}
-              placeholder="Ask Siggey about the website…"
+              placeholder="Ask Siggy about the website…"
               heightClassName="h-[68vh] min-h-[420px]"
-              emptyTitle="Siggey — website editor"
+              emptyTitle="Siggy — website editor"
               emptyHint="I can read the site, draft pages and propose changes. Everything lands in a draft for you to preview; I never publish without your approval."
             />
           </div>

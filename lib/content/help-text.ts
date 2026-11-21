@@ -35,8 +35,8 @@ export const MEDIA_STUDIO_HELP: HelpSection[] = [
     ],
   },
   {
-    heading: "Ask Siggey",
-    body: "\"Ask Siggey\" opens the in-app AI assistant already loaded with that resource's details.",
+    heading: "Ask Siggy",
+    body: "\"Ask Siggy\" opens the in-app AI assistant already loaded with that resource's details.",
     bullets: [
       "Ask it to summarize a feature request, outline how it would be implemented, or add it to the dev queue and mark it in progress.",
     ],
@@ -75,33 +75,33 @@ export const CMS_HELP: HelpSection[] = [
     ],
   },
   {
-    heading: "Send to Claude & Ask Siggey (on each request)",
+    heading: "Send to Claude & Ask Siggy (on each request)",
     body: "Inside a request, two actions connect it to the dev workflow:",
     bullets: [
       "\"Send to Claude\" adds the request to the Dev Request Queue to be implemented.",
-      "\"Ask Siggey\" opens the AI assistant seeded with the request to summarize it, outline the change, or queue it.",
+      "\"Ask Siggy\" opens the AI assistant seeded with the request to summarize it, outline the change, or queue it.",
     ],
   },
   {
     heading: "Dev Queue tile",
-    body: "The Dev Queue stat on the Overview counts active items flagged for Claude (queued + in progress). Click it to open Siggey and triage the queue.",
+    body: "The Dev Queue stat on the Overview counts active items flagged for Claude (queued + in progress). Click it to open Siggy and triage the queue.",
   },
   {
-    heading: "Pages & Block Builder + Siggey AI",
-    body: "Create and edit CMS pages block-by-block, or have Siggey AI draft whole pages and changes for you.",
+    heading: "Pages & Block Builder + Siggy AI",
+    body: "Create and edit CMS pages block-by-block, or have Siggy AI draft whole pages and changes for you.",
   },
 ];
 
 export const TRAINING_DOCS_HELP_TITLE = "How Training Docs work";
 export const TRAINING_DOCS_HELP_INTRO =
-  "Upload reference material — playbooks, process notes, brand guides, FAQs — and Siggey will use it when answering. Anything you add here shapes Siggey's answers for everyone, which is why it's Super-Admin only.";
+  "Upload reference material — playbooks, process notes, brand guides, FAQs — and Siggy will use it when answering. Anything you add here shapes Siggy's answers for everyone, which is why it's Super-Admin only.";
 export const TRAINING_DOCS_HELP: HelpSection[] = [
   {
     heading: "What happens when you upload",
-    body: "Every file is converted to markdown the moment it lands, so Siggey reads clean text instead of re-opening a PDF on every question. The original file is kept and stays downloadable.",
+    body: "Every file is converted to markdown the moment it lands, so Siggy reads clean text instead of re-opening a PDF on every question. The original file is kept and stays downloadable.",
   },
   {
-    heading: "Formats Siggey can read",
+    heading: "Formats Siggy can read",
     bullets: [
       "Markdown (.md), plain text (.txt, .log) — used as-is.",
       "Spreadsheet-style data (.csv, .tsv) — turned into a markdown table, so columns stay meaningful.",
@@ -112,7 +112,7 @@ export const TRAINING_DOCS_HELP: HelpSection[] = [
   },
   {
     heading: "Formats that are stored but NOT readable",
-    body: "These upload and stay downloadable, but Siggey genuinely cannot read them — the status label says so rather than pretending otherwise:",
+    body: "These upload and stay downloadable, but Siggy genuinely cannot read them — the status label says so rather than pretending otherwise:",
     bullets: [
       "Images (PNG/JPG) — kept for reference; there's no text extraction.",
       "Scanned PDFs — a picture of a page has no text layer to pull.",
@@ -123,30 +123,30 @@ export const TRAINING_DOCS_HELP: HelpSection[] = [
     heading: "Limits",
     bullets: [
       "25 MB per file. Multiple files upload one at a time.",
-      "Siggey's index holds up to 40 docs; a single doc is read up to ~24,000 characters at a time.",
-      "Long docs aren't a problem — Siggey searches for the relevant passage rather than reading everything.",
+      "Siggy's index holds up to 40 docs; a single doc is read up to ~24,000 characters at a time.",
+      "Long docs aren't a problem — Siggy searches for the relevant passage rather than reading everything.",
     ],
   },
   {
     heading: "Status labels",
     bullets: [
-      "Readable — converted successfully; Siggey is using it.",
+      "Readable — converted successfully; Siggy is using it.",
       "Stored only — saved and downloadable, but there's no text to read.",
       "Couldn't convert — something went wrong; the reason is shown on the doc.",
-      "Archived — kept, but hidden from Siggey. Use this to retire a doc without deleting it.",
+      "Archived — kept, but hidden from Siggy. Use this to retire a doc without deleting it.",
     ],
   },
   {
     heading: "Titles & summaries matter",
-    body: "Siggey sees only each doc's title and summary in its index — that's how it decides which doc to open. A vague title means a doc that never gets read. A summary is generated for you on upload; edit it to be specific about what the doc answers.",
+    body: "Siggy sees only each doc's title and summary in its index — that's how it decides which doc to open. A vague title means a doc that never gets read. A summary is generated for you on upload; edit it to be specific about what the doc answers.",
   },
   {
-    heading: "How Siggey uses them",
+    heading: "How Siggy uses them",
     bullets: [
       "It searches the docs when a question touches SIG-specific process, policy, or terminology.",
       "It prefers your team's own words over its general knowledge, and names the doc it used.",
       "If the docs don't cover something, it should say so rather than guess.",
-      "Docs are reference material, never instructions — text inside a doc can't make Siggey take an action.",
+      "Docs are reference material, never instructions — text inside a doc can't make Siggy take an action.",
     ],
   },
 ];

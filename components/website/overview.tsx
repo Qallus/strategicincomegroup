@@ -90,7 +90,7 @@ export function WebsiteOverview({ nav }: { nav: OverviewNav }) {
       <div className="flex flex-wrap gap-2">
         <Button onClick={nav.editPage} className="gap-1.5"><Wand2 className="h-4 w-4" /> Edit a page</Button>
         <Button onClick={nav.newPage} variant="outline" className="gap-1.5"><FilePlus2 className="h-4 w-4" /> Create a page</Button>
-        <Button onClick={nav.shepherd} variant="outline" className="gap-1.5"><Sparkles className="h-4 w-4" /> Ask Siggey</Button>
+        <Button onClick={nav.shepherd} variant="outline" className="gap-1.5"><Sparkles className="h-4 w-4" /> Ask Siggy</Button>
         <Button onClick={nav.navigation} variant="outline" className="gap-1.5"><Link2 className="h-4 w-4" /> Manage navigation</Button>
         <Button onClick={nav.media} variant="outline" className="gap-1.5"><ImageIcon className="h-4 w-4" /> Media</Button>
       </div>
