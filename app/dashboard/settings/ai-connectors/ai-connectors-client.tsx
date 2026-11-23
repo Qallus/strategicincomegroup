@@ -221,9 +221,10 @@ export function AiConnectorsClient({ mcpUrl, actionToken, initialClients, initia
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="claude">
-            <TabsList>
+            <TabsList className="h-auto flex-wrap justify-start">
               <TabsTrigger value="claude">Claude</TabsTrigger>
               <TabsTrigger value="chatgpt">ChatGPT</TabsTrigger>
+              <TabsTrigger value="codex">Codex</TabsTrigger>
               <TabsTrigger value="gemini">Gemini CLI</TabsTrigger>
               <TabsTrigger value="grok">Grok / xAI</TabsTrigger>
             </TabsList>
@@ -247,6 +248,29 @@ export function AiConnectorsClient({ mcpUrl, actionToken, initialClients, initia
                   <>In a chat, pick the connector from the + menu (Developer mode). ChatGPT asks before running tools that change data.</>,
                 ]}
               />
+              <p className="text-xs text-muted-foreground">
+                Deep research and company knowledge: SIG includes the read-only <code className="font-mono">search</code> and <code className="font-mono">fetch</code> tools ChatGPT needs, so once connected you can add Strategic Income Group as a source there too. They only return records your SIG role can open.
+              </p>
+            </TabsContent>
+            <TabsContent value="codex" className="space-y-3 pt-3">
+              <Steps
+                items={[
+                  <>Works in the Codex CLI, the Codex IDE extension and the Codex app (they share one config). In a terminal run:</>,
+                ]}
+              />
+              <CodeBlock>{`codex mcp add sig --url ${mcpUrl}
+codex mcp login sig`}</CodeBlock>
+              <Steps
+                items={[
+                  <>The login command opens SIG&apos;s sign-in in your browser; choose <strong className="text-foreground">Allow access</strong>. Check it with <code className="font-mono">codex mcp list</code>, or <code className="font-mono">/mcp</code> inside Codex.</>,
+                  <>Or add it by hand to <code className="font-mono">~/.codex/config.toml</code>, then run <code className="font-mono">codex mcp login sig</code>:</>,
+                ]}
+              />
+              <CodeBlock>{`[mcp_servers.sig]
+url = "${mcpUrl}"`}</CodeBlock>
+              <p className="text-xs text-muted-foreground">
+                Headless or CI: create an API token below, put it in an environment variable (e.g. <code className="font-mono">SIG_MCP_TOKEN</code>) and add <code className="font-mono">bearer_token_env_var = &quot;SIG_MCP_TOKEN&quot;</code> under <code className="font-mono">[mcp_servers.sig]</code> instead of logging in.
+              </p>
             </TabsContent>
             <TabsContent value="gemini" className="space-y-3 pt-3">
               <Steps

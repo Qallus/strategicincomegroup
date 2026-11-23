@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/public-site/json-ld";
+import { articleJsonLd } from "@/lib/public-site/seo";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clock } from "lucide-react";
 import { Container, CtaBand } from "@/components/public-site/blocks";
@@ -36,6 +38,7 @@ export default async function PostPage({ params }: Props) {
 
   return (
     <>
+      <JsonLd data={articleJsonLd(post)} />
       <article>
         <header className="border-b bg-muted/40">
           <Container className="py-12 md:py-16">

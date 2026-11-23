@@ -13,7 +13,9 @@ export type NotificationType =
   | "resource_shared"
   | "energy_audit_completed"
   | "book_waitlist_request"
-  | "booking_created";
+  | "booking_created"
+  | "booking_rescheduled"
+  | "booking_cancelled";
 
 export async function createDashboardNotification(input: {
   type: NotificationType;

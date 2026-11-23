@@ -124,10 +124,17 @@ export type Booking = {
   notify_consent_at?: string | null;
   sms_consent_text?: string | null;
   notifications_sent?: Record<string, unknown> | null;
+  // Self-service (202611210200) — absent until that migration runs.
+  manage_token_hash?: string | null;
+  manage_token_created_at?: string | null;
+  rescheduled_at?: string | null;
+  cancelled_at?: string | null;
+  cancelled_by?: "client" | "staff" | null;
+  ics_sequence?: number;
   created_at?: string;
   updated_at?: string;
   // joined
-  booking_type?: Pick<BookingType, "name" | "slug" | "color"> | null;
+  booking_type?: (Pick<BookingType, "name" | "slug" | "color"> & Partial<Pick<BookingType, "host_slug" | "host_name">>) | null;
 };
 
 export type EventItem = {

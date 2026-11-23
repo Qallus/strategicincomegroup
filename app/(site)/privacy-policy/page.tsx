@@ -60,6 +60,15 @@ export default function PrivacyPolicyPage() {
           heading: "6. Cookies and Tracking Technologies",
           paragraphs: ["We use cookies and similar technologies to improve user experience and analyze website usage. You may modify your browser settings to disable cookies."],
         },
+        // ── DRAFT — pending SIG approval (SIG Analytics, Phase 1). Remove this comment once approved. ──
+        {
+          heading: "6A. Website Analytics",
+          paragraphs: [
+            "We measure how our website is used with our own first-party analytics, which we operate ourselves. It does not use cookies and does not share data with advertising networks or other third parties.",
+            "When you visit, we record the pages you view, how long a page is open and how far it is scrolled, clicks on phone, email and external links, the website or campaign link that referred you, your general device type and browser, and your approximate country and state. We do not record your name, email address or other personal details in our analytics. Your IP address is used only to create a one-way, randomized code that changes every day and is then discarded; the IP address itself is never stored.",
+            "If your browser sends a Do Not Track or Global Privacy Control signal, we do not collect analytics about your visit. When you submit a form, book an appointment or register for an event, we note how you found our website (for example, a search engine or one of our emails) so we can understand which outreach is helpful. To do this, the site keeps a small note of how you first and most recently arrived in your browser's local storage (not a cookie), which you can remove at any time by clearing this site's data in your browser. Raw analytics records are deleted after 13 months.",
+          ],
+        },
         {
           heading: "7. Third-Party Links",
           paragraphs: ["Our website may contain links to third-party websites. We are not responsible for the privacy practices of those sites."],

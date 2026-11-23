@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeSlots } from "@/lib/booking/availability";
-import { loadAvailability, loadBookingTypeBySlug, loadBookingsForType, loadDateOverrides } from "@/lib/booking/data";
+import { loadAvailability, loadBlockingBookings, loadBookingTypeBySlug, loadDateOverrides } from "@/lib/booking/data";
 
 // PUBLIC: compute open slots for a booking type over a date range.
 export async function GET(request: NextRequest) {
@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     const [rules, overrides] = await Promise.all([loadAvailability(type.id), loadDateOverrides(type.id)]);
     const fromIso = new Date(`${fromDate}T00:00:00Z`).toISOString();
     const toIso = new Date(`${toDate}T23:59:59Z`).toISOString();
-    const bookings = await loadBookingsForType(type.id, fromIso, toIso);
+    // The planner's whole calendar blocks time — not just this one booking page.
+    const bookings = await loadBlockingBookings(type, fromIso, toIso);
 
     const slots = computeSlots({ type, rules, overrides, bookings, fromDate, toDate });
     return NextResponse.json({
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
       timezone: type.timezone,
       duration_minutes: type.duration_minutes,
       name: type.name,
+      min_notice_hours: type.min_notice_hours,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to load slots";

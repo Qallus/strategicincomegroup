@@ -141,9 +141,14 @@ export default async function BookIndexPage({ searchParams }: Props) {
           </div>
         </div>
 
-        <p className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
-          <Lock className="h-3.5 w-3.5" aria-hidden /> Your details go only to your planner and the Strategic Income Group team.
-        </p>
+        <div className="mt-6 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-center gap-2">
+            <Lock className="h-3.5 w-3.5" aria-hidden /> Your details go only to your planner and the Strategic Income Group team.
+          </p>
+          <Link href="/book/manage" className="inline-flex items-center gap-1.5 font-medium text-foreground underline-offset-2 hover:underline">
+            <CalendarDays className="h-3.5 w-3.5 text-gold" aria-hidden /> Already booked? Manage your appointments
+          </Link>
+        </div>
       </Container>
     </>
   );

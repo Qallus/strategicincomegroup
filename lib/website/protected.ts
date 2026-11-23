@@ -25,10 +25,16 @@ export const PROTECTED_ROUTES = [
   // Code-owned public routes.
   "/events",
   "/book",
+  // Client self-service (token links) — noindex, never CMS-owned.
+  "/book/manage",
   "/c",
   "/email",
   "/sms",
   "/manifest.webmanifest",
+  // SEO / AI readability and the analytics collector (code-owned).
+  "/robots.txt",
+  "/sitemap.xml",
+  "/llms.txt",
   // Code-owned public site (app/(site)) and auth pages.
   "/team",
   "/mission",

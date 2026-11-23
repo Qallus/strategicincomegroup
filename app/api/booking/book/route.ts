@@ -1,7 +1,9 @@
 import { after, NextRequest, NextResponse } from "next/server";
+import { conversionChannel, sanitizeAttribution } from "@/lib/analytics/attribution";
 import { createBooking, loadBookingTypeBySlug } from "@/lib/booking/data";
 import { BOOKING_SMS_CONSENT_TEXT } from "@/lib/booking/consent";
 import { notifyBookingCreated } from "@/lib/booking/notify";
+import { managePath, manageUrl, newToken, resolveHostStaffId } from "@/lib/booking/manage";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -38,9 +40,19 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent") ?? null,
     };
 
+    // Website first/last touch; `source` records the credited channel (was always "public").
+    const attribution = sanitizeAttribution(body?.attribution);
+
+    // The planner's dashboard login (page host, else the linked employee profile; null → admins).
+    const hostStaffId = await resolveHostStaffId(type).catch(() => type.host_staff_id ?? null);
+    // Self-service link: the raw token goes to the client only; the booking stores its hash.
+    const manage = newToken();
+
     const booking = await createBooking({
       booking_type_id: type.id,
-      host_staff_id: type.host_staff_id,
+      host_staff_id: hostStaffId,
+      host_slug: type.host_slug ?? null,
+      manage_token_hash: manage.hash,
       invitee_name: name,
       invitee_email: email,
       invitee_phone: phone,
@@ -50,7 +62,8 @@ export async function POST(request: NextRequest) {
       location_type: type.location_type,
       location_details: type.location_details,
       answers: body?.answers && typeof body.answers === "object" ? body.answers : {},
-      source: "public",
+      source: conversionChannel(attribution),
+      attribution,
       notify: {
         email: notify.email,
         sms: notify.sms,
@@ -62,9 +75,13 @@ export async function POST(request: NextRequest) {
 
     // Fire notifications after the response so the client never waits on SMTP/Twilio,
     // and a delivery failure can never fail the booking.
+    // Only hand out the link if the token was actually stored (the column exists).
+    const hasManage = (booking as { manage_token_hash?: string | null }).manage_token_hash === manage.hash;
+    const manageLink = hasManage ? manageUrl(manage.token) : null;
+
     after(async () => {
       try {
-        await notifyBookingCreated({ booking, type, notify, consent });
+        await notifyBookingCreated({ booking, type, notify, consent, manageUrl: manageLink });
       } catch (e) {
         console.error("[booking] notifications failed", booking.reference, e instanceof Error ? e.message : e);
       }
@@ -79,6 +96,7 @@ export async function POST(request: NextRequest) {
       end_at: booking.end_at,
       timezone: booking.timezone,
       notify,
+      manage_url: hasManage ? managePath(manage.token) : null,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Booking failed";

@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/public-site/json-ld";
+import { eventJsonLd } from "@/lib/public-site/seo";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clock, Globe, Lock, MapPin, Navigation, TimerReset, Users } from "lucide-react";
 import { Container } from "@/components/public-site/blocks";
@@ -48,6 +50,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
   return (
     <>
+      <JsonLd data={eventJsonLd(event)} />
       <section className="sig-on-navy relative overflow-hidden bg-[hsl(225_95%_15%)] text-white dark:bg-[hsl(228_60%_5%)]">
         <div className="sig-grid-bg pointer-events-none absolute inset-0" aria-hidden />
         <Container className="relative py-12 md:py-16">

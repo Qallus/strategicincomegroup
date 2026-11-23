@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/public-site/json-ld";
+import { jobPostingJsonLd } from "@/lib/public-site/seo";
 import Link from "next/link";
 import { ArrowLeft, Banknote, Briefcase, MapPin } from "lucide-react";
 import { ButtonLink, CheckList, Container, CtaBand, PageHero } from "@/components/public-site/blocks";
@@ -32,6 +34,7 @@ export default async function JobPage({ params }: Props) {
 
   return (
     <>
+      <JsonLd data={jobPostingJsonLd(job)} />
       <PageHero
         eyebrow={type}
         title={job.title}

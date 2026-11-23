@@ -102,3 +102,26 @@ Don’t use `npm run db:migrate` yet — its tracking table is empty, so it woul
 - Sign in at `/login`; open Dashboard → Bookings & Events, Form Submissions, Blog Posts.
 - Submit the contact form once and see it in Form Submissions.
 - `https://YOUR-SUBDOMAIN/.well-known/oauth-authorization-server` shows the HTTPS issuer (MCP connector).
+
+## 7. Analytics (SIG Analytics, Phase 1)
+
+1. Run `supabase/migrations/202611210190_analytics.sql` in **SQL Editor** (new tables, attribution columns and the rollup/report functions; safe to re-run).
+2. Add to the app's environment variables:
+
+```env
+ANALYTICS_IP_SALT=<any long random string — keeps daily visitor hashes stable across restarts>
+# Optional
+NEXT_PUBLIC_ANALYTICS_DEBUG=   # set to 1 (build variable) only to test the tracker on localhost / the preview host
+ANALYTICS_INTERNAL_ORIGIN=     # e.g. http://127.0.0.1:3000 if the crawler log should not loop through the proxy
+```
+
+3. **Scheduled tasks** (Coolify → the app → Scheduled Tasks; both run inside the app container and use `CRON_SECRET`):
+
+| Name | Command | Frequency |
+|---|---|---|
+| `analytics-intraday` | `node scripts/analytics-cron.mjs intraday` | `*/15 * * * *` (rebuilds today's rollup) |
+| `analytics-nightly` | `node scripts/analytics-cron.mjs nightly` | `0 9 * * *` (09:00 UTC = 02:00 Arizona: rebuilds yesterday + today, deletes raw analytics older than 13 months) |
+
+4. Check: `curl -X POST -H "x-cron-secret: $CRON_SECRET" https://YOUR-SUBDOMAIN/api/admin/analytics/sync?mode=intraday` returns `{"ok":true,...}`, and **Dashboard → Analytics → Connections** shows the rollup as Live.
+
+The tracker never runs on `localhost` or a `preview.` host (unless `NEXT_PUBLIC_ANALYTICS_DEBUG=1`), honours Do Not Track / Global Privacy Control, and skips browsers signed in to the dashboard.

@@ -11,6 +11,7 @@ import { contactTools } from "./tools-contacts";
 import { eventTools } from "./tools-events";
 import { formTools } from "./tools-forms";
 import { siteNoticeTools } from "./tools-site-notices";
+import { searchTools } from "./tools-search";
 import { systemTools } from "./tools-system";
 import { teamTools } from "./tools-team";
 import { websiteTools } from "./tools-website";
@@ -24,6 +25,7 @@ export function allTools(): McpTool[] {
   if (!cache) {
     cache = [
       ...systemTools(() => allTools()),
+      ...searchTools(),
       ...contactTools(),
       ...formTools(),
       ...bookingTools(),

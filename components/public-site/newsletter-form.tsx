@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getAttribution } from "@/lib/analytics/attribution";
 
 const CONSENT =
   "By checking this box, I agree to receive the Strategic Income Group Newsletter via email. Messages may include links to pages on strategicincomegroup.com. Message frequency varies (typically 1 to 2 emails each month).";
@@ -26,7 +27,7 @@ export function NewsletterForm() {
     const res = await fetch("/api/public/forms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ formType: "newsletter", email, consent, consentText: CONSENT, source: "footer", company_website: hp }),
+      body: JSON.stringify({ formType: "newsletter", email, consent, consentText: CONSENT, source: "footer", company_website: hp, attribution: getAttribution() }),
     }).catch(() => null);
     const data = await res?.json().catch(() => ({}));
     if (!res?.ok) {

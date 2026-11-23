@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/public-site/json-ld";
+import { personJsonLd } from "@/lib/public-site/seo";
 import Link from "next/link";
 import {
   ArrowLeft, Briefcase, CalendarDays, Clock, Heart, Linkedin, Mail, MapPin, Mountain, Phone, Plane, Quote, ShoppingBag, Sparkles,
@@ -62,6 +64,7 @@ export default async function TeamMemberPage({ params }: Props) {
 
   return (
     <>
+      <JsonLd data={personJsonLd(m)} />
       <PageHero
         eyebrow={m.title || "Strategic Income Group"}
         title={m.name}

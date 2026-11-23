@@ -10,6 +10,7 @@ import { getDmStats } from "@/lib/direct-messages/data";
 import { getSigOverview } from "@/lib/dashboard/overview";
 import { MyTasksCard } from "@/components/dashboard/my-tasks-card";
 import { StatCardRow } from "@/components/dashboard/stat-card-row";
+import { UpcomingAppointmentsCard } from "@/components/dashboard/upcoming-appointments-card";
 import { ROLES } from "@/lib/rbac/roles";
 
 export default async function DashboardPage() {
@@ -48,6 +49,8 @@ export default async function DashboardPage() {
       />
 
       <MyTasksCard tasks={myTasks} name={myName} />
+
+      {profile ? <UpcomingAppointmentsCard profileId={profile.id} isAdmin={isAdmin} /> : null}
 
       <div className="space-y-4 border-t pt-6">
         <h2 className="text-lg font-semibold tracking-tight">Firm at a glance</h2>

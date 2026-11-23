@@ -10,6 +10,10 @@ export type CalendarEvent = {
   organizerName?: string | null;
   organizerEmail?: string | null;
   url?: string | null;
+  /** iCalendar SEQUENCE — bump on every change so calendar apps update the same event. */
+  sequence?: number;
+  /** PUBLISH (default) for a new / updated event, CANCEL to remove it from the calendar. */
+  method?: "PUBLISH" | "REQUEST" | "CANCEL";
 };
 
 const icsDate = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -32,10 +36,11 @@ export function buildIcs(e: CalendarEvent): string {
     "VERSION:2.0",
     "PRODID:-//Strategic Income Group//Booking//EN",
     "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
+    `METHOD:${e.method ?? "PUBLISH"}`,
     "BEGIN:VEVENT",
     `UID:${e.uid}@strategicincomegroup.com`,
     `DTSTAMP:${icsDate(new Date().toISOString())}`,
+    `SEQUENCE:${Math.max(0, Math.floor(e.sequence ?? 0))}`,
     `DTSTART:${icsDate(e.start)}`,
     `DTEND:${icsDate(e.end)}`,
     `SUMMARY:${esc(e.title)}`,
@@ -43,12 +48,8 @@ export function buildIcs(e: CalendarEvent): string {
     e.location ? `LOCATION:${esc(e.location)}` : "",
     e.url ? `URL:${e.url}` : "",
     e.organizerEmail ? `ORGANIZER;CN=${esc(e.organizerName || "Strategic Income Group")}:mailto:${e.organizerEmail}` : "",
-    "STATUS:CONFIRMED",
-    "BEGIN:VALARM",
-    "TRIGGER:-PT1H",
-    "ACTION:DISPLAY",
-    `DESCRIPTION:${esc(e.title)}`,
-    "END:VALARM",
+    e.method === "CANCEL" ? "STATUS:CANCELLED" : "STATUS:CONFIRMED",
+    ...(e.method === "CANCEL" ? [] : ["BEGIN:VALARM", "TRIGGER:-PT1H", "ACTION:DISPLAY", `DESCRIPTION:${esc(e.title)}`, "END:VALARM"]),
     "END:VEVENT",
     "END:VCALENDAR",
   ].filter(Boolean);

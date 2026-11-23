@@ -22,7 +22,8 @@ import {
 } from "@/lib/booking/types";
 import { OFFICES } from "@/lib/public-site/site-data";
 import { TEAM } from "@/lib/public-site/team";
-import type { StaffOption } from "@/lib/booking/data";
+import type { PlannerLink, StaffOption } from "@/lib/booking/data";
+import { AppointmentsPanel } from "./appointments-panel";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -111,11 +112,13 @@ function Pill({ status }: { status: string }) {
   return <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", statusClass[status] ?? "bg-muted text-muted-foreground")}>{status.replace(/_/g, " ")}</span>;
 }
 
-type Tab = "types" | "bookings" | "events";
+type Tab = "appointments" | "types" | "bookings" | "events";
 
-export function BookingsClient({ initialData, staffOptions, isAdmin = true }: { initialData: BookingManagerData; staffOptions: StaffOption[]; isAdmin?: boolean }) {
+export function BookingsClient({ initialData, staffOptions, isAdmin = true, meId = null, plannerLinks = [] }: {
+  initialData: BookingManagerData; staffOptions: StaffOption[]; isAdmin?: boolean; meId?: string | null; plannerLinks?: PlannerLink[];
+}) {
   const token = useDashboardActionToken();
-  const [tab, setTab] = React.useState<Tab>("types");
+  const [tab, setTab] = React.useState<Tab>("appointments");
   const [types, setTypes] = React.useState<BookingType[]>(initialData.bookingTypes);
   const [bookings, setBookings] = React.useState<Booking[]>(initialData.bookings);
   const [events, setEvents] = React.useState<EventItem[]>(initialData.events);
@@ -198,14 +201,18 @@ export function BookingsClient({ initialData, staffOptions, isAdmin = true }: { 
     await reloadEvents();
   }
 
-  const tabCount: Record<Tab, number> = { types: types.length, bookings: bookings.length, events: events.length };
+  const nowIsoTab = new Date().toISOString();
+  const tabCount: Record<Tab, number> = {
+    appointments: bookings.filter((b) => b.status !== "canceled" && b.end_at >= nowIsoTab).length,
+    types: types.length, bookings: bookings.length, events: events.length,
+  };
 
   return (
     <div className="min-w-0">
       {/* Tabs */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label="Section" className="flex max-w-full items-center overflow-x-auto rounded-lg border border-border bg-card p-0.5 text-xs [scrollbar-width:none]">
-          {([["types", "Booking Pages"], ["bookings", "Bookings"], ["events", "Events"]] as [Tab, string][]).map(([k, l]) => (
+          {([["appointments", isAdmin ? "Appointments" : "My appointments"], ["types", "Booking Pages"], ["bookings", "All bookings"], ["events", "Events"]] as [Tab, string][]).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 font-medium", tab === k ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
               {l}<span className="tabular-nums opacity-60">{tabCount[k]}</span>
             </button>
@@ -220,6 +227,12 @@ export function BookingsClient({ initialData, staffOptions, isAdmin = true }: { 
       )}
       {error && <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span className="min-w-0 break-words">{error}</span><button aria-label="Dismiss" onClick={() => setError(null)}><X className="h-3.5 w-3.5" /></button></div>}
 
+      {tab === "appointments" && (
+        <AppointmentsPanel
+          bookings={bookings} types={types} staffOptions={staffOptions} isAdmin={isAdmin} meId={meId}
+          token={token} onChanged={reloadBookings} plannerLinks={plannerLinks}
+        />
+      )}
       {tab === "types" && (
         <TypesList
           types={types} bookings={bookings} origin={origin}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formTypeLabel } from "@/lib/forms/types";
+import { insertWithAttribution, sanitizeAttribution } from "@/lib/analytics/attribution";
 
 // Public website forms: contact, newsletter sign-up and career interest.
 // Submissions land in form_submissions for the dashboard's Form Submissions inbox.
@@ -59,7 +60,9 @@ export async function POST(request: Request) {
 
   try {
     const supabase = createSupabaseAdminClient();
-    const { error } = await supabase.from("form_submissions").insert({
+    // First/last touch from the site's cookieless attribution (lib/analytics/attribution.ts).
+    const attribution = sanitizeAttribution(body.attribution);
+    const row = {
       form_type: formType,
       email,
       subject: `${formTypeLabel(formType)}${payload.firstName ? ` — ${[payload.firstName, payload.lastName].filter(Boolean).join(" ")}` : ""}`.slice(0, 200),
@@ -72,7 +75,8 @@ export async function POST(request: Request) {
         ip: request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip"),
         consent_text: formType === "newsletter" ? clip(body.consentText, 1000) : undefined,
       },
-    });
+    };
+    const { error } = await insertWithAttribution(attribution, (extra) => supabase.from("form_submissions").insert({ ...row, ...extra }));
     if (error) throw error;
   } catch (error) {
     console.error("[public forms] insert failed", error);

@@ -359,6 +359,10 @@
   background-size: 200% 100%;
   animation: sig-book-shimmer 1.4s ease-in-out infinite;
 }
+/* Lift the site help button above the booking flow's sticky Continue bar (mobile / tablet). */
+@media (max-width: 1023px) {
+  body:has(.sig-book-sticky) .sig-fab { bottom: 5.75rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   .sig-book-in, .sig-book-pop, .sig-book-ring, .sig-book-draw, .sig-book-skeleton { animation: none; }
   .sig-book-ring { opacity: 0; }

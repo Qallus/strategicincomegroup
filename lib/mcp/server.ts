@@ -20,7 +20,7 @@ import { allTools, toolsFor, type ToolOutput } from "./tools";
 const MAX_RESULT_CHARS = 60_000;
 
 const INSTRUCTIONS = `You are connected to the Strategic Income Group (SIG) dashboard as the signed-in team member. SIG is a financial planning firm (Chandler and Peoria, Arizona).
-You can work with: contacts & leads, website form submissions (new_client, client_service, investment_committee, church_403b, career_interest, contact, newsletter), planner booking pages and their bookings, events and registrations, blog posts, and (Super Admins) the website pages managed by the Frontend Editor. sig_search_tools finds the right tool; sig_whoami shows what you may do.
+You can work with: contacts & leads, website form submissions (new_client, client_service, investment_committee, church_403b, career_interest, contact, newsletter), planner booking pages and their bookings, events and registrations, blog posts, and (Super Admins) the website pages managed by the Frontend Editor. "search" and "fetch" look up records by keyword (ids like post:<uuid>); sig_search_tools finds the right tool; sig_whoami shows what you may do.
 
 Risk tiers:
 - read tools run at once.

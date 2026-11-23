@@ -11,7 +11,9 @@ import {
   createBooking, loadAvailability, loadBookingsForType, loadDateOverrides, replaceAvailability, saveBookingType, updateBooking,
 } from "@/lib/booking/data";
 import { computeSlots, groupSlotsByDate } from "@/lib/booking/availability";
-import type { BookingType } from "@/lib/booking/types";
+import type { Booking, BookingType } from "@/lib/booking/types";
+import { cancelBooking, manageUrl, rescheduleBooking, resolveHostStaffId, rotateManageToken } from "@/lib/booking/manage";
+import { notifyBookingChanged } from "@/lib/booking/notify";
 import type { Preview } from "./actions";
 import { peekRecord, trashRecord } from "./trash";
 import {
@@ -380,7 +382,7 @@ export function bookingTools(): McpTool[] {
         const { start, end } = endFrom(need(a, "start_at"), t.duration_minutes || 30);
         await assertNoClash(t.id, start, end);
         const booking = await createBooking({
-          booking_type_id: t.id, host_staff_id: t.host_staff_id ?? null, invitee_name: need(a, "invitee_name"),
+          booking_type_id: t.id, host_staff_id: await resolveHostStaffId(t).catch(() => t.host_staff_id ?? null), host_slug: t.host_slug ?? null, invitee_name: need(a, "invitee_name"),
           invitee_email: opt(a.invitee_email) ?? null, invitee_phone: opt(a.invitee_phone) ?? null,
           start_at: start, end_at: end, timezone: t.timezone || "America/Phoenix",
           location_type: opt(a.location_type) ?? t.location_type, location_details: opt(a.location_details) ?? t.location_details ?? null,
@@ -410,31 +412,55 @@ export function bookingTools(): McpTool[] {
     {
       name: "sig_booking_cancel",
       title: "Cancel a booking",
-      description: "Cancel an appointment (status canceled, with a reason). The slot opens up again. No email is sent to the client.",
+      description: "Cancel an appointment (status canceled, with a reason). The slot opens up again. By default nothing is sent; notify=true tells the client (only by the channels they opted into), the planner and the dashboard, with a calendar cancellation.",
       risk: "write",
       area: "bookings",
-      inputSchema: obj({ booking: str("Booking id or reference"), reason: str("Why it was canceled") }, ["booking"]),
+      inputSchema: obj({ booking: str("Booking id or reference"), reason: str("Why it was canceled"), notify: bool("Send cancellation notifications (default false)") }, ["booking"]),
       run: async (a) => {
         const b = await findBooking(need(a, "booking"));
         if (b.status === "canceled") throw new Error(`Booking ${b.reference} is already canceled.`);
-        await updateBooking(String(b.id), { status: "canceled", cancel_reason: opt(a.reason) ?? null });
-        return { result: { canceled: true, id: b.id, reference: b.reference }, summary: `Canceled booking ${b.reference} (${b.invitee_name})`, entity: "booking", recordId: String(b.id), before: { status: b.status }, after: { status: "canceled" } };
+        const type = await findType(String(b.booking_type_id));
+        const { booking_type: _bt, ...row } = b;
+        const cancelled = await cancelBooking({ booking: row as unknown as Booking, type, reason: opt(a.reason) ?? null, by: "staff" });
+        let notified: Record<string, string> | null = null;
+        if (a.notify === true) {
+          try { notified = await notifyBookingChanged({ kind: "cancelled", booking: cancelled, type, by: "staff", reason: cancelled.cancel_reason }); }
+          catch (e) { notified = { error: e instanceof Error ? e.message : "notify failed" }; }
+        }
+        return { result: { canceled: true, id: b.id, reference: b.reference, notified }, summary: `Canceled booking ${b.reference} (${b.invitee_name})${notified ? " and notified" : ""}`, entity: "booking", recordId: String(b.id), before: { status: b.status }, after: { status: "canceled" } };
       },
     },
     {
       name: "sig_booking_reschedule",
       title: "Reschedule a booking",
-      description: "Move a booking to a new start time (same length). Refuses overlaps. No email is sent to the client.",
+      description: "Move a booking to a new start time (same length). Refuses overlaps on the planner's calendar. A canceled booking is reopened. By default nothing is sent; notify=true sends the client (only by the channels they opted into) the new time with a fresh manage link, and tells the planner and dashboard.",
       risk: "write",
       area: "bookings",
-      inputSchema: obj({ booking: str("Booking id or reference"), start_at: str("New start, ISO date/time with offset"), duration_minutes: num("Optional new length in minutes") }, ["booking", "start_at"]),
+      inputSchema: obj({ booking: str("Booking id or reference"), start_at: str("New start, ISO date/time with offset"), duration_minutes: num("Optional new length in minutes"), notify: bool("Send reschedule notifications (default false)") }, ["booking", "start_at"]),
       run: async (a) => {
         const b = await findBooking(need(a, "booking"));
         const oldMinutes = Math.round((Date.parse(String(b.end_at)) - Date.parse(String(b.start_at))) / 60_000) || 30;
         const { start, end } = endFrom(need(a, "start_at"), Number(a.duration_minutes) || oldMinutes);
         await assertNoClash(String(b.booking_type_id), start, end, String(b.id));
-        await updateBooking(String(b.id), { start_at: start, end_at: end, status: b.status === "canceled" ? "confirmed" : b.status });
-        return { result: { rescheduled: true, id: b.id, reference: b.reference, start_at: start, end_at: end }, summary: `Rescheduled booking ${b.reference} to ${start}`, entity: "booking", recordId: String(b.id), before: { start_at: b.start_at, end_at: b.end_at }, after: { start_at: start, end_at: end } };
+        if (b.status === "canceled") {
+          // Reopen first (rescheduleBooking refuses canceled bookings).
+          await updateBooking(String(b.id), { status: "confirmed", cancelled_at: null, cancelled_by: null });
+        }
+        const type = await findType(String(b.booking_type_id));
+        const { booking_type: _bt, ...row } = b;
+        const { booking: moved, previous } = await rescheduleBooking({
+          booking: { ...(row as unknown as Booking), status: b.status === "canceled" ? "confirmed" : (b.status as Booking["status"]) },
+          type, startIso: start, by: "staff", durationMinutes: Math.round((Date.parse(end) - Date.parse(start)) / 60_000),
+        });
+        let notified: Record<string, string> | null = null;
+        if (a.notify === true) {
+          try {
+            const reachable = (moved.notify_email && moved.invitee_email) || (moved.notify_sms && moved.invitee_phone);
+            const token = reachable ? await rotateManageToken(moved.id) : null;
+            notified = await notifyBookingChanged({ kind: "rescheduled", booking: moved, type, previous, by: "staff", manageUrl: token ? manageUrl(token) : null });
+          } catch (e) { notified = { error: e instanceof Error ? e.message : "notify failed" }; }
+        }
+        return { result: { rescheduled: true, id: b.id, reference: b.reference, start_at: moved.start_at, end_at: moved.end_at, notified }, summary: `Rescheduled booking ${b.reference} to ${start}${notified ? " and notified" : ""}`, entity: "booking", recordId: String(b.id), before: { start_at: b.start_at, end_at: b.end_at }, after: { start_at: moved.start_at, end_at: moved.end_at } };
       },
     },
     {

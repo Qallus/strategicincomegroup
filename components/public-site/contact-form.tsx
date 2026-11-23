@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { JOBS } from "@/lib/public-site/careers";
 import { PLANNERS } from "@/lib/public-site/team";
 import { cn } from "@/lib/utils";
+import { getAttribution } from "@/lib/analytics/attribution";
 
 type OptionKey = "new_client" | "client_service" | "investment_committee" | "career_interest";
 
@@ -208,6 +209,7 @@ function VariantForm({ option, role, positions, onSent }: { option: (typeof OPTI
         message: fd.get("message"),
         company_website: fd.get("company_website"),
         details,
+        attribution: getAttribution(),
       }),
     }).catch(() => null);
     const data = await res?.json().catch(() => ({}));

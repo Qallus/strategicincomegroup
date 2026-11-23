@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldSelect } from "@/components/ui/field-select";
 import type { IntakeQuestion } from "@/lib/booking/types";
+import { getAttribution } from "@/lib/analytics/attribution";
 
 export function EventRegisterForm({ slug, customFields, full, closed, spotsLeft, maxPartySize = 50 }: {
   slug: string; customFields: IntakeQuestion[]; full: boolean; closed: boolean; spotsLeft: number | null;
@@ -27,7 +28,7 @@ export function EventRegisterForm({ slug, customFields, full, closed, spotsLeft,
     try {
       const res = await fetch("/api/events/register", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, name: name.trim(), email: email.trim() || null, phone: phone.trim() || null, party_size: partySize, answers }),
+        body: JSON.stringify({ slug, name: name.trim(), email: email.trim() || null, phone: phone.trim() || null, party_size: partySize, answers, attribution: getAttribution() }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.message || "Registration failed.");

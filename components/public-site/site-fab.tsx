@@ -130,7 +130,7 @@ export function SiteFab() {
   }
 
   return (
-    <div ref={panelRef} className="fixed bottom-5 right-5 z-[45] flex flex-col items-end gap-3 print:hidden sm:bottom-6 sm:right-6">
+    <div ref={panelRef} className="sig-fab fixed bottom-5 right-5 z-[45] flex flex-col items-end gap-3 print:hidden sm:bottom-6 sm:right-6">
       {open ? (
         <div className="sig-pop flex max-h-[min(560px,calc(100vh-7rem))] w-[min(360px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-2xl shadow-black/10 dark:shadow-black/50">
           {view === "menu" ? (

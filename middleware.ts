@@ -1,7 +1,43 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { knownBot } from "@/lib/analytics/bots";
 
-export async function middleware(request: NextRequest) {
+// Pages worth counting when an AI crawler / search bot fetches them. Everything
+// else (API, dashboard, framework assets, files) is skipped with one regex test.
+const BOT_SKIP = /^\/(api|_next|dashboard|website-preview|auth|oauth|login|accept-invite|reset-password|two-factor|access-restricted)(\/|$)/;
+const FILE_EXT = /\.[a-z0-9]{2,5}$/i;
+const BOT_FILES = new Set(["/robots.txt", "/sitemap.xml", "/llms.txt"]);
+
+/**
+ * Count AI crawler / search bot page hits (analytics_bot_hits). Fire-and-forget via
+ * waitUntil, so it never delays or breaks the response. No visitor data is involved.
+ */
+function logBotHit(request: NextRequest, event: NextFetchEvent) {
+  try {
+    if (request.method !== "GET" && request.method !== "HEAD") return;
+    const ua = request.headers.get("user-agent");
+    if (!ua) return;
+    const path = request.nextUrl.pathname;
+    if (BOT_SKIP.test(path) || (FILE_EXT.test(path) && !BOT_FILES.has(path))) return;
+    if (!knownBot(ua)) return;
+    const origin = process.env.ANALYTICS_INTERNAL_ORIGIN || request.nextUrl.origin;
+    event.waitUntil(
+      fetch(`${origin}/api/t/bot`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "user-agent": ua, "x-sig-bot-ua": ua },
+        body: JSON.stringify({ path }),
+      })
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
+  } catch {
+    /* analytics must never affect the request */
+  }
+}
+
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
+  logBotHit(request, event);
+
   let supabaseResponse = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -3,6 +3,8 @@ import { SiteAnnouncement } from "@/components/public-site/site-announcement";
 import { SiteHeader } from "@/components/public-site/site-header";
 import { SiteFooter } from "@/components/public-site/site-footer";
 import { SiteFab } from "@/components/public-site/site-fab";
+import { AnalyticsBeacon } from "@/components/public-site/analytics-beacon";
+import { OrganizationJsonLd } from "@/components/public-site/json-ld";
 import type { NavItem } from "@/lib/public-site/nav-items";
 
 /**
@@ -37,6 +39,8 @@ export function SiteShell({
       {footerNote ? <p className="bg-muted px-4 py-3 text-center text-xs text-muted-foreground">{footerNote}</p> : null}
       <SiteFooter />
       <SiteFab />
+      <OrganizationJsonLd />
+      <AnalyticsBeacon />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { conversionChannel, sanitizeAttribution } from "@/lib/analytics/attribution";
 import { createRegistration, loadEventBySlug } from "@/lib/booking/data";
 
 // PUBLIC: register for a published event.
@@ -12,6 +13,9 @@ export async function POST(request: NextRequest) {
     const event = await loadEventBySlug(slug, { publicOnly: true });
     if (!event) return NextResponse.json({ message: "Event not found." }, { status: 404 });
 
+    // Website first/last touch; `source` records the credited channel (was always "public").
+    const attribution = sanitizeAttribution(body?.attribution);
+
     const { waitlisted } = await createRegistration({
       event_id: event.id,
       name,
@@ -19,7 +23,8 @@ export async function POST(request: NextRequest) {
       phone: body?.phone ? String(body.phone) : null,
       party_size: Number(body?.party_size) || 1,
       answers: body?.answers && typeof body.answers === "object" ? body.answers : {},
-      source: "public",
+      source: conversionChannel(attribution),
+      attribution,
     });
 
     return NextResponse.json({
