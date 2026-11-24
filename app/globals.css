@@ -351,6 +351,12 @@
   100% { background-position: 200% 0; }
 }
 .sig-book-in { animation: sig-book-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* Value swaps (summary rows, step cards): movement only, never a fade, so text is never caught half-visible. */
+@keyframes sig-book-swap {
+  from { transform: translateY(3px); }
+  to { transform: translateY(0); }
+}
+.sig-book-swap { animation: sig-book-swap 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .sig-book-pop { animation: sig-book-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .sig-book-ring { animation: sig-book-ring 1400ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms both; }
 .sig-book-draw { stroke-dasharray: 24; animation: sig-book-draw 420ms ease-out 260ms both; }
@@ -362,9 +368,14 @@
 /* Lift the site help button above the booking flow's sticky Continue bar (mobile / tablet). */
 @media (max-width: 1023px) {
   body:has(.sig-book-sticky) .sig-fab { bottom: 5.75rem; }
+  body:has(#bk-mobile-summary) .sig-fab { display: none; }
+}
+/* …and above the desktop step-1 summary bar ("All planners"). */
+@media (min-width: 1024px) {
+  body:has(.sig-book-widebar) .sig-fab { bottom: 6.5rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sig-book-in, .sig-book-pop, .sig-book-ring, .sig-book-draw, .sig-book-skeleton { animation: none; }
+  .sig-book-in, .sig-book-swap, .sig-book-pop, .sig-book-ring, .sig-book-draw, .sig-book-skeleton { animation: none; }
   .sig-book-ring { opacity: 0; }
   .sig-book-draw { stroke-dasharray: none; }
 }

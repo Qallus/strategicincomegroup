@@ -26,8 +26,11 @@ type Slide = {
   name: string;
   alt: string;
   image: string;
-  /** Mike's chair photo is framed taller (concept: 620x930 at -110px). */
-  frame: "chair" | "studio";
+  /**
+   * "cutout" = transparent-background portrait: the back card can tuck behind the person
+   * (Stash-style layering). "studio" = photo with its own backdrop, feathered into the band.
+   */
+  frame: "cutout" | "studio";
   tone: Tone;
   /** Gradient stops, center → edge. */
   stops: [string, string, string, string];
@@ -38,8 +41,9 @@ type Slide = {
   headline: string[];
   body: { desktop: string; mobile?: string };
   link: { label: string; mobileLabel?: string; href: string };
-  desktopCards: ReactNode;
-  mobileCards: ReactNode;
+  /** back = upper-left card (behind a cutout), front = right card overlapping the person. */
+  desktopCards: { back: ReactNode; front: ReactNode };
+  mobileCards: { back: ReactNode; front: ReactNode };
 };
 
 // ── Glass cards (decorative sample UI — every one carries an "Illustrative example" label) ──
@@ -296,9 +300,9 @@ const SLIDES: Slide[] = [
   {
     key: "mike",
     name: "Mike",
-    alt: "Mike Gauthier, CFP®, Founder and CEO of Strategic Income Group, seated in a studio portrait",
-    image: "/team/hero/mike-gauthier.webp",
-    frame: "chair",
+    alt: "Mike Gauthier, CFP®, Founder and CEO of Strategic Income Group, seated in an office chair",
+    image: "/team/hero/mike-gauthier-chair.webp",
+    frame: "cutout",
     tone: "dark",
     stops: ["#2b418f", "#1a2a66", "#0e1a48", "#081030"],
     at: "62% 40%",
@@ -309,11 +313,13 @@ const SLIDES: Slide[] = [
       mobile: "We’ll build the plan — from your foundation to your legacy — so your financial confidence can grow.",
     },
     link: { label: "Why SIG?", mobileLabel: "Learn about our approach", href: "/our-approach" },
-    desktopCards: (
-      <>
-        <GoalBarCard className={cn(LEFT_CARD, "left-[43.75%] top-[470px] w-[236px]")} />
+    desktopCards: {
+      back: (
+        <GoalBarCard className={cn(LEFT_CARD, "left-[43.5%] top-[196px] w-[236px]")} />
+      ),
+      front: (
         <PhasesCard
-          className={cn(RIGHT_CARD, "right-[3.125%] top-[380px] w-[230px]")}
+          className={cn(RIGHT_CARD, "right-[6%] top-[396px] w-[230px]")}
           title="phases complete"
           note={
             <>
@@ -321,14 +327,16 @@ const SLIDES: Slide[] = [
             </>
           }
         />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <GoalBarCard small className="min-w-0 max-w-[175px] flex-1" />
-        <PhasesCard small className="min-w-0 max-w-[175px] flex-1" title="phases complete" note="Foundation set, now accumulating." />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <GoalBarCard small className="w-full" />
+      ),
+      front: (
+        <PhasesCard small className="w-full" title="phases complete" note="Foundation set, now accumulating." />
+      ),
+    },
   },
   {
     key: "bree",
@@ -346,18 +354,22 @@ const SLIDES: Slide[] = [
       mobile: "Certified Financial Planners with real Wall Street experience, now at your fingertips.",
     },
     link: { label: "Book a review", href: "/book" },
-    desktopCards: (
-      <>
+    desktopCards: {
+      back: (
         <GoalsCard className={cn(RIGHT_CARD, "right-[9.6%] top-[90px] w-[232px] opacity-90")} />
+      ),
+      front: (
         <StrategyCard className={cn(RIGHT_CARD, "right-[9.6%] top-[330px] w-[232px]")} />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <ContributionChips className="flex-none" />
-        <BalancedCard className="min-w-0 max-w-[175px] flex-1" />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <ContributionChips />
+      ),
+      front: (
+        <BalancedCard className="w-full" />
+      ),
+    },
   },
   {
     key: "chad",
@@ -375,18 +387,22 @@ const SLIDES: Slide[] = [
       mobile: "Portfolios aligned to your plan, your income needs and your risk tolerance — managed for you.",
     },
     link: { label: "Investment management", href: "/investment-management" },
-    desktopCards: (
-      <>
+    desktopCards: {
+      back: (
         <PortfolioCard className={cn(LEFT_CARD, "left-[40.6%] top-[400px] w-[200px]")} />
+      ),
+      front: (
         <RetirementCard className={cn(RIGHT_CARD, "right-[2.3%] top-[400px] w-[250px]")} />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <PortfolioCard small className="min-w-0 max-w-[175px] flex-1" />
-        <RetirementCard small className="min-w-0 max-w-[175px] flex-1" />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <PortfolioCard small className="w-full" />
+      ),
+      front: (
+        <RetirementCard small className="w-full" />
+      ),
+    },
   },
   {
     key: "jeremy",
@@ -401,9 +417,11 @@ const SLIDES: Slide[] = [
     headline: ["Leave a lasting legacy."],
     body: { desktop: "Generosity, family impact and charitable strategy — planned with the same care as your retirement." },
     link: { label: "Our mission", href: "/mission" },
-    desktopCards: (
-      <>
+    desktopCards: {
+      back: (
         <StatCard className={cn(LEFT_CARD, "left-[36.7%] top-[420px] w-[220px]")} eyebrow="Impact goal" value="$1B+" note="charitable & impact investing" />
+      ),
+      front: (
         <PhasesCard
           className={cn(RIGHT_CARD, "right-[3.9%] top-[380px] w-[230px]")}
           title="year giving streak"
@@ -413,14 +431,16 @@ const SLIDES: Slide[] = [
             </>
           }
         />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <StatCard small className="min-w-0 max-w-[175px] flex-1" eyebrow="Impact goal" value="$1B+" note="charitable & impact investing" />
-        <PhasesCard small className="min-w-0 max-w-[175px] flex-1" title="year giving streak" note="Consistency builds a legacy." />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <StatCard small className="w-full" eyebrow="Impact goal" value="$1B+" note="charitable & impact investing" />
+      ),
+      front: (
+        <PhasesCard small className="w-full" title="year giving streak" note="Consistency builds a legacy." />
+      ),
+    },
   },
   {
     key: "laurie",
@@ -435,9 +455,11 @@ const SLIDES: Slide[] = [
     headline: ["Planning that fits your life."],
     body: { desktop: "Laurie Simons, CFP®, CTFA® — retirement, trust and estate planning with the care of a Certified Financial Planner." },
     link: { label: "Meet Laurie", href: "/team/laurie-simons" },
-    desktopCards: (
-      <>
+    desktopCards: {
+      back: (
         <StatCard className={cn(LEFT_CARD, "left-[36.7%] top-[420px] w-[220px]")} eyebrow="Trust & estate" value="Updated" note="Estate documents reviewed with Laurie" />
+      ),
+      front: (
         <PhasesCard
           className={cn(RIGHT_CARD, "right-[3.9%] top-[380px] w-[230px]")}
           title="plan goals met"
@@ -447,14 +469,16 @@ const SLIDES: Slide[] = [
             </>
           }
         />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <StatCard small className="min-w-0 max-w-[175px] flex-1" eyebrow="Trust & estate" value="Updated" note="Estate documents reviewed with Laurie" />
-        <PhasesCard small className="min-w-0 max-w-[175px] flex-1" title="plan goals met" note="Your plan, kept current." />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <StatCard small className="w-full" eyebrow="Trust & estate" value="Updated" note="Estate documents reviewed with Laurie" />
+      ),
+      front: (
+        <PhasesCard small className="w-full" title="plan goals met" note="Your plan, kept current." />
+      ),
+    },
   },
   {
     key: "keri",
@@ -469,18 +493,22 @@ const SLIDES: Slide[] = [
     headline: ["Advice built around you."],
     body: { desktop: "Keri Alcos, CWS®, Wealth Planner — strategy, investments and income planning tailored to your life." },
     link: { label: "Meet Keri", href: "/team/keri-alcos" },
-    desktopCards: (
-      <>
+    desktopCards: {
+      back: (
         <StatCard className={cn(LEFT_CARD, "left-[36.7%] top-[420px] w-[220px]")} eyebrow="Retirement income" value="$8,450" note="projected monthly · age 65" />
+      ),
+      front: (
         <PhasesCard className={cn(RIGHT_CARD, "right-[3.9%] top-[380px] w-[230px]")} title="goals on track" note="Plan reviewed this quarter." />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <StatCard small className="min-w-0 max-w-[175px] flex-1" eyebrow="Retirement income" value="$8,450" note="projected monthly · age 65" />
-        <PhasesCard small className="min-w-0 max-w-[175px] flex-1" title="goals on track" note="Plan reviewed this quarter." />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <StatCard small className="w-full" eyebrow="Retirement income" value="$8,450" note="projected monthly · age 65" />
+      ),
+      front: (
+        <PhasesCard small className="w-full" title="goals on track" note="Plan reviewed this quarter." />
+      ),
+    },
   },
   {
     key: "mo",
@@ -495,18 +523,22 @@ const SLIDES: Slide[] = [
     headline: ["A team that knows you."],
     body: { desktop: "Martha “Mo” Cortez, FPQP®, Senior Client Service Associate — scheduling, paperwork and questions answered by a real person." },
     link: { label: "How we serve you", href: "/services" },
-    desktopCards: (
-      <>
+    desktopCards: {
+      back: (
         <StatCard className={cn(LEFT_CARD, "left-[36.7%] top-[420px] w-[220px]")} eyebrow="Response time" value="Same day" note="reply to client requests" />
+      ),
+      front: (
         <PhasesCard className={cn(RIGHT_CARD, "right-[3.9%] top-[380px] w-[230px]")} title="requests handled" note="Nothing slips through the cracks." />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <StatCard small className="min-w-0 max-w-[175px] flex-1" eyebrow="Response time" value="Same day" note="reply to client requests" />
-        <PhasesCard small className="min-w-0 max-w-[175px] flex-1" title="requests handled" note="Nothing slips through the cracks." />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <StatCard small className="w-full" eyebrow="Response time" value="Same day" note="reply to client requests" />
+      ),
+      front: (
+        <PhasesCard small className="w-full" title="requests handled" note="Nothing slips through the cracks." />
+      ),
+    },
   },
   {
     key: "julie",
@@ -521,9 +553,11 @@ const SLIDES: Slide[] = [
     headline: ["Your time, well kept."],
     body: { desktop: "Julie Klodt, Executive Assistant to Michael Gauthier, CEO — keeping meetings, follow-ups and introductions on schedule." },
     link: { label: "Schedule with Mike", href: "/book?planner=michael-gauthier" },
-    desktopCards: (
-      <>
+    desktopCards: {
+      back: (
         <StatCard className={cn(LEFT_CARD, "left-[36.7%] top-[420px] w-[220px]")} eyebrow="Next opening" value="Thu · 2:00" note="with Michael Gauthier, CEO" />
+      ),
+      front: (
         <PhasesCard
           className={cn(RIGHT_CARD, "right-[3.9%] top-[380px] w-[230px]")}
           title="meetings this week"
@@ -533,14 +567,16 @@ const SLIDES: Slide[] = [
             </>
           }
         />
-      </>
-    ),
-    mobileCards: (
-      <>
-        <StatCard small className="min-w-0 max-w-[175px] flex-1" eyebrow="Next opening" value="Thu · 2:00" note="with Michael Gauthier, CEO" />
-        <PhasesCard small className="min-w-0 max-w-[175px] flex-1" title="meetings this week" note="Calendar confirmed." />
-      </>
-    ),
+      ),
+    },
+    mobileCards: {
+      back: (
+        <StatCard small className="w-full" eyebrow="Next opening" value="Thu · 2:00" note="with Michael Gauthier, CEO" />
+      ),
+      front: (
+        <PhasesCard small className="w-full" title="meetings this week" note="Calendar confirmed." />
+      ),
+    },
   },
 ];
 
@@ -551,6 +587,29 @@ const MASK_DESKTOP = "linear-gradient(to right, transparent 0%, rgba(0,0,0,.18) 
 const MASK_DESKTOP_Y = "linear-gradient(to bottom, black 72%, transparent 97%)";
 const MASK_MOBILE_Y = "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.25) 6%, rgba(0,0,0,.7) 13%, black 20%, black 78%, transparent 100%)";
 const MASK_MOBILE_X = "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%)";
+
+// Cutout portrait: fade only the bottom (chair base) into the band.
+const MASK_CUTOUT_Y = "linear-gradient(to bottom, black 78%, transparent 98%)";
+const MASK_CUTOUT_DY = "linear-gradient(to bottom, black 68%, transparent 82%)";
+
+/**
+ * Mobile card slot, positioned against a box a little wider than the photo:
+ * back = upper left at shoulder height, front = right side at chest/lap height.
+ */
+function MobileCard({ slot, children }: { slot: "back" | "front"; children: ReactNode }) {
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-0 h-full w-[calc(100%-8px)] max-w-[400px] -translate-x-1/2 lg:hidden" aria-hidden>
+      <div
+        className={cn(
+          "absolute",
+          slot === "back" ? "left-0 top-[16%] w-[150px] sm:w-[170px]" : "right-0 top-[50%] w-[160px] sm:w-[180px]",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function gradient(s: Slide, mobile: boolean) {
   const [a, b, c, d] = s.stops;
@@ -636,6 +695,7 @@ export function HomeHeroCarousel() {
           const on = i === active;
           const dark = s.tone === "dark";
           const Heading = on ? "h1" : "p";
+          const cutout = s.frame === "cutout";
           return (
             <div
               key={s.key}
@@ -713,26 +773,47 @@ export function HomeHeroCarousel() {
 
                   <div className="min-h-0 flex-1 lg:hidden" aria-hidden />
 
-                  {/* Photo (+ desktop cards, positioned against the 1280px stage) */}
+                  {/*
+                    Photo + cards (Stash-style layering). Desktop cards are positioned against the
+                    1280px stage; mobile cards against a box the width of the photo. The back card
+                    renders before the photo, so with a cutout portrait it tucks behind the person;
+                    the front card renders after and overlaps them.
+                  */}
                   <div className="relative -mt-16 h-[420px] w-full flex-none min-[400px]:h-[440px] sm:h-[500px] lg:static lg:mt-0 lg:h-auto">
+                    {cutout ? (
+                      <>
+                        <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
+                          {s.desktopCards.back}
+                        </div>
+                        <MobileCard slot="back">{s.mobileCards.back}</MobileCard>
+                      </>
+                    ) : null}
                     <div
                       className={cn(
-                        "absolute left-1/2 top-0 h-full w-[340px] -translate-x-1/2 min-[400px]:w-[360px] sm:w-[420px] lg:left-auto lg:h-auto lg:translate-x-0",
-                        // Horizontal fade on the wrapper, vertical fade on the <img> (nested single-layer masks;
-                        // a composited two-layer mask leaves a hairline at the photo edge in Chromium).
-                        "[mask-image:var(--hero-mask-x)] [-webkit-mask-image:var(--hero-mask-x)]",
-                        "lg:[mask-image:var(--hero-mask-d)] lg:[-webkit-mask-image:var(--hero-mask-d)]",
-                        s.frame === "chair"
-                          ? "lg:right-[9.375%] lg:top-[-110px] lg:aspect-[620/930] lg:w-[48.4%] lg:max-w-[620px]"
-                          : "lg:right-[6.25%] lg:top-[-20px] lg:aspect-[667/1000] lg:w-[52.1%] lg:max-w-[667px]",
+                        "absolute -translate-x-1/2 lg:left-auto lg:translate-x-0",
+                        cutout
+                          ? // Transparent PNG: no side feathering, just a soft fade where the chair meets the band.
+                            // On mobile it sits a little lower (clear of the links) and a touch right of center,
+                            // so the back card's figures stay readable beside the chair.
+                            "left-[calc(50%+14px)] top-[52px] h-[calc(100%-52px)] w-[270px] min-[400px]:w-[285px] sm:left-1/2 sm:w-[330px] lg:right-[14%] lg:top-[40px] lg:aspect-[466/805] lg:h-[780px] lg:w-auto"
+                          : cn(
+                              "left-1/2 top-0 h-full w-[340px] min-[400px]:w-[360px] sm:w-[420px] lg:h-auto",
+                              // Horizontal fade on the wrapper, vertical fade on the <img> (nested single-layer masks;
+                              // a composited two-layer mask leaves a hairline at the photo edge in Chromium).
+                              "[mask-image:var(--hero-mask-x)] [-webkit-mask-image:var(--hero-mask-x)]",
+                              "lg:[mask-image:var(--hero-mask-d)] lg:[-webkit-mask-image:var(--hero-mask-d)]",
+                              "lg:right-[6.25%] lg:top-[-20px] lg:aspect-[667/1000] lg:w-[52.1%] lg:max-w-[667px]",
+                            ),
                       )}
                       style={
-                        {
-                          "--hero-mask-y": MASK_MOBILE_Y,
-                          "--hero-mask-x": MASK_MOBILE_X,
-                          "--hero-mask-d": MASK_DESKTOP,
-                          "--hero-mask-dy": MASK_DESKTOP_Y,
-                        } as CSSProperties
+                        (cutout
+                          ? { "--hero-mask-y": MASK_CUTOUT_Y, "--hero-mask-dy": MASK_CUTOUT_DY }
+                          : {
+                              "--hero-mask-y": MASK_MOBILE_Y,
+                              "--hero-mask-x": MASK_MOBILE_X,
+                              "--hero-mask-d": MASK_DESKTOP,
+                              "--hero-mask-dy": MASK_DESKTOP_Y,
+                            }) as unknown as CSSProperties
                       }
                     >
                       {seen.has(i) ? (
@@ -741,19 +822,20 @@ export function HomeHeroCarousel() {
                           alt={s.alt}
                           fill
                           priority={i === 0}
-                          sizes="(min-width: 1280px) 667px, (min-width: 1024px) 52vw, (min-width: 640px) 420px, 360px"
-                          className="object-cover object-top [mask-image:var(--hero-mask-y)] [-webkit-mask-image:var(--hero-mask-y)] lg:[mask-image:var(--hero-mask-dy)] lg:[-webkit-mask-image:var(--hero-mask-dy)]"
+                          sizes={cutout ? "(min-width: 1024px) 444px, 360px" : "(min-width: 1280px) 667px, (min-width: 1024px) 52vw, (min-width: 640px) 420px, 360px"}
+                          className={cn(
+                            "object-top [mask-image:var(--hero-mask-y)] [-webkit-mask-image:var(--hero-mask-y)] lg:[mask-image:var(--hero-mask-dy)] lg:[-webkit-mask-image:var(--hero-mask-dy)]",
+                            cutout ? "object-cover lg:object-contain" : "object-cover",
+                          )}
                         />
                       ) : null}
                     </div>
                     <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
-                      {s.desktopCards}
+                      {cutout ? null : s.desktopCards.back}
+                      {s.desktopCards.front}
                     </div>
-                  </div>
-
-                  {/* Mobile cards: a row over the faded bottom of the photo, clear of face and hands */}
-                  <div className="relative z-10 -mt-10 flex w-[calc(100%+16px)] max-w-[420px] items-end justify-center gap-3 lg:hidden" aria-hidden>
-                    {s.mobileCards}
+                    {cutout ? null : <MobileCard slot="back">{s.mobileCards.back}</MobileCard>}
+                    <MobileCard slot="front">{s.mobileCards.front}</MobileCard>
                   </div>
                 </div>
               </div>
