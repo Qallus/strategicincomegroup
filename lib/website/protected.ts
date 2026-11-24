@@ -56,6 +56,7 @@ export const PROTECTED_ROUTES = [
   "/privacy-policy",
   "/terms-of-service",
   "/communication-policy",
+  "/home-2",
   "/register",
   "/forgot-password",
   "/two-factor",
