@@ -1,6 +1,10 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { applyMergeFields, composePostText, extractMergeFields, renderSchema } from "./render";
 import { publishToPlatform, SocialNotConnectedError } from "./publish";
+import { PLATFORM_MAP } from "./constants";
+import {
+  deleteSocialAccountCredentials, moveSocialAccountPlaintext, saveProviderValues,
+} from "@/lib/credentials/server";
 import type {
   SocialAccount, SocialAutomation, SocialDashboardData, SocialEngagement, SocialMessage,
   SocialPost, SocialReport, SocialStats, SocialTemplate,
@@ -37,9 +41,13 @@ function engagementTotal(e: SocialEngagement | null | undefined): number {
 }
 
 // ── Accounts (Settings) ──────────────────────────────────────────────────────
+// Never select `credentials`: tokens live encrypted in SIG Credentials and must not reach
+// the browser (these rows are passed to client components).
+const ACCOUNT_COLUMNS = "id, platform, display_name, profile_url, external_id, status, is_active, settings, last_synced_at, created_at, updated_at";
+
 export async function listAccounts(): Promise<SocialAccount[]> {
   const sb = createSupabaseAdminClient();
-  const { data, error } = await sb.from("social_accounts").select("*").order("platform", { ascending: true });
+  const { data, error } = await sb.from("social_accounts").select(ACCOUNT_COLUMNS).order("platform", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as SocialAccount[];
 }
@@ -58,22 +66,43 @@ export async function saveAccount(input: {
   };
   if (input.status) row.status = input.status;
   if (input.is_active !== undefined) row.is_active = input.is_active;
-  if (input.credentials) row.credentials = input.credentials;
 
+  let account: SocialAccount;
   if (input.id) {
-    const { data, error } = await sb.from("social_accounts").update(row).eq("id", input.id).select("*").single();
+    const { data, error } = await sb.from("social_accounts").update(row).eq("id", input.id).select(ACCOUNT_COLUMNS).single();
     if (error) throw new Error(error.message);
-    return data as unknown as SocialAccount;
+    account = data as unknown as SocialAccount;
+  } else {
+    row.created_by = input.actorUserId ?? null;
+    const { data, error } = await sb.from("social_accounts").insert(row).select(ACCOUNT_COLUMNS).single();
+    if (error) throw new Error(error.message);
+    account = data as unknown as SocialAccount;
   }
-  row.created_by = input.actorUserId ?? null;
-  const { data, error } = await sb.from("social_accounts").insert(row).select("*").single();
-  if (error) throw new Error(error.message);
-  return data as unknown as SocialAccount;
+
+  // Tokens go to the encrypted store, never the plain-text column. Any leftover plain-text
+  // values on this account are moved first so nothing is lost. Blank secret = keep saved.
+  if (input.credentials && Object.keys(input.credentials).length) {
+    const known = new Set((PLATFORM_MAP[account.platform]?.credentialFields ?? []).map((f) => f.key));
+    const values = Object.fromEntries(Object.entries(input.credentials).filter(([k]) => known.has(k)));
+    const anyValue = Object.values(values).some((v) => String(v ?? "").trim());
+    try {
+      if (anyValue) await moveSocialAccountPlaintext(account.id, input.actorUserId ?? null);
+      if (Object.keys(values).length) {
+        await saveProviderValues({ provider: `social:${account.platform}`, instance: account.id, values, actorId: input.actorUserId ?? null });
+      }
+    } catch (e) {
+      // Nothing typed (only clears) → don't fail the account save, e.g. before the
+      // credentials migration exists. A real token that can't be stored must fail loudly.
+      if (anyValue) throw e;
+    }
+  }
+  return account;
 }
 export async function deleteAccount(id: string): Promise<void> {
   const sb = createSupabaseAdminClient();
   const { error } = await sb.from("social_accounts").delete().eq("id", id);
   if (error) throw new Error(error.message);
+  await deleteSocialAccountCredentials(id).catch((e) => console.error("[social] could not remove stored tokens for", id, e instanceof Error ? e.message : e));
 }
 
 // ── Templates ─────────────────────────────────────────────────────────────────
@@ -221,7 +250,7 @@ export async function publishPost(id: string): Promise<SocialPost> {
   if (!post) throw new Error("Post not found.");
   if (!post.account_id) throw new Error("Choose an account before publishing.");
 
-  const { data: account } = await sb.from("social_accounts").select("*").eq("id", post.account_id).maybeSingle();
+  const { data: account } = await sb.from("social_accounts").select(ACCOUNT_COLUMNS).eq("id", post.account_id).maybeSingle();
   if (!account) throw new Error("The account for this post no longer exists.");
 
   try {

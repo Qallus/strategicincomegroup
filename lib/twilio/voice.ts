@@ -1,20 +1,21 @@
 import twilio from "twilio";
-import { TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET, TWILIO_TWIML_APP_SID, TWILIO_PHONE_NUMBER } from "@/lib/twilio/client";
+import { getTwilioConfig } from "@/lib/twilio/client";
 
-export function generateVoiceAccessToken(profileId: string, identity: string): string {
+export async function generateVoiceAccessToken(profileId: string, identity: string): Promise<string> {
   const { AccessToken } = twilio.jwt;
   const { VoiceGrant } = AccessToken;
+  const cfg = await getTwilioConfig();
 
-  const key = TWILIO_API_KEY || TWILIO_ACCOUNT_SID;
-  const secret = TWILIO_API_SECRET || process.env.TWILIO_AUTH_TOKEN || "";
+  const key = cfg.apiKey || cfg.accountSid;
+  const secret = cfg.apiSecret || cfg.authToken || "";
 
-  const token = new AccessToken(TWILIO_ACCOUNT_SID, key, secret, {
+  const token = new AccessToken(cfg.accountSid, key, secret, {
     identity,
     ttl: 3600,
   });
 
   const voiceGrant = new VoiceGrant({
-    outgoingApplicationSid: TWILIO_TWIML_APP_SID || undefined,
+    outgoingApplicationSid: cfg.twimlAppSid || undefined,
     incomingAllow: true,
   });
 
@@ -22,7 +23,8 @@ export function generateVoiceAccessToken(profileId: string, identity: string): s
   return token.toJwt();
 }
 
-export function buildInboundCallTwiml(callerNumber: string): string {
+export async function buildInboundCallTwiml(callerNumber: string): Promise<string> {
+  const { phoneNumber: TWILIO_PHONE_NUMBER } = await getTwilioConfig();
   const VoiceResponse = twilio.twiml.VoiceResponse;
   const response = new VoiceResponse();
 
@@ -50,7 +52,8 @@ export function buildInboundCallTwiml(callerNumber: string): string {
   return response.toString();
 }
 
-export function buildOutboundCallTwiml(to: string): string {
+export async function buildOutboundCallTwiml(to: string): Promise<string> {
+  const { phoneNumber: TWILIO_PHONE_NUMBER } = await getTwilioConfig();
   const VoiceResponse = twilio.twiml.VoiceResponse;
   const response = new VoiceResponse();
 

@@ -10,6 +10,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hasSmtpConfig, sendSmtpEmail } from "@/lib/email/smtp";
 import { getOrCreateConversation, sendSms } from "@/lib/twilio/sms";
+import { hasTwilioConfig } from "@/lib/twilio/client";
 import { toE164 } from "@/lib/sms/contacts";
 import { createDashboardNotification } from "@/lib/notifications/notify";
 import { dmBadge, getNotifierId } from "@/lib/notifications/system-dm";
@@ -34,7 +35,6 @@ type PlannerContact = { name: string; email: string | null; phone: string | null
 
 const LOCATION_LABEL: Record<string, string> = { video: "Video call", phone: "Phone call", in_person: "In person", custom: "Details to follow" };
 
-const hasTwilioConfig = () => Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
 const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://strategicincomegroup.com").replace(/\/$/, "");
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://strategicincomegroup.com").replace(/\/$/, "");
 
@@ -317,8 +317,7 @@ export async function notifyBookingCreated({ booking: b, type, notify, consent, 
 
   const cal = calendarEventFor(b, type, planner.name, { manageUrl });
   const ics = buildIcs(cal);
-  const smtp = hasSmtpConfig();
-  const twilio = hasTwilioConfig();
+  const [smtp, twilio] = await Promise.all([hasSmtpConfig(), hasTwilioConfig()]);
   if (!smtp) console.info(`[booking-notify] email not configured — skipping booking emails for ${b.reference}`);
   if (!twilio) console.info(`[booking-notify] Twilio not configured — skipping booking texts for ${b.reference}`);
 
@@ -407,8 +406,7 @@ export async function notifyBookingChanged(input: BookingChangeInput): Promise<R
     content: Buffer.from(ics, "utf8"),
     contentType: `text/calendar; charset=utf-8; method=${cancelled ? "CANCEL" : "PUBLISH"}`,
   };
-  const smtp = hasSmtpConfig();
-  const twilio = hasTwilioConfig();
+  const [smtp, twilio] = await Promise.all([hasSmtpConfig(), hasTwilioConfig()]);
   const when = fmtWhen(b.start_at, b.timezone);
   const wasWhen = previous ? fmtWhen(previous.start_at, b.timezone) : null;
   const hostShort = planner.name.split(",")[0];
@@ -531,7 +529,7 @@ export async function notifyBookingChanged(input: BookingChangeInput): Promise<R
 // ── "Email me my appointments" link ─────────────────────────────────────────────
 
 export async function sendAccessLinkEmail(to: string, url: string): Promise<void> {
-  if (!hasSmtpConfig()) {
+  if (!(await hasSmtpConfig())) {
     console.info("[booking-notify] email not configured — access link not sent");
     return;
   }

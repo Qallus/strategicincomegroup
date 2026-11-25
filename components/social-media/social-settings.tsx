@@ -2,26 +2,36 @@
 
 import * as React from "react";
 import { Check, Loader2, Plus, Save, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { FieldSelect } from "@/components/ui/field-select";
 import { cn } from "@/lib/utils";
 import { useDashboardActionToken } from "@/components/layout/dashboard-action-token";
 import { PLATFORMS, PLATFORM_MAP } from "@/lib/social-media/constants";
-import type { SocialAccount } from "@/lib/social-media/types";
+import type { SocialAccount, SocialCredentialFieldStatus } from "@/lib/social-media/types";
 
+type FieldStatusMap = Record<string, SocialCredentialFieldStatus>;
 type Draft = {
   id?: string; platform: string; display_name: string; profile_url: string;
-  status: string; is_active: boolean; credentials: Record<string, string>;
+  status: string; is_active: boolean;
+  /** What the user typed. Secrets start empty: a blank secret keeps the saved value. */
+  credentials: Record<string, string>;
+  /** Masked saved state from the server (last 4 of secrets, full non-secret values). */
+  saved: FieldStatusMap;
 };
-function toDraft(a: SocialAccount): Draft {
-  return { id: a.id, platform: a.platform, display_name: a.display_name, profile_url: a.profile_url ?? "", status: a.status, is_active: a.is_active, credentials: { ...(a.credentials ?? {}) } };
+function toDraft(a: SocialAccount, saved: FieldStatusMap = {}): Draft {
+  const credentials: Record<string, string> = {};
+  for (const f of PLATFORM_MAP[a.platform]?.credentialFields ?? []) {
+    if (f.type !== "password" && saved[f.key]?.value) credentials[f.key] = saved[f.key].value ?? "";
+  }
+  return { id: a.id, platform: a.platform, display_name: a.display_name, profile_url: a.profile_url ?? "", status: a.status, is_active: a.is_active, credentials, saved };
 }
 
-export function SocialSettings({ initialAccounts }: { initialAccounts: SocialAccount[] }) {
+export function SocialSettings({ initialAccounts, initialCredentialStatus = {} }: { initialAccounts: SocialAccount[]; initialCredentialStatus?: Record<string, FieldStatusMap> }) {
   const token = useDashboardActionToken();
-  const [accounts, setAccounts] = React.useState<Draft[]>(initialAccounts.map(toDraft));
+  const [accounts, setAccounts] = React.useState<Draft[]>(initialAccounts.map((a) => toDraft(a, initialCredentialStatus[a.id])));
   const [savingId, setSavingId] = React.useState<string | null>(null);
   const [savedId, setSavedId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -36,7 +46,7 @@ export function SocialSettings({ initialAccounts }: { initialAccounts: SocialAcc
   function addPlatform(platform: string) {
     if (!platform) return;
     const def = PLATFORM_MAP[platform];
-    setAccounts((prev) => [...prev, { platform, display_name: `${def?.label ?? platform} account`, profile_url: "", status: "disconnected", is_active: true, credentials: {} }]);
+    setAccounts((prev) => [...prev, { platform, display_name: `${def?.label ?? platform} account`, profile_url: "", status: "disconnected", is_active: true, credentials: {}, saved: {} }]);
     setAdding("");
   }
 
@@ -46,11 +56,11 @@ export function SocialSettings({ initialAccounts }: { initialAccounts: SocialAcc
     try {
       const res = await fetch("/api/admin/social-media/accounts", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...a, actionToken: token }),
+        body: JSON.stringify({ id: a.id, platform: a.platform, display_name: a.display_name, profile_url: a.profile_url, status: a.status, is_active: a.is_active, credentials: a.credentials, actionToken: token }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Save failed.");
-      setAccounts((prev) => prev.map((x, i) => (i === idx ? toDraft(json.account) : x)));
+      setAccounts((prev) => prev.map((x, i) => (i === idx ? toDraft(json.account, json.credentialStatus ?? {}) : x)));
       setSavedId(json.account.id); setTimeout(() => setSavedId(null), 1500);
     } catch (e) { setError(e instanceof Error ? e.message : "Save failed."); }
     finally { setSavingId(null); }
@@ -67,7 +77,7 @@ export function SocialSettings({ initialAccounts }: { initialAccounts: SocialAcc
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-        Credentials are stored securely in your database (admin-only access) and used to publish on your behalf. Live posting to each network is wired up after you save valid credentials and mark the account <span className="font-medium">Connected</span>.
+        Tokens are encrypted before they are stored and are never shown again after saving (only the last 4 characters). Leave a saved token blank to keep it. Super Admins can also manage them under Dashboard → Credentials → Social. Live posting to each network is wired up after you save valid credentials and mark the account <span className="font-medium">Connected</span>.
       </div>
 
       {accounts.map((a, idx) => {
@@ -84,13 +94,18 @@ export function SocialSettings({ initialAccounts }: { initialAccounts: SocialAcc
             <div className="grid gap-3 sm:grid-cols-2">
               <div><label className="mb-1 block text-xs font-medium text-muted-foreground">Display name</label><Input value={a.display_name} onChange={(e) => set(idx, { display_name: e.target.value })} /></div>
               <div><label className="mb-1 block text-xs font-medium text-muted-foreground">Profile / Page URL</label><Input value={a.profile_url} onChange={(e) => set(idx, { profile_url: e.target.value })} placeholder="https://…" /></div>
-              {(def?.credentialFields ?? []).map((f) => (
-                <div key={f.key}>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{f.label}</label>
-                  <Input type={f.type === "password" ? "password" : "text"} value={a.credentials[f.key] ?? ""} onChange={(e) => setCred(idx, f.key, e.target.value)} placeholder={f.help} />
-                  {f.help && <p className="mt-0.5 text-[10px] text-muted-foreground">{f.help}</p>}
-                </div>
-              ))}
+              {(def?.credentialFields ?? []).map((f) => {
+                const saved = a.saved[f.key];
+                const isSecret = f.type === "password";
+                const savedHint = isSecret && saved?.set ? `Saved ${saved.last4 ? `••••${saved.last4}` : "••••"} — leave blank to keep` : undefined;
+                return (
+                  <div key={f.key}>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">{f.label}</label>
+                    <Input type={isSecret ? "password" : "text"} autoComplete={isSecret ? "new-password" : "off"} value={a.credentials[f.key] ?? ""} onChange={(e) => setCred(idx, f.key, e.target.value)} placeholder={savedHint ?? f.help} />
+                    {f.help && <p className="mt-0.5 text-[10px] text-muted-foreground">{f.help}</p>}
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-3 flex items-center gap-3 border-t border-border pt-3">
               <div className="w-44"><FieldSelect value={a.status} onChange={(v) => set(idx, { status: v })} options={[{ value: "disconnected", label: "Disconnected" }, { value: "connected", label: "Connected" }, { value: "error", label: "Error" }]} className="h-8" /></div>

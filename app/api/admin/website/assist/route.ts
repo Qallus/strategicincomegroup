@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { actionTokenOf, fail, requireWebsiteActor } from "@/lib/website/http";
 import { SIG_BRAND_VOICE } from "@/lib/website/brand";
 import { logWebsiteAudit } from "@/lib/website/data";
+import { getAIProvider } from "@/lib/ai/providers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 45;
@@ -31,14 +32,15 @@ export async function POST(request: NextRequest) {
     const source = String(body.text ?? "").slice(0, 8000);
     if (!source.trim()) throw new Error("There is no text to work with yet.");
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("Siggy is not configured on this environment (OPENAI_API_KEY is missing).");
+    const openai = await getAIProvider("openai");
+    const apiKey = openai.apiKey;
+    if (!apiKey) throw new Error("Siggy is not configured on this environment (no OpenAI API key in Credentials or OPENAI_API_KEY).");
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(`${openai.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL?.trim() || "gpt-4o",
+        model: openai.model,
         messages: [
           {
             role: "system",

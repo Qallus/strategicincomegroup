@@ -1,15 +1,15 @@
-import { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN } from "@/lib/twilio/client";
-
-const OPENAI_TRANSCRIBE_URL = "https://api.openai.com/v1/audio/transcriptions";
-const TRANSCRIBE_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL ?? "whisper-1";
+import { getAIProvider } from "@/lib/ai/providers";
+import { getTwilioConfig } from "@/lib/twilio/client";
 
 /**
  * Downloads a Twilio recording (.mp3) and transcribes it with OpenAI.
  * Twilio recording media requires HTTP basic auth with the account credentials.
  */
 export async function transcribeRecording(recordingUrl: string): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+  const openai = await getAIProvider("openai");
+  const apiKey = openai.apiKey;
+  if (!apiKey) throw new Error("OpenAI API key is not configured (Dashboard → Credentials → AI models, or OPENAI_API_KEY).");
+  const { accountSid: TWILIO_ACCOUNT_SID, authToken: TWILIO_AUTH_TOKEN } = await getTwilioConfig();
 
   // Twilio media URLs require basic auth; public/S3 URLs do not but the header is harmless.
   const isTwilio = recordingUrl.includes("api.twilio.com") || recordingUrl.includes("twiliocdn");
@@ -27,10 +27,10 @@ export async function transcribeRecording(recordingUrl: string): Promise<string>
 
   const form = new FormData();
   form.append("file", new Blob([audioBuffer], { type: "audio/mpeg" }), "recording.mp3");
-  form.append("model", TRANSCRIBE_MODEL);
+  form.append("model", openai.transcribeModel ?? "whisper-1");
   form.append("response_format", "text");
 
-  const res = await fetch(OPENAI_TRANSCRIBE_URL, {
+  const res = await fetch(`${openai.baseUrl}/audio/transcriptions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,

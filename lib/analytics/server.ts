@@ -6,6 +6,7 @@ import { formTypeLabel } from "@/lib/forms/types";
 import { isMissingRelation } from "./collect";
 import { addDays, arizonaDayStartIso, arizonaToday, type ResolvedRange } from "./dates";
 import { channelLabel, type Channel } from "./types";
+import { credentialPresence } from "@/lib/credentials/server";
 
 // ── Report (analytics_report jsonb) ─────────────────────────────────────────
 
@@ -324,10 +325,11 @@ export type Connection = {
   steps: string[];
 };
 
-const has = (...names: string[]) => names.every((n) => Boolean(process.env[n]));
 
 export async function getConnections(): Promise<{ connections: Connection[]; migrationMissing: boolean }> {
   const sb = createSupabaseAdminClient();
+  // Dashboard Credentials first, then Coolify env vars: Connections and the Credentials page agree.
+  const has = await credentialPresence();
   let migrationMissing = false;
   let lastEvent: string | null = null;
   let lastBot: string | null = null;

@@ -121,7 +121,7 @@ export function NotConnected({
   );
 }
 
-export function StatusPill({ status }: { status: "live" | "waiting" | "needs_setup" | "error" }) {
+export function StatusPill({ status, label }: { status: "live" | "waiting" | "needs_setup" | "error"; /** Overrides the default wording. */ label?: string }) {
   const map = {
     live: { label: "Live", icon: CheckCircle2, cls: "border-emerald-600/30 bg-emerald-600/10 text-emerald-800 dark:text-emerald-300" },
     waiting: { label: "Waiting for data", icon: Clock3, cls: "border-border bg-muted text-muted-foreground" },
@@ -132,7 +132,7 @@ export function StatusPill({ status }: { status: "live" | "waiting" | "needs_set
   return (
     <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium", map.cls)}>
       <Icon className="h-3.5 w-3.5" aria-hidden />
-      {map.label}
+      {label ?? map.label}
     </span>
   );
 }

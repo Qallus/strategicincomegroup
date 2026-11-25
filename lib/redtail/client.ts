@@ -1,3 +1,5 @@
+import { getProviderConfig } from "@/lib/credentials/server";
+
 // Redtail CRM API client (scaffolding for the Phase 3 sync — see BUILD_PLAN.md).
 //
 // Auth (Redtail public API v1):
@@ -14,11 +16,13 @@ export type RedtailConfig = {
   password?: string;
 };
 
-export function redtailConfig(env: NodeJS.ProcessEnv = process.env): RedtailConfig {
-  const baseUrl = (env.REDTAIL_API_BASE_URL || "https://review.crm.redtailtechnology.com/api/public/v1").replace(/\/+$/, "");
-  const apiKey = env.REDTAIL_API_KEY || "";
-  if (!apiKey) throw new Error("REDTAIL_API_KEY is not set.");
-  return { baseUrl, apiKey, userKey: env.REDTAIL_USER_KEY || undefined, username: env.REDTAIL_USERNAME || undefined, password: env.REDTAIL_PASSWORD || undefined };
+// Read from SIG Credentials (Dashboard → Credentials → CRM), falling back to the REDTAIL_* env vars.
+export async function redtailConfig(): Promise<RedtailConfig> {
+  const c = await getProviderConfig("redtail");
+  const baseUrl = (c.base_url || "https://review.crm.redtailtechnology.com/api/public/v1").replace(/\/+$/, "");
+  const apiKey = c.api_key || "";
+  if (!apiKey) throw new Error("Redtail API key is not set (Dashboard → Credentials → CRM, or REDTAIL_API_KEY).");
+  return { baseUrl, apiKey, userKey: c.user_key || undefined, username: c.username || undefined, password: c.password || undefined };
 }
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
@@ -36,9 +40,10 @@ export function authHeader(cfg: RedtailConfig, mode: "userkey" | "basic" = cfg.u
 export async function redtailGet<T = unknown>(
   path: string,
   params: Record<string, string | number> = {},
-  cfg: RedtailConfig = redtailConfig(),
+  cfgIn?: RedtailConfig,
   mode?: "userkey" | "basic",
 ): Promise<T> {
+  const cfg = cfgIn ?? (await redtailConfig());
   const url = new URL(`${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
   for (let attempt = 0; attempt < 4; attempt++) {

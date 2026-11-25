@@ -1,6 +1,7 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getProviderConfig } from "@/lib/credentials/server";
 
 export type EmailSyncResult = {
   synced: number;
@@ -9,22 +10,28 @@ export type EmailSyncResult = {
   latestUid?: number;
 };
 
-export function hasImapConfig() {
-  const user = process.env.IMAP_USER ?? process.env.MAIL_JW_USERNAME ?? process.env.SMTP_USER;
-  const pass = process.env.IMAP_PASSWORD ?? process.env.MAIL_JW_PASSWORD ?? process.env.SMTP_PASSWORD;
-  return Boolean(process.env.IMAP_HOST && process.env.IMAP_PORT && user && pass);
+// IMAP settings come from SIG Credentials (Dashboard → Credentials → Email), falling back
+// to the IMAP_* / MAIL_JW_* / SMTP_* Coolify env vars as before.
+async function imapConfig() {
+  return getProviderConfig("imap");
+}
+
+export async function hasImapConfig() {
+  const cfg = await imapConfig();
+  return Boolean(cfg.host && cfg.port && cfg.user && cfg.password);
 }
 
 export async function syncInboxEmails({ mailbox = "INBOX", limit = 25 }: { mailbox?: string; limit?: number } = {}): Promise<EmailSyncResult> {
-  if (!hasImapConfig()) {
-    throw new Error("IMAP is not configured. Add IMAP_PASSWORD and related env vars to enable receiving.");
+  const cfg = await imapConfig();
+  if (!(cfg.host && cfg.port && cfg.user && cfg.password)) {
+    throw new Error("IMAP is not configured. Add the IMAP password and related settings (Dashboard → Credentials → Email) to enable receiving.");
   }
 
-  const host = process.env.IMAP_HOST;
-  const port = Number(process.env.IMAP_PORT ?? 993);
-  const user = process.env.IMAP_USER ?? process.env.MAIL_JW_USERNAME ?? process.env.SMTP_USER;
-  const pass = process.env.IMAP_PASSWORD ?? process.env.MAIL_JW_PASSWORD ?? process.env.SMTP_PASSWORD;
-  const secure = process.env.IMAP_SECURE !== "false";
+  const host = cfg.host;
+  const port = Number(cfg.port ?? 993);
+  const user = cfg.user;
+  const pass = cfg.password;
+  const secure = cfg.secure !== "false";
 
   if (!host || !user || !pass) {
     throw new Error("IMAP host, user, and password are required.");

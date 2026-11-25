@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getCredential, getProviderConfig } from "@/lib/credentials/server";
 
 export type SendEmailInput = {
   to: string | string[];
@@ -22,22 +23,30 @@ export type SmtpResult = {
   reason?: string;
 };
 
-function hasResendConfig() {
-  return Boolean(process.env.RESEND_API_KEY);
+// Config comes from SIG Credentials (Dashboard → Credentials): the dashboard value first,
+// then the Coolify env var (RESEND_*, SMTP_*, NOTIFICATION_FROM_EMAIL) as before.
+async function resendConfig() {
+  return getProviderConfig("resend");
 }
 
-function hasSmtpCredentials() {
-  const user = process.env.SMTP_USER ?? process.env.MAIL_JW_USERNAME;
-  const pass = process.env.SMTP_PASSWORD ?? process.env.MAIL_JW_PASSWORD;
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && user && pass);
+type SmtpConfig = Record<string, string | undefined> & { fromEmail?: string };
+
+async function smtpConfig(): Promise<SmtpConfig> {
+  const [smtp, notifications] = await Promise.all([getProviderConfig("smtp"), getProviderConfig("notifications")]);
+  return { ...smtp, fromEmail: notifications.from_email };
 }
 
-export function hasSmtpConfig() {
-  return hasResendConfig() || hasSmtpCredentials();
+function hasSmtpCredentials(cfg: Record<string, string | undefined>) {
+  return Boolean(cfg.host && cfg.port && cfg.user && cfg.password);
 }
 
-async function sendViaResend(input: SendEmailInput): Promise<SmtpResult> {
-  const apiKey = process.env.RESEND_API_KEY!;
+export async function hasSmtpConfig() {
+  const [resend, smtp] = await Promise.all([resendConfig(), smtpConfig()]);
+  return Boolean(resend.api_key) || hasSmtpCredentials(smtp);
+}
+
+async function sendViaResend(input: SendEmailInput, cfg: Record<string, string | undefined>): Promise<SmtpResult> {
+  const apiKey = cfg.api_key!;
 
   // All outbound mail goes out as planning@strategicincomegroup.com. This used to fall back
   // to NOTIFICATION_FROM_EMAIL and then a hardcoded my.strategicincomegroup.com address,
@@ -45,7 +54,7 @@ async function sendViaResend(input: SendEmailInput): Promise<SmtpResult> {
   // sent under a different identity, from a domain that isn't even verified in
   // Resend. A misconfigured sender is worse than a bounced send, so refuse instead.
   // Trimmed and emptiness-checked because ?? alone treats "" as a real value.
-  const fromEmail = (process.env.RESEND_FROM_EMAIL ?? "").trim();
+  const fromEmail = (cfg.from_email ?? "").trim();
   if (!fromEmail) {
     throw new Error(
       "RESEND_FROM_EMAIL is not set. Refusing to send under a fallback identity — set it to planning@strategicincomegroup.com.",
@@ -54,10 +63,10 @@ async function sendViaResend(input: SendEmailInput): Promise<SmtpResult> {
   // Give the sender a display name so inboxes show "SIG" instead of the bare local
   // part ("hello"). If RESEND_FROM_EMAIL already carries a name ("SIG <hello@…>"),
   // respect it; otherwise wrap the address with RESEND_FROM_NAME (default "SIG").
-  const fromName = (process.env.RESEND_FROM_NAME ?? "SIG").trim();
+  const fromName = (cfg.from_name ?? "SIG").trim();
   const from = fromEmail.includes("<") || !fromName ? fromEmail : `${fromName} <${fromEmail}>`;
 
-  const replyTo = input.replyTo?.trim() || process.env.RESEND_REPLY_TO?.trim() || from;
+  const replyTo = input.replyTo?.trim() || cfg.reply_to?.trim() || from;
 
   const body: Record<string, unknown> = {
     from,
@@ -96,34 +105,36 @@ async function sendViaResend(input: SendEmailInput): Promise<SmtpResult> {
 }
 
 export async function sendSmtpEmail(input: SendEmailInput): Promise<SmtpResult> {
-  if (hasResendConfig()) {
-    return sendViaResend(input);
+  const resend = await resendConfig();
+  if (resend.api_key) {
+    return sendViaResend(input, resend);
   }
 
-  if (!hasSmtpCredentials()) {
+  const smtp = await smtpConfig();
+  if (!hasSmtpCredentials(smtp)) {
     return {
       ok: false,
       skipped: true,
-      reason: "No email provider configured. Add RESEND_API_KEY or SMTP credentials to enable sending.",
+      reason: "No email provider configured. Add a Resend API key or SMTP credentials (Dashboard → Credentials → Email) to enable sending.",
       messageId: undefined,
     };
   }
 
-  const port = Number(process.env.SMTP_PORT ?? 465);
-  const user = process.env.SMTP_USER ?? process.env.MAIL_JW_USERNAME;
-  const pass = process.env.SMTP_PASSWORD ?? process.env.MAIL_JW_PASSWORD;
+  const port = Number(smtp.port ?? 465);
+  const user = smtp.user;
+  const pass = smtp.password;
   const secure =
-    process.env.SMTP_SECURE !== "false" &&
-    (process.env.SMTP_SECURE === "true" || process.env.SMTP_ENCRYPTION === "ssl" || port === 465);
+    smtp.secure !== "false" &&
+    (smtp.secure === "true" || process.env.SMTP_ENCRYPTION === "ssl" || port === 465);
 
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: smtp.host,
     port,
     secure,
     auth: { user, pass },
   });
 
-  const from = process.env.NOTIFICATION_FROM_EMAIL || user;
+  const from = smtp.fromEmail || user;
 
   const info = await transporter.sendMail({
     from,
@@ -138,4 +149,13 @@ export async function sendSmtpEmail(input: SendEmailInput): Promise<SmtpResult> 
   });
 
   return { ok: true, skipped: false, messageId: info.messageId };
+}
+
+/**
+ * Owner inbox that is always emailed when a page or dashboard edit request is filed.
+ * Credentials → Email → Notification addresses, then EDIT_REQUEST_NOTIFY_EMAIL, then the
+ * site owner's address.
+ */
+export async function editRequestNotifyEmail(): Promise<string> {
+  return ((await getCredential("notifications", "edit_request_email")) || "jwaters@qallus.co").trim().toLowerCase();
 }

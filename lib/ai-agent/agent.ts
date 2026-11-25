@@ -1,6 +1,7 @@
 import { AGENT_TOOLS, TOOL_MAP, openAiToolSchemas, type AgentContext } from "./tools";
 import { renderSkillsForPrompt } from "./skills";
 import { renderMemoryForPrompt, type AgentMemory } from "./memory";
+import { getAIProvider } from "@/lib/ai/providers";
 
 export type ToolCall = {
   id: string;
@@ -32,7 +33,6 @@ export type AgentRunResult = {
 };
 
 const MAX_ITERATIONS = 8;
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 export const SYSTEM_PROMPT = `You are Siggy, the AI Operations Agent embedded in the Strategic Income Group ("Created for More" / 7-Day Stewardship Pilot) admin dashboard.
 
@@ -65,24 +65,20 @@ export function buildSystemPrompt(memories: AgentMemory[] = [], trainingDocsInde
   return SYSTEM_PROMPT + renderSkillsForPrompt() + renderMemoryForPrompt(memories) + trainingDocsIndex + websiteContext;
 }
 
-function getModel(): string {
-  const model = process.env.OPENAI_MODEL?.trim();
-  if (model && !model.includes("your_")) return model;
-  return "gpt-4o";
-}
-
 async function callOpenAI(messages: ChatMessage[]): Promise<ChatMessage> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+  // Key, model and base URL from SIG Credentials (dashboard value, then OPENAI_* env vars).
+  const openai = await getAIProvider("openai");
+  const apiKey = openai.apiKey;
+  if (!apiKey) throw new Error("OpenAI API key is not configured (Dashboard → Credentials → AI models, or OPENAI_API_KEY).");
 
-  const res = await fetch(OPENAI_URL, {
+  const res = await fetch(`${openai.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: getModel(),
+      model: openai.model,
       messages,
       tools: openAiToolSchemas(),
       tool_choice: "auto",

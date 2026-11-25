@@ -8,7 +8,8 @@ export type SocialAccount = {
   external_id: string | null;
   status: "disconnected" | "connected" | "error";
   is_active: boolean;
-  credentials: Record<string, string>;
+  // Tokens are never on this type: they live encrypted in SIG Credentials
+  // (provider "social:<platform>", instance = id). See lib/credentials/server.ts.
   settings: Record<string, unknown>;
   last_synced_at: string | null;
   created_at?: string;
@@ -152,3 +153,6 @@ export type SocialReport = {
   daily: { date: string; published: number; engagement: number }[];
   topPosts: { id: string; platform: string; body: string; engagement: number; url: string | null }[];
 };
+
+/** Masked token status per field for Settings — never the secret itself. */
+export type SocialCredentialFieldStatus = { set: boolean; last4: string | null; value: string | null };

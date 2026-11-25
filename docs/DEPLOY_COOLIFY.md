@@ -125,3 +125,48 @@ ANALYTICS_INTERNAL_ORIGIN=     # e.g. http://127.0.0.1:3000 if the crawler log s
 4. Check: `curl -X POST -H "x-cron-secret: $CRON_SECRET" https://YOUR-SUBDOMAIN/api/admin/analytics/sync?mode=intraday` returns `{"ok":true,...}`, and **Dashboard → Analytics → Connections** shows the rollup as Live.
 
 The tracker never runs on `localhost` or a `preview.` host (unless `NEXT_PUBLIC_ANALYTICS_DEBUG=1`), honours Do Not Track / Global Privacy Control, and skips browsers signed in to the dashboard.
+
+## 8. Credentials (Dashboard → Credentials, Super Admin only)
+
+One place to add, update and remove the API keys, tokens and service URLs the integrations use (CRM, email, Twilio, Microsoft 365, Google, social, AI models, agent harnesses and custom providers). Secret values are encrypted in the app with AES-256-GCM before they reach the database, and they are **write-only**: after saving, the page shows only the last four characters. Every add, update, removal and connection test is written to the activity log (provider and field names only, never values).
+
+### Before first use
+
+1. Generate a master key and add it to the app's environment variables in Coolify, then redeploy:
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+   ```env
+   CREDENTIALS_MASTER_KEY=<the 44-character base64 string>
+   ```
+
+2. **Back the key up** (e.g. in the password manager). The database only holds ciphertext, so losing this key means re-entering every key saved on the page. Changing it without the rotation steps below makes every saved secret unreadable (the app then falls back to the Coolify values and the page shows "Can't decrypt").
+3. Run `supabase/migrations/202611250210_credentials.sql` in **SQL Editor** (tables `credentials` and `credential_tests`, RLS on, service role only; safe to re-run).
+4. If social accounts were set up before this release, open **Credentials → Social** and click **Encrypt saved social tokens**. It encrypts each account's tokens into the store and only then clears the old plain-text `social_accounts.credentials` column. Check afterwards that this returns no rows:
+
+   ```sql
+   select id, platform from public.social_accounts where credentials <> '{}'::jsonb;
+   ```
+
+### How values are chosen
+
+For every field the app uses **the dashboard value first, then the Coolify variable** (the variable name is shown under each field on the page). So nothing changes until a value is saved on the page, and removing a saved value goes back to the Coolify variable. Saved values are cached for 60 seconds, and a save clears the cache, so a new key is live within a minute without a redeploy.
+
+The status pill on each card shows **Connected** (dashboard values), **Using Coolify value**, **Incomplete** / **Not set**, or **Test failed** (the last *Test connection* failed after the last change).
+
+### What must stay in Coolify
+
+These are shown on the **Platform** tab as status only and can never be stored on the page, because the app needs them to reach the database at all, or changing them would break existing hashes and signatures:
+
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (also signs dashboard action tokens), `DATABASE_URL`
+- `CREDENTIALS_MASTER_KEY` itself
+- `CRON_SECRET`, `ANALYTICS_IP_SALT`, `BOOKING_HASH_SALT`
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- `MCP_*` (`MCP_PUBLIC_URL`, `MCP_RATE_PER_MIN`, `MCP_EXTRA_REDIRECT_URIS`, `MCP_EXTRA_REDIRECT_HOSTS`)
+- `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL` and other `NEXT_PUBLIC_*` build variables
+
+### Rotating the master key (later)
+
+Rows record the key version that encrypted them. To rotate: copy the current key into `CREDENTIALS_MASTER_KEY_V1`, put the new key in `CREDENTIALS_MASTER_KEY`, set `CREDENTIALS_KEY_VERSION=2`, redeploy, then re-save each secret on the page (each save re-encrypts with version 2). Remove `CREDENTIALS_MASTER_KEY_V1` once nothing uses version 1.

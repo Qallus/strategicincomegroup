@@ -19,6 +19,7 @@ import {
   Newspaper,
   IdCard,
   Inbox,
+  KeyRound,
   MailCheck,
   Megaphone,
   MessagesSquare,
@@ -91,4 +92,5 @@ export const dashboardNav: NavEntry[] = [
   { kind: "item", href: "/dashboard/user-management", label: "Team & Users", icon: BarChart3, permission: PERMISSIONS.MANAGE_USERS },
   { kind: "item", href: "/dashboard/settings", label: "Admin Settings", icon: Settings, permission: PERMISSIONS.MANAGE_SETTINGS },
   { kind: "item", href: "/dashboard/settings/ai-connectors", label: "AI Connectors", icon: Sparkles, permission: PERMISSIONS.MANAGE_SETTINGS },
+  { kind: "item", href: "/dashboard/credentials", label: "Credentials", icon: KeyRound, permission: PERMISSIONS.MANAGE_CREDENTIALS },
 ];

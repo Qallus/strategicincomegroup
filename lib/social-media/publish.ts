@@ -37,11 +37,12 @@ export async function publishToPlatform(input: PublishInput): Promise<PublishRes
   switch (account.platform) {
     case "facebook":
       // TODO(live): POST https://graph.facebook.com/{page_id}/feed (or /photos for media)
-      //   with access_token = account.credentials.page_access_token; message = text.
+      //   with access_token from `await getSocialAccountCredentials(account)` (lib/credentials/server)
+      //   .page_access_token; message = text.
       return simulated(account, text);
     case "linkedin":
       // TODO(live): POST https://api.linkedin.com/v2/ugcPosts with author = organization_urn,
-      //   Authorization: Bearer account.credentials.access_token; text = text.
+      //   Authorization: Bearer <getSocialAccountCredentials(account).access_token>; text = text.
       return simulated(account, text);
     default:
       // TODO(live): per-platform implementation.

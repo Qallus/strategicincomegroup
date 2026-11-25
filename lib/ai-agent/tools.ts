@@ -256,7 +256,12 @@ const listFormSubmissions: AgentTool = {
 const SQL_TABLE_HINTS =
   "participants, profiles (dashboard users), contacts, tags, participant_tags, check_in_results, survey_responses, inner_circle_responses, " +
   "calls, sms_conversations, email_templates, email_journey_events, blog_posts, media_assets, brand_assets, booking_types, bookings, events, " +
-  "event_registrations, form_submissions, project_schedule_items, cms_pages, social_posts, social_accounts, notifications, user_activity_logs, user_invitations";
+  "event_registrations, form_submissions, project_schedule_items, cms_pages, social_posts, notifications, user_activity_logs, user_invitations";
+
+// Stored keys and tokens are never readable through Siggy, not even as ciphertext: the
+// credential tables are off limits, and social_accounts (which held plain-text tokens before
+// the move into SIG Credentials) is answered by list_social_accounts instead.
+const SQL_FORBIDDEN = /\b(from|join)\s+("?public"?\s*\.\s*)?"?(credentials|credential_tests)"?(\s|$|\)|,)|\bcredential_tests\b|\bsocial_accounts\b/i;
 
 const runSqlQuery: AgentTool = {
   name: "run_sql_query",
@@ -278,6 +283,7 @@ const runSqlQuery: AgentTool = {
       throw new Error("Only read-only SELECT queries are allowed (no writes or DDL).");
     }
     if (/;/.test(query.replace(/;+\s*$/, ""))) throw new Error("Only a single statement is allowed.");
+    if (SQL_FORBIDDEN.test(query)) throw new Error("Stored credentials can't be queried. Use list_social_accounts for social account details.");
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase.rpc("shepherd_readonly_query", { query_text: query });
     if (error) throw new Error(error.message);

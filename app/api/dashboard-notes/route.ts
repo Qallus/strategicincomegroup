@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/user-management/auth";
-import { sendSmtpEmail } from "@/lib/email/smtp";
+import { editRequestNotifyEmail, sendSmtpEmail } from "@/lib/email/smtp";
 import {
   listNotes, unreadCount, createNote, updateStatus, markRead, getNote, addComment, listShareRecipients,
   reassignNote, deleteNote, type DashboardNote,
@@ -10,11 +10,12 @@ function errStatus(m: string) { return /authentication/i.test(m) ? 401 : /permis
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 
 // Owner always gets an email on every edit request (frontend or dashboard), on top of any
-// recipients the author picked. Overridable via env; defaults to the site owner's inbox.
-const ALWAYS_NOTIFY = (process.env.EDIT_REQUEST_NOTIFY_EMAIL || "jwaters@qallus.co").trim().toLowerCase();
+// recipients the author picked. Overridable in Dashboard → Credentials → Email (or
+// EDIT_REQUEST_NOTIFY_EMAIL in Coolify); defaults to the site owner's inbox.
 
 async function notifyRecipients(note: DashboardNote, authorName: string, authorEmail = "") {
   const recipients = new Set((note.recipient_emails ?? []).map((e) => e.toLowerCase()));
+  const ALWAYS_NOTIFY = await editRequestNotifyEmail();
   // Don't self-notify if the owner is the one who filed the request.
   if (ALWAYS_NOTIFY && ALWAYS_NOTIFY !== authorEmail.toLowerCase()) recipients.add(ALWAYS_NOTIFY);
   if (!recipients.size) return;

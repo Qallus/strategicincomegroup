@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         status: "initiated",
         started_at: new Date().toISOString(),
       });
-      const twiml = buildOutboundCallTwiml(to);
+      const twiml = await buildOutboundCallTwiml(to);
       return new NextResponse(twiml, { headers: { "Content-Type": "text/xml" } });
     }
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       started_at: new Date().toISOString(),
     });
 
-    const twiml = buildInboundCallTwiml(from);
+    const twiml = await buildInboundCallTwiml(from);
     return new NextResponse(twiml, { headers: { "Content-Type": "text/xml" } });
   } catch (error) {
     console.error("Voice webhook error:", error);

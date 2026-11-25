@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getTwilioClient, TWILIO_PHONE_NUMBER } from "@/lib/twilio/client";
 import {
   SMS_STOP_KEYWORDS,
   SMS_START_KEYWORDS,

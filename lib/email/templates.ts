@@ -1,6 +1,7 @@
 import { sendSmtpEmail } from "@/lib/email/smtp";
 import { DEFAULT_EMAIL_FIELDS, EMAIL_EVENT_KEYS, type EmailEventKey, eventKeyForJourneyStep } from "@/lib/email/constants";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getCredential } from "@/lib/credentials/server";
 
 export { DEFAULT_EMAIL_FIELDS, EMAIL_EVENT_KEYS, eventKeyForJourneyStep };
 
@@ -102,11 +103,11 @@ export async function deleteEmailTemplate(id: string) {
 
 /**
  * Optional silent BCC on 6-Week Challenge (experience) emails and account invitations, for
- * delivery monitoring. Set EMAIL_MONITOR_BCC to one or more addresses (comma-separated);
+ * delivery monitoring. Set Credentials → Email → Monitoring BCC (or EMAIL_MONITOR_BCC) to one or more addresses (comma-separated);
  * leave it unset to disable. Applies only to challenge drip + invitation sends, not all mail.
  */
-export function experienceMonitorBcc(): string[] | undefined {
-  const raw = (process.env.EMAIL_MONITOR_BCC ?? "").trim();
+export async function experienceMonitorBcc(): Promise<string[] | undefined> {
+  const raw = ((await getCredential("notifications", "monitor_bcc")) ?? "").trim();
   if (!raw) return undefined;
   const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
   return list.length ? list : undefined;

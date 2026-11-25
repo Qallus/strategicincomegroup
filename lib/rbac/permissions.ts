@@ -15,6 +15,9 @@ export const PERMISSIONS = {
   MANAGE_CMS: "manage_cms",
   // Super-Admin-only (same pattern as MANAGE_CMS): the Workspace module.
   MANAGE_WORKSPACE: "manage_workspace",
+  // Super-Admin-only (same pattern as MANAGE_CMS): Dashboard → Credentials, the encrypted
+  // store for API keys, tokens and service URLs. Granted to no other role.
+  MANAGE_CREDENTIALS: "manage_credentials",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

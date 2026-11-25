@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/user-management/auth";
+import { getAIProvider } from "@/lib/ai/providers";
 
 const PROMPTS: Record<string, string> = {
   summarize: "Summarize the document below in a few clear sentences.",
@@ -20,14 +21,14 @@ export async function POST(request: Request) {
     // A free-form prompt can stand on its own; a preset action needs document text.
     if (!custom && !text.trim()) return NextResponse.json({ error: "There's no text to work with yet." }, { status: 400 });
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "AI isn't configured (OPENAI_API_KEY is missing)." }, { status: 503 });
-    const envModel = process.env.OPENAI_MODEL?.trim();
-    const model = envModel && !envModel.includes("your_") ? envModel : "gpt-4o";
+    const openai = await getAIProvider("openai");
+    const apiKey = openai.apiKey;
+    if (!apiKey) return NextResponse.json({ error: "AI isn't configured (no OpenAI API key in Credentials or OPENAI_API_KEY)." }, { status: 503 });
+    const model = openai.model;
     const instruction = custom || PROMPTS[action] || PROMPTS.summarize;
     const userContent = text.trim() ? `${instruction}\n\n--- Document ---\n${text}` : instruction;
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(`${openai.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({

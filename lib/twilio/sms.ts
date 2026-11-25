@@ -1,4 +1,4 @@
-import { getTwilioClient, TWILIO_MESSAGING_SERVICE_SID, TWILIO_PHONE_NUMBER } from "@/lib/twilio/client";
+import { getTwilioClient, getTwilioConfig } from "@/lib/twilio/client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { renderSmsTemplate, extractSmsFields } from "@/lib/sms/templates";
 import { phoneKey, resolveSmsContact, toE164 } from "@/lib/sms/contacts";
@@ -16,13 +16,14 @@ export interface SendSmsResult {
 }
 
 export async function sendSms({ to, body, conversationId, sentByProfileId }: SendSmsOptions): Promise<SendSmsResult> {
-  const client = getTwilioClient();
+  const client = await getTwilioClient();
+  const twilioCfg = await getTwilioConfig();
 
   // Prefer the Messaging Service that carries the approved A2P 10DLC campaign; fall back to
-  // the bare number only when no service is configured. See TWILIO_MESSAGING_SERVICE_SID.
-  const sender = TWILIO_MESSAGING_SERVICE_SID
-    ? { messagingServiceSid: TWILIO_MESSAGING_SERVICE_SID }
-    : { from: TWILIO_PHONE_NUMBER };
+  // the bare number only when no service is configured. See TwilioConfig.messagingServiceSid.
+  const sender = twilioCfg.messagingServiceSid
+    ? { messagingServiceSid: twilioCfg.messagingServiceSid }
+    : { from: twilioCfg.phoneNumber };
 
   // Ask Twilio to report delivery outcomes back to us. Without this the status webhook never
   // fires, so a carrier rejection (30034, opt-out, unreachable) leaves the message sitting at
@@ -77,6 +78,7 @@ export async function sendSms({ to, body, conversationId, sentByProfileId }: Sen
  */
 export async function getOrCreateConversation(contactNumber: string, contactName?: string | null) {
   const supabase = createSupabaseAdminClient();
+  const { phoneNumber: TWILIO_PHONE_NUMBER } = await getTwilioConfig();
   const e164 = toE164(contactNumber) || contactNumber;
   const key = phoneKey(contactNumber);
 

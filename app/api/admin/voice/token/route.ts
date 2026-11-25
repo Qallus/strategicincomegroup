@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const actor = await requireParticipantManager(request, body.actionToken);
     const identity = "sig-agent";
-    const token = generateVoiceAccessToken(actor.id, identity);
+    const token = await generateVoiceAccessToken(actor.id, identity);
     return NextResponse.json({ token, identity });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to generate voice token.";

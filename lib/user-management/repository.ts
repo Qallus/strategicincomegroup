@@ -182,7 +182,7 @@ export async function createUserInvitation(input: {
       const emailResult = await sendTemplateForEvent({
         eventKey: "user_invitation",
         actorUserId: input.invitedBy,
-        bcc: experienceMonitorBcc(),
+        bcc: await experienceMonitorBcc(),
         recipient: {
           email: input.email,
           phone: input.phone,
@@ -284,7 +284,7 @@ export async function sendDueInvitations(input: { limit?: number } = {}) {
       const emailResult = await sendTemplateForEvent({
         eventKey: "user_invitation",
         actorUserId: inv.invited_by ?? undefined,
-        bcc: experienceMonitorBcc(),
+        bcc: await experienceMonitorBcc(),
         recipient: { email: inv.email, role: inv.role, status: "invited", merge_data: { invite_url: inviteUrl } },
         fallback: {
           subject: "You have been invited to the SIG Dashboard",

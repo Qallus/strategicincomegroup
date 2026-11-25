@@ -3,16 +3,17 @@ import { requireSuperAdmin } from "@/lib/user-management/auth";
 import { logUserActivity } from "@/lib/user-management/repository";
 import { listPageNotes, createPageNote, updatePageNote, deletePageNote, reassignPageNote } from "@/lib/cms/page-notes";
 import { listShareRecipients } from "@/lib/dashboard-notes/data";
-import { sendSmtpEmail } from "@/lib/email/smtp";
+import { editRequestNotifyEmail, sendSmtpEmail } from "@/lib/email/smtp";
 
 function errStatus(m: string) { return /authentication/i.test(m) ? 401 : /permission|required|super/i.test(m) ? 403 : 500; }
 
-// Owner always gets an email when a frontend edit request is filed. Overridable via env.
-const ALWAYS_NOTIFY = (process.env.EDIT_REQUEST_NOTIFY_EMAIL || "jwaters@qallus.co").trim().toLowerCase();
+// Owner always gets an email when a frontend edit request is filed. Overridable in
+// Dashboard → Credentials → Email (or EDIT_REQUEST_NOTIFY_EMAIL in Coolify).
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 function escapeHtml(s: string) { return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
 async function notifyOwner(note: any, authorEmail: string, authorName: string) {
+  const ALWAYS_NOTIFY = await editRequestNotifyEmail();
   if (!ALWAYS_NOTIFY || ALWAYS_NOTIFY === (authorEmail ?? "").toLowerCase()) return;
   const el = note.element_ref || note.descriptor || "";
   const link = note.page_url || `${appUrl()}/dashboard/cms`;
