@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
- * Team hero carousel for the alternative homepage (/home-2).
+ * Team hero carousel for the homepage (also at /home-2, which stays noindex).
  * Built from concept t3 (3a desktop / 3b mobile) in docs/Heros: one slide per team
  * member on a "studio band" gradient, copy at left, glassy sample cards at shoulder
  * height, edge arrows and progress-pill dots with a pause control.
@@ -54,14 +54,22 @@ type Slide = {
 // companions picked to sit with navy and gold without clashing:
 //   gold  = emphasis / "on track" / progress     sage = success / growth
 //   sky   = neutral data (info)                  slate = secondary data
+//   khaki = quiet marks next to gold (counts, schedule ticks)
 const GOLD = "#c9a46c";
 const GOLD_SOFT = "#e4cfa3";
 const SAGE = "#86b89c";
 const SKY = "#8fc3e3";
 const SLATE = "#5d6f96";
+const CHARCOAL = "#2d3135"; // matches the dark "Get Started" button on light slides
+const KHAKI = "#d9cfac";
+const NAVY_DEEP = "#0e1a48"; // brand navy, deep
+const ROSE_GOLD = "#e8b4a0"; // checks on navy
+// Money green fading to a deep teal-blue (savings bars).
+const MONEY = "#3f9a5c";
+const MONEY_BLUE = "#2f7f9e"; // light khaki: neutral marks that sit beside gold without competing
 const INK = "#0d1a3a";
 
-// ── Glass cards (decorative sample UI — every one carries an "Illustrative example" label) ──
+// ── Glass cards (decorative sample UI; staging — "Illustrative example" labels removed pending team review) ──
 
 function Glass({
   className,
@@ -80,31 +88,17 @@ function Glass({
     <div
       style={style}
       className={cn(
-        "relative rounded-xl border backdrop-blur-[10px]",
+        "relative rounded-xl border bg-gradient-to-b backdrop-blur-[12px]",
+        tone === "light" ? "from-white/30 to-transparent" : "from-white/[0.1] to-transparent",
         tone === "light"
-          ? "border-white/80 bg-white/50 text-[#0d1a3a] shadow-[0_16px_40px_rgba(0,0,0,.16)]"
-          : "border-white/40 bg-white/[0.12] text-white shadow-[0_16px_40px_rgba(0,0,0,.24)]",
+          ? "border-white/80 bg-white/55 text-[#0d1a3a] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_4px_10px_rgba(0,0,0,.08),0_18px_44px_rgba(0,0,0,.2)]"
+          : "border-white/35 bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.28),0_4px_10px_rgba(0,0,0,.16),0_20px_48px_rgba(0,0,0,.34)]",
         center && "text-center",
         className,
       )}
     >
       {children}
-      <Illustrative tone={tone} center={center} />
     </div>
-  );
-}
-
-function Illustrative({ tone = "dark", center }: { tone?: Tone; center?: boolean }) {
-  return (
-    <p
-      className={cn(
-        "mt-2 whitespace-nowrap text-[8px] font-medium uppercase leading-none tracking-[0.1em] lg:text-[9px] lg:tracking-[0.12em]",
-        tone === "light" ? "text-[#0d1a3a]/65" : "text-white/65",
-        center && "text-center",
-      )}
-    >
-      Illustrative example
-    </p>
   );
 }
 
@@ -149,6 +143,174 @@ function PhasesCard({ title, note, small, className }: { title: string; note: Re
   );
 }
 
+/** Keri: a ring of four arrow segments (a "track"); three complete, one still ahead. */
+function TrackRingCard({ small, className }: { small?: boolean; className?: string }) {
+  const size = small ? 64 : 92;
+  const stroke = small ? 7 : 10;
+  const c = size / 2;
+  const r = c - stroke / 2 - 2;
+  const pt = (deg: number, rad = r) => {
+    const a = (deg * Math.PI) / 180;
+    return `${(c + rad * Math.sin(a)).toFixed(2)} ${(c - rad * Math.cos(a)).toFixed(2)}`;
+  };
+  const segments = [
+    { label: "Plan", color: GOLD },
+    { label: "Invest", color: SAGE },
+    { label: "Protect", color: SKY },
+    { label: "Income", color: "rgba(255,255,255,.22)" },
+  ];
+  return (
+    <Glass center className={cn(small ? "px-2.5 pb-2.5 pt-4" : "px-3.5 pb-3 pt-5", className)}>
+      <OnTrackBadge small={small} />
+      <div className="relative mx-auto" style={{ width: size, height: size }}>
+        <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden>
+          {segments.map((s, i) => {
+            const start = i * 90 + 5;
+            const end = i * 90 + 76;
+            const tip = end + 9;
+            return (
+              <g key={s.label} fill={s.color} stroke={s.color}>
+                <path d={`M ${pt(start)} A ${r} ${r} 0 0 1 ${pt(end)}`} fill="none" strokeWidth={stroke} />
+                {/* arrowhead pointing clockwise */}
+                <path d={`M ${pt(end, r + stroke * 0.85)} L ${pt(tip)} L ${pt(end, r - stroke * 0.85)} Z`} stroke="none" />
+              </g>
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+          <span className={cn("font-serif", small ? "text-lg" : "text-[26px]")}>3/4</span>
+          {small ? null : <span className="mt-1 text-[8px] uppercase tracking-[0.14em] text-white/70">goals</span>}
+        </div>
+      </div>
+      <p className={cn("font-semibold leading-tight", small ? "mt-1.5 text-xs" : "mt-2 text-sm")}>goals on track</p>
+      {small ? null : (
+        <p className="mt-1 flex justify-center gap-2 text-[9px] text-white/75">
+          {segments.map((s) => (
+            <span key={s.label} className="flex items-center gap-1">
+              <i className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
+              {s.label}
+            </span>
+          ))}
+        </p>
+      )}
+    </Glass>
+  );
+}
+
+/** Laurie: a calendar tile for the next plan review, with the year's quarterly reviews below. */
+function CalendarCard({ small, className }: { small?: boolean; className?: string }) {
+  const quarters = ["Q1", "Q2", "Q3", "Q4"];
+  return (
+    <Glass className={cn(small ? "px-2.5 py-2 text-left" : "px-3 pb-2.5 pt-3", className)}>
+      <div className={cn("flex items-center", small ? "gap-2" : "gap-3")}>
+        <div className={cn("flex-none overflow-hidden rounded-lg text-center shadow-[0_6px_16px_rgba(0,0,0,.2)]", small ? "w-10" : "w-[52px]")}>
+          <p className={cn("font-bold uppercase tracking-[0.12em]", small ? "py-0.5 text-[7px]" : "py-1 text-[9px]")} style={{ background: GOLD, color: INK }}>
+            Oct
+          </p>
+          <p className={cn("bg-white font-serif leading-none", small ? "py-1 text-lg" : "py-1.5 text-[26px]")} style={{ color: INK }}>
+            14
+          </p>
+        </div>
+        <div className="min-w-0">
+          <p className={cn("whitespace-nowrap uppercase tracking-[0.12em] text-white/75", small ? "text-[7px]" : "text-[9px]")}>Next review</p>
+          <p className={cn("whitespace-nowrap font-semibold leading-tight", small ? "mt-0.5 text-xs" : "mt-1 text-sm")}>{small ? "Tue · 10 AM" : "Tue · 10:00 AM"}</p>
+        </div>
+      </div>
+      <div className={cn("grid grid-cols-4", small ? "mt-2 gap-1" : "mt-2.5 gap-1.5")}>
+        {quarters.map((q, i) => {
+          const done = i < 3;
+          return (
+            <span
+              key={q}
+              className={cn(
+                "flex items-center justify-center gap-1 rounded-md font-semibold",
+                small ? "py-0.5 text-[8px]" : "py-1 text-[10px]",
+                done ? "bg-white/20 text-white" : "",
+              )}
+              style={done ? undefined : { background: GOLD, color: INK }}
+            >
+              {done ? <Check className={small ? "h-2 w-2" : "h-2.5 w-2.5"} strokeWidth={3.5} style={{ color: "#bfe3cd" }} aria-hidden /> : null}
+              {q}
+            </span>
+          );
+        })}
+      </div>
+    </Glass>
+  );
+}
+
+/** Mo: the kinds of requests she closes out, each checked off. */
+function RequestsCard({ small, className }: { small?: boolean; className?: string }) {
+  const items = ["Paperwork filed", "Meeting scheduled", "Question answered"];
+  return (
+    <Glass className={cn(small ? "px-2.5 py-2 text-left" : "px-3 pb-2.5 pt-3", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <p className={cn("whitespace-nowrap font-semibold", small ? "text-xs" : "text-sm")}>Requests handled</p>
+        <p
+          className={cn("whitespace-nowrap font-serif leading-none [text-shadow:0_2px_10px_rgba(0,0,0,.25)]", small ? "-my-1 text-[28px]" : "-my-1.5 text-[40px]")}
+          style={{ color: GOLD }}
+        >
+          12
+        </p>
+      </div>
+      <ul className={cn(small ? "mt-1.5 space-y-1" : "mt-2 space-y-1.5")}>
+        {items.map((t) => (
+          <li key={t} className={cn("flex items-center gap-2 whitespace-nowrap", small ? "text-[10px]" : "text-xs")}>
+            <span
+              className={cn("flex flex-none items-center justify-center rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,.18)]", small ? "h-3.5 w-3.5" : "h-[18px] w-[18px]")}
+              style={{ background: NAVY_DEEP }}
+            >
+              <Check className={small ? "h-2 w-2" : "h-2.5 w-2.5"} strokeWidth={3.5} style={{ color: ROSE_GOLD }} aria-hidden />
+            </span>
+            {t}
+          </li>
+        ))}
+      </ul>
+    </Glass>
+  );
+}
+
+/** Julie: this week's meetings at a glance — one column per weekday, today in gold. */
+function WeekCard({ small, className }: { small?: boolean; className?: string }) {
+  const days = [
+    { d: "M", n: 2 },
+    { d: "T", n: 3 },
+    { d: "W", n: 1 },
+    { d: "T", n: 2, today: true },
+    { d: "F", n: 1 },
+  ];
+  const total = days.reduce((a, x) => a + x.n, 0);
+  return (
+    <Glass className={cn(small ? "px-2.5 py-2 text-left" : "px-3 pb-2.5 pt-3", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <p className={cn("whitespace-nowrap font-semibold", small ? "text-xs" : "text-sm")}>{small ? "This week" : "Meetings this week"}</p>
+        <p
+          className={cn("whitespace-nowrap font-serif leading-none [text-shadow:0_2px_10px_rgba(0,0,0,.25)]", small ? "-my-1 text-[28px]" : "-my-1.5 text-[40px]")}
+          style={{ color: GOLD }}
+        >
+          {total}
+        </p>
+      </div>
+      <div className={cn("grid grid-cols-5", small ? "mt-2 gap-1" : "mt-2.5 gap-1.5")}>
+        {days.map((x, i) => (
+          <div
+            key={i}
+            className={cn("flex flex-col items-center rounded-md", small ? "gap-1 py-1" : "gap-1.5 py-1.5", x.today ? "" : "bg-white/[0.08]")}
+            style={x.today ? { background: GOLD, color: INK } : undefined}
+          >
+            <span className={cn("font-semibold", small ? "text-[8px]" : "text-[10px]")}>{x.d}</span>
+            <span className="flex flex-col gap-[3px]">
+              {Array.from({ length: x.n }, (_, k) => (
+                <i key={k} className={cn("block rounded-full", small ? "h-[3px] w-3" : "h-1 w-4")} style={{ background: x.today ? INK : KHAKI }} />
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Glass>
+  );
+}
+
 function StatCard({ eyebrow, value, note, small, className }: { eyebrow: string; value: string; note: string; small?: boolean; className?: string }) {
   return (
     <Glass className={cn(small ? "rounded-[10px] px-2.5 py-2.5 text-left" : "px-4 py-3", className)}>
@@ -179,8 +341,17 @@ function PortfolioCard({ small, className }: { small?: boolean; className?: stri
     <Glass tone="light" className={cn(small ? "rounded-[10px] px-2.5 py-2.5 text-left" : "px-4 py-3", className)}>
       <p className={cn("font-medium", small ? "text-[11px]" : "text-[13px]")}>Managed portfolio</p>
       <p className={cn("whitespace-nowrap font-serif leading-none", small ? "mb-1 mt-0.5 text-[22px]" : "mb-1.5 mt-1 text-[28px]")}>$102.5k</p>
-      <svg viewBox="0 0 200 44" width="100%" height={small ? 22 : 30} fill="none" stroke={SLATE} strokeWidth={small ? 3 : 2.5} strokeLinecap="round" aria-hidden>
-        <path d="M0 40 C 30 36, 50 30, 80 28 S 130 20, 160 12 S 190 6, 200 4" />
+      {/* Climbs in steps — up, a small pullback, up again — finishing at the top right. */}
+      <svg viewBox="0 0 200 48" width="100%" height={small ? 24 : 34} fill="none" aria-hidden preserveAspectRatio="none">
+        <path d="M2 44 L24 33 L38 37 L62 25 L78 30 L104 18 L120 23 L146 11 L162 15 L198 3 L198 48 L2 48 Z" fill={SLATE} fillOpacity={0.12} />
+        <path
+          d="M2 44 L24 33 L38 37 L62 25 L78 30 L104 18 L120 23 L146 11 L162 15 L198 3"
+          stroke={CHARCOAL}
+          strokeWidth={small ? 2.6 : 2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
       </svg>
     </Glass>
   );
@@ -190,12 +361,18 @@ function RetirementCard({ small, className }: { small?: boolean; className?: str
   return (
     <Glass tone="light" className={cn(small ? "px-2.5 py-2.5 text-left" : "px-3.5 py-3", className)}>
       <div className={cn("flex items-center", small ? "gap-2" : "gap-3")}>
-        <span
-          className={cn("flex flex-none items-center justify-center rounded-full", small ? "h-8 w-8 border-[3px]" : "h-10 w-10 border-4")}
-          style={{ borderColor: SAGE, borderRightColor: "rgba(134,184,156,.3)" }}
-        >
+        {/* Progress ring: charcoal = done, gold = still to go. */}
+        <span className={cn("relative flex flex-none items-center justify-center", small ? "h-9 w-9" : "h-11 w-11")}>
+          <span
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: `conic-gradient(${CHARCOAL} 0 72%, ${GOLD} 72% 100%)`,
+              mask: `radial-gradient(circle, transparent ${small ? 11 : 14}px, black ${small ? 12 : 15}px)`,
+              WebkitMask: `radial-gradient(circle, transparent ${small ? 11 : 14}px, black ${small ? 12 : 15}px)`,
+            }}
+          />
           {small ? null : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2f5d46" strokeWidth="2" aria-hidden>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={CHARCOAL} strokeWidth="2.2" aria-hidden>
               <path d="M12 22V12M12 12c-4 0-7-3-7-6 3 0 7 2 7 6zm0 0c4 0 7-3 7-6-3 0-7 2-7 6z" />
             </svg>
           )}
@@ -217,7 +394,7 @@ function RetirementCard({ small, className }: { small?: boolean; className?: str
 function GoalsCard({ small, className }: { small?: boolean; className?: string }) {
   const rows = [
     { label: "Retirement", value: "$307K / $1M", width: "42%", color: `linear-gradient(90deg, ${GOLD}, ${GOLD_SOFT})` },
-    { label: "Home", value: "$5.3K / $50K", width: "18%", color: SAGE },
+    { label: "Home", value: "$5.3K / $50K", width: "18%", color: `linear-gradient(90deg, ${MONEY}, ${MONEY_BLUE})` },
   ];
   return (
     <Glass className={cn(small ? "rounded-[10px] px-2.5 py-2.5 text-left" : "px-4 py-3", className)}>
@@ -237,46 +414,30 @@ function GoalsCard({ small, className }: { small?: boolean; className?: string }
   );
 }
 
-/** Allocation legend sits directly above the ring (no chips floating over the chart). */
-function StrategyCard({ className }: { className?: string }) {
-  const slices = [
-    { label: "US stocks", pct: 48, color: SKY },
-    { label: "Bonds", pct: 22, color: SAGE },
-    { label: "International", pct: 18, color: SLATE },
-    { label: "Up & coming", pct: 12, color: GOLD },
+/** Bree: the four allocation chips on their own, stacked and staggered (Stash-style). */
+function AllocationChips({ className }: { className?: string }) {
+  const chips = [
+    { label: "Bonds", pct: 22, color: MONEY, indent: "ml-0" },
+    { label: "US stocks", pct: 48, color: SKY, indent: "ml-7" },
+    { label: "International", pct: 18, color: SLATE, indent: "ml-2" },
+    { label: "Up & coming", pct: 12, color: GOLD, indent: "ml-9" },
   ];
-  let acc = 0;
-  const stops = slices
-    .map((s) => {
-      const from = acc;
-      acc += s.pct;
-      return `${s.color} ${from}% ${acc - 0.6}%, transparent ${acc - 0.6}% ${acc}%`;
-    })
-    .join(",");
-  const ring: CSSProperties = {
-    background: `conic-gradient(from 0deg, ${stops})`,
-    mask: "radial-gradient(circle, transparent 27px, black 28px)",
-    WebkitMask: "radial-gradient(circle, transparent 27px, black 28px)",
-  };
   return (
-    <Glass className={cn("px-4 py-3", className)}>
-      <p className="text-[13px] font-semibold">Your strategy</p>
-      <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
-        {slices.map((s) => (
-          <li key={s.label} className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
-            <i className="h-[7px] w-[7px] flex-none rounded-full" style={{ background: s.color }} />
-            {s.label} <span className="text-white/65">{s.pct}%</span>
-          </li>
-        ))}
-      </ul>
-      <div className="relative mx-auto mt-2.5 h-[76px] w-[76px]">
-        <div className="absolute inset-0 rounded-full" style={ring} />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center leading-[1.1]">
-          <span className="text-[7px] font-semibold tracking-[0.12em] text-white/75">BALANCED</span>
-          <span className="text-xs font-semibold">Moderate</span>
-        </div>
-      </div>
-    </Glass>
+    <div className={cn("flex flex-col items-start gap-2", className)}>
+      {chips.map((c) => (
+        <span
+          key={c.label}
+          className={cn(
+            "flex items-center gap-2 whitespace-nowrap rounded-full border border-white/70 bg-white/[0.95] px-3 py-1.5 text-xs font-medium shadow-[inset_0_1px_0_#fff,0_4px_10px_rgba(0,0,0,.14),0_14px_32px_rgba(0,0,0,.28)]",
+            c.indent,
+          )}
+          style={{ color: INK }}
+        >
+          <i className="h-2 w-2 rounded-full" style={{ background: c.color }} />
+          {c.label} <span className="font-semibold text-[#6b7385]">{c.pct}%</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -350,7 +511,7 @@ const SLIDES: Slide[] = [
     // Bree's hand is on her hip, so here the strategy card tucks behind her right side
     // (her arm clips its top-left corner) and the goals card overlaps her left shoulder.
     desktopCards: {
-      back: <StrategyCard className={cn(RIGHT_CARD, "right-[4.4%] top-[392px] w-[214px]")} />,
+      back: <AllocationChips className={cn(RIGHT_CARD, "right-[6.6%] top-[402px] w-[200px]")} />,
       front: <GoalsCard className={cn(LEFT_CARD, "left-[47%] top-[214px] w-[200px]")} />,
     },
     mobileCards: {
@@ -400,11 +561,11 @@ const SLIDES: Slide[] = [
     link: { label: "Meet Laurie", href: "/team/laurie-simons" },
     desktopCards: {
       back: <StatCard className={cn(LEFT_CARD, BACK_AT)} eyebrow="Trust & estate" value="Updated" note="Estate documents reviewed" />,
-      front: <PhasesCard className={cn(RIGHT_CARD, FRONT_AT)} title="plan goals met" note="Your plan, kept current." />,
+      front: <CalendarCard className={cn(RIGHT_CARD, "right-[8.5%] top-[392px] w-[216px]")} />,
     },
     mobileCards: {
       back: <StatCard small className="w-full" eyebrow="Trust & estate" value="Updated" note="Estate documents reviewed" />,
-      front: <PhasesCard small className="w-full" title="plan goals met" note="Your plan, kept current." />,
+      front: <CalendarCard small className="w-full" />,
     },
   },
   {
@@ -423,11 +584,11 @@ const SLIDES: Slide[] = [
     link: { label: "Meet Keri", href: "/team/keri-alcos" },
     desktopCards: {
       back: <StatCard className={cn(LEFT_CARD, BACK_AT)} eyebrow="Retirement income" value="$8,450" note="projected monthly · age 65" />,
-      front: <PhasesCard className={cn(RIGHT_CARD, FRONT_AT)} title="goals on track" note="Plan reviewed this quarter." />,
+      front: <TrackRingCard className={cn(RIGHT_CARD, FRONT_AT)} />,
     },
     mobileCards: {
       back: <StatCard small className="w-full" eyebrow="Retirement income" value="$8,450" note="projected monthly · age 65" />,
-      front: <PhasesCard small className="w-full" title="goals on track" note="Plan reviewed this quarter." />,
+      front: <TrackRingCard small className="w-full" />,
     },
   },
   {
@@ -446,11 +607,11 @@ const SLIDES: Slide[] = [
     link: { label: "How we serve you", href: "/services" },
     desktopCards: {
       back: <StatCard className={cn(LEFT_CARD, BACK_AT)} eyebrow="Response time" value="Same day" note="reply to client requests" />,
-      front: <PhasesCard className={cn(RIGHT_CARD, FRONT_AT)} title="requests handled" note="Nothing slips through." />,
+      front: <RequestsCard className={cn(RIGHT_CARD, FRONT_AT)} />,
     },
     mobileCards: {
       back: <StatCard small className="w-full" eyebrow="Response time" value="Same day" note="reply to client requests" />,
-      front: <PhasesCard small className="w-full" title="requests handled" note="Nothing slips through." />,
+      front: <RequestsCard small className="w-full" />,
     },
   },
   {
@@ -469,11 +630,11 @@ const SLIDES: Slide[] = [
     link: { label: "Schedule with Mike", href: "/book?planner=michael-gauthier" },
     desktopCards: {
       back: <StatCard className={cn(LEFT_CARD, BACK_AT)} eyebrow="Next opening" value="Thu · 2:00" note="with Michael Gauthier, CEO" />,
-      front: <PhasesCard className={cn(RIGHT_CARD, FRONT_AT)} title="meetings this week" note="Calendar confirmed." />,
+      front: <WeekCard className={cn(RIGHT_CARD, FRONT_AT)} />,
     },
     mobileCards: {
       back: <StatCard small className="w-full" eyebrow="Next opening" value="Thu · 2:00" note="with Michael Gauthier, CEO" />,
-      front: <PhasesCard small className="w-full" title="meetings this week" note="Calendar confirmed." />,
+      front: <WeekCard small className="w-full" />,
     },
   },
 ];
