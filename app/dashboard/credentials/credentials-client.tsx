@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ExternalLink, History, KeyRound, Loader2, Lock, Pencil, PlugZap, Plus, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { ExternalLink, History, Info, KeyRound, Loader2, Lock, Pencil, PlugZap, Plus, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { StatusPill } from "@/components/analytics/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { CatalogField, CatalogProvider, CredentialsOverview, FieldStatus, HistoryEntry, ProviderStatus, TabId } from "@/lib/credentials/types";
 
@@ -65,7 +66,12 @@ function FieldValue({ def, field, managed }: { def: CatalogField; field: FieldSt
     if (managed) return <span className="inline-flex items-center gap-1 text-muted-foreground"><Lock className="h-3 w-3" aria-hidden /> Set</span>;
     return <span className="font-mono tracking-wide">{field.last4 ? `••••${field.last4}` : "••••••••"}</span>;
   }
-  return <span className="break-all font-mono text-xs">{field.value}</span>;
+  // Long URLs / keys stay on one line (full value in the tooltip) instead of wrapping into a tall column.
+  return (
+    <span className="block truncate font-mono text-xs" title={field.value ?? undefined}>
+      {field.value}
+    </span>
+  );
 }
 
 export function CredentialsClient({ initialOverview, initialTab, actionToken }: Props) {
@@ -357,8 +363,21 @@ function ProviderCard({
             return (
               <div key={f.key} className="grid gap-1 px-3 py-2 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto] sm:items-center sm:gap-3">
                 <dt className="min-w-0 text-xs font-medium text-muted-foreground">
-                  {f.label}
-                  {f.required ? <span className="text-destructive" aria-label="required"> *</span> : null}
+                  <span className="inline-flex items-center gap-1">
+                    {f.label}
+                    {f.required ? <span className="text-destructive" aria-label="required">*</span> : null}
+                    {f.help ? (
+                      <SimpleTooltip label={<span className="block max-w-[18rem] whitespace-normal text-left leading-snug">{f.help}</span>} side="top">
+                        <button
+                          type="button"
+                          aria-label={`Where to find ${f.label}`}
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/80 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Info className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </SimpleTooltip>
+                    ) : null}
+                  </span>
                   {f.envVar ? <span className="block truncate font-mono text-[10px] font-normal opacity-80" title={f.envVar}>{f.envVar}</span> : null}
                 </dt>
                 <dd className="min-w-0"><FieldValue def={f} field={st} managed={managed} /></dd>

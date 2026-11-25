@@ -538,5 +538,19 @@ export async function runAnalyticsSync(mode: "nightly" | "intraday"): Promise<Sy
       })
       .eq("id", runId);
   }
+  if (!result.ok) {
+    // Alerts feed: one unread alert per mode at a time (de-duplicated for 12 hours).
+    const { raiseAlert } = await import("@/lib/notifications/alerts");
+    await raiseAlert({
+      severity: "warning",
+      category: "analytics",
+      title: `Analytics ${mode} sync failed`,
+      message: result.error ?? "The rollup did not finish.",
+      audience: "admins",
+      href: "/dashboard/analytics/connections",
+      dedupeKey: `analytics_sync_${mode}`,
+      dedupeHours: 12,
+    });
+  }
   return result;
 }

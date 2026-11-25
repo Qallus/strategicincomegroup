@@ -2,6 +2,7 @@ import { getTwilioClient, getTwilioConfig } from "@/lib/twilio/client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { renderSmsTemplate, extractSmsFields } from "@/lib/sms/templates";
 import { phoneKey, resolveSmsContact, toE164 } from "@/lib/sms/contacts";
+import { isPhoneOptedOut } from "@/lib/sms/opt-out";
 
 export interface SendSmsOptions {
   to: string;
@@ -16,6 +17,11 @@ export interface SendSmsResult {
 }
 
 export async function sendSms({ to, body, conversationId, sentByProfileId }: SendSmsOptions): Promise<SendSmsResult> {
+  // A number that texted STOP gets nothing more from us, whoever is sending (carriers block it
+  // anyway with Twilio error 21610). Tolerates the opt-out table not existing yet.
+  if (await isPhoneOptedOut(to)) {
+    throw Object.assign(new Error("This number has opted out of texts (replied STOP). They can reply START to opt back in."), { code: 21610 });
+  }
   const client = await getTwilioClient();
   const twilioCfg = await getTwilioConfig();
 

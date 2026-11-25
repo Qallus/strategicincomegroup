@@ -186,6 +186,15 @@ const TESTS: Record<string, (cfg: Config) => Promise<TestResult>> = {
     await client.logout().catch(() => {});
     return { ok: true, message: `Signed in to ${cfg.host}:${cfg.port}.` };
   },
+  async finnhub(cfg) {
+    const miss = need(cfg, "api_key");
+    if (miss) return { ok: false, message: miss };
+    const res = await call("https://finnhub.io/api/v1/quote?symbol=SPY", { headers: { "X-Finnhub-Token": cfg.api_key! } });
+    if (!res.ok) return expectOk(res, "");
+    const data = (await res.json().catch(() => ({}))) as { c?: number };
+    if (typeof data.c !== "number" || data.c === 0) return { ok: false, message: "Finnhub answered but returned no quote for SPY." };
+    return { ok: true, message: `Key works — SPY last traded at $${data.c.toFixed(2)}.` };
+  },
   hermes: (cfg) => reachability(cfg.base_url, cfg.api_key),
   openclaw: (cfg) => reachability(cfg.url, cfg.token),
   eve: (cfg) => reachability(cfg.url, cfg.token),

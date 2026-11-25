@@ -161,6 +161,18 @@ export async function sendTemplateEmail(input: {
   } catch (sendError) {
     const message = sendError instanceof Error ? sendError.message : "Email send failed.";
     await supabase.from("email_send_logs").insert({ ...logBase, status: "failed", error_message: message });
+    // Alerts feed — one unread alert per hour, however many sends fail.
+    const { raiseAlert } = await import("@/lib/notifications/alerts");
+    await raiseAlert({
+      severity: "warning",
+      category: "email",
+      title: "An email failed to send",
+      message: `${subject} → ${input.recipient.email}: ${message}`,
+      audience: "admins",
+      href: "/dashboard/emails",
+      dedupeKey: "email_send_failed",
+      dedupeHours: 1,
+    });
     throw new Error(message);
   }
 }

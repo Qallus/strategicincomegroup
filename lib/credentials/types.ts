@@ -20,7 +20,7 @@ export type CatalogField = {
   options?: { value: string; label: string }[];
 };
 
-export type TabId = "crm" | "email" | "voice" | "microsoft" | "google" | "social" | "ai" | "agents" | "platform";
+export type TabId = "crm" | "email" | "voice" | "microsoft" | "google" | "social" | "ai" | "agents" | "data_feeds" | "platform";
 
 export type CatalogTab = { id: TabId; label: string; description: string };
 

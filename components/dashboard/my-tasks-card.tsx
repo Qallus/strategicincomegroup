@@ -9,9 +9,9 @@ import {
 import { StatCardRow } from "@/components/dashboard/stat-card-row";
 import type { MyTask } from "@/lib/project-manager/my-tasks";
 
-type Bucket = "overdue" | "today" | "next7";
+export type Bucket = "overdue" | "today" | "next7";
 
-const TABS: { key: Bucket; label: string; icon: typeof AlertTriangle; tone: string; ring: string }[] = [
+export const TABS: { key: Bucket; label: string; icon: typeof AlertTriangle; tone: string; ring: string }[] = [
   { key: "overdue", label: "Overdue", icon: AlertTriangle, tone: "text-red-600 dark:text-red-400", ring: "hover:border-red-300 dark:hover:border-red-800" },
   { key: "today", label: "Today", icon: CalendarClock, tone: "text-amber-600 dark:text-amber-400", ring: "hover:border-amber-300 dark:hover:border-amber-800" },
   { key: "next7", label: "Next 7 days", icon: CalendarDays, tone: "text-emerald-600 dark:text-emerald-400", ring: "hover:border-emerald-300 dark:hover:border-emerald-800" },
@@ -44,7 +44,7 @@ function daysFromToday(dueISO: string) {
   return Math.round((dueDay.getTime() - startOfToday().getTime()) / 86_400_000);
 }
 
-function bucketOf(dueISO: string): Bucket | null {
+export function bucketOf(dueISO: string): Bucket | null {
   const diff = daysFromToday(dueISO);
   if (diff < 0) return "overdue";
   if (diff === 0) return "today";
@@ -52,7 +52,7 @@ function bucketOf(dueISO: string): Bucket | null {
   return null;
 }
 
-function dueLabel(dueISO: string) {
+export function dueLabel(dueISO: string) {
   const diff = daysFromToday(dueISO);
   if (diff === 0) return "Due today";
   if (diff === 1) return "Due tomorrow";
@@ -62,13 +62,13 @@ function dueLabel(dueISO: string) {
   return `Due ${dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}`;
 }
 
-const EMPTY_COPY: Record<Bucket, string> = {
+export const EMPTY_COPY: Record<Bucket, string> = {
   overdue: "Nothing overdue.",
   today: "Nothing due today.",
   next7: "Nothing due in the next 7 days.",
 };
 
-function TaskRow({ task, bucket }: { task: MyTask; bucket: Bucket }) {
+export function TaskRow({ task, bucket }: { task: MyTask; bucket: Bucket }) {
   return (
     <Link
       href="/dashboard/project-manager"
@@ -99,18 +99,67 @@ function TaskRow({ task, bucket }: { task: MyTask; bucket: Bucket }) {
   );
 }
 
+export function groupTasks(tasks: MyTask[]): Record<Bucket, MyTask[]> {
+  const g: Record<Bucket, MyTask[]> = { overdue: [], today: [], next7: [] };
+  for (const t of tasks) {
+    const b = bucketOf(t.dueDate);
+    if (b) g[b].push(t);
+  }
+  return g;
+}
+
+/** The task list dialog for one bucket (used by My Tasks and the dashboard task cards). */
+export function TaskBucketDialog({ bucket, tasks, name, onClose }: { bucket: Bucket | null; tasks: MyTask[]; name?: string; onClose: () => void }) {
+  const open = bucket;
+  const activeTab = open ? TABS.find((t) => t.key === open)! : null;
+  const rows = tasks;
+  return (
+      <Dialog open={open !== null} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-h-[80vh] overflow-hidden sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {activeTab ? <activeTab.icon className={`h-5 w-5 ${activeTab.tone}`} aria-hidden /> : null}
+              {activeTab?.label}
+              <span className="text-sm font-normal text-muted-foreground">({rows.length})</span>
+            </DialogTitle>
+            <DialogDescription>
+              {name ? `${name}'s tasks ` : "Tasks "}
+              {open === "overdue" ? "past their due date." : open === "today" ? "due today." : "due within the next 7 days."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+              <CheckCircle2 className="h-7 w-7 text-emerald-500" aria-hidden />
+              <p className="text-sm text-muted-foreground">{open ? EMPTY_COPY[open] : ""}</p>
+            </div>
+          ) : (
+            <ul className="-mr-2 max-h-[55vh] space-y-2 overflow-y-auto pr-2">
+              {rows.map((t) => (
+                <li key={t.id}>
+                  <TaskRow task={t} bucket={open as Bucket} />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="pt-1">
+            <Link
+              href="/dashboard/project-manager"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Open Project Manager →
+            </Link>
+          </div>
+        </DialogContent>
+      </Dialog>
+  );
+}
+
 export function MyTasksCard({ tasks, name }: { tasks: MyTask[]; name?: string }) {
-  const grouped = useMemo(() => {
-    const g: Record<Bucket, MyTask[]> = { overdue: [], today: [], next7: [] };
-    for (const t of tasks) {
-      const b = bucketOf(t.dueDate);
-      if (b) g[b].push(t);
-    }
-    return g;
-  }, [tasks]);
+  const grouped = useMemo(() => groupTasks(tasks), [tasks]);
 
   const [open, setOpen] = useState<Bucket | null>(null);
-  const activeTab = open ? TABS.find((t) => t.key === open)! : null;
   const rows = open ? grouped[open] : [];
 
   return (
@@ -152,45 +201,7 @@ export function MyTasksCard({ tasks, name }: { tasks: MyTask[]; name?: string })
         })}
       </StatCardRow>
 
-      <Dialog open={open !== null} onOpenChange={(v) => !v && setOpen(null)}>
-        <DialogContent className="max-h-[80vh] overflow-hidden sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {activeTab ? <activeTab.icon className={`h-5 w-5 ${activeTab.tone}`} aria-hidden /> : null}
-              {activeTab?.label}
-              <span className="text-sm font-normal text-muted-foreground">({rows.length})</span>
-            </DialogTitle>
-            <DialogDescription>
-              {name ? `${name}'s tasks ` : "Tasks "}
-              {open === "overdue" ? "past their due date." : open === "today" ? "due today." : "due within the next 7 days."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {rows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-              <CheckCircle2 className="h-7 w-7 text-emerald-500" aria-hidden />
-              <p className="text-sm text-muted-foreground">{open ? EMPTY_COPY[open] : ""}</p>
-            </div>
-          ) : (
-            <ul className="-mr-2 max-h-[55vh] space-y-2 overflow-y-auto pr-2">
-              {rows.map((t) => (
-                <li key={t.id}>
-                  <TaskRow task={t} bucket={open as Bucket} />
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="pt-1">
-            <Link
-              href="/dashboard/project-manager"
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              Open Project Manager →
-            </Link>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TaskBucketDialog bucket={open} tasks={rows} name={name} onClose={() => setOpen(null)} />
     </section>
   );
 }

@@ -506,6 +506,8 @@ export async function notifyBookingChanged(input: BookingChangeInput): Promise<R
     await createDashboardNotification({
       type: cancelled ? "booking_cancelled" : "booking_rescheduled",
       title, message, userId: planner.profileId,
+      // A cancellation is an alert (Alerts feed); a reschedule stays a plain notification.
+      ...(cancelled ? { severity: "warning" as const, category: "bookings" } : { category: "bookings" }),
       metadata: {
         booking_id: b.id, reference: b.reference, booking_type_id: type.id, start_at: b.start_at,
         previous_start_at: previous?.start_at ?? null, by, reason: reason ?? null, href: "/dashboard/bookings",

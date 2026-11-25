@@ -170,3 +170,50 @@ These are shown on the **Platform** tab as status only and can never be stored o
 ### Rotating the master key (later)
 
 Rows record the key version that encrypted them. To rotate: copy the current key into `CREDENTIALS_MASTER_KEY_V1`, put the new key in `CREDENTIALS_MASTER_KEY`, set `CREDENTIALS_KEY_VERSION=2`, redeploy, then re-save each secret on the page (each save re-encrypts with version 2). Remove `CREDENTIALS_MASTER_KEY_V1` once nothing uses version 1.
+
+## 9. Communications (Dialer, SMS campaigns, call monitoring)
+
+### Migration
+
+Run `supabase/migrations/202611250230_communications.sql` in **SQL Editor** (new tables `communication_settings`, `sms_opt_outs`, `sms_campaigns`, `sms_campaign_recipients`, `call_monitor_sessions`, plus `calls.conference_name / conference_sid / agent_call_sid`; RLS on, service role only; safe to re-run). It also copies every number already opted out on a profile or participant into `sms_opt_outs`. Until it runs, the dialer and SMS keep working, settings stay at their defaults (auto-transcribe off, Conference mode off) and the Campaigns tab shows a "run the migration" notice.
+
+### Twilio console URLs
+
+Twilio signs every webhook. The app now **rejects unsigned or mis-signed requests** (403), checking the signature against `NEXT_PUBLIC_APP_URL` + path first, then the `x-forwarded-proto` / `x-forwarded-host` URL, then the raw request URL. The URL in the Twilio console must therefore match `NEXT_PUBLIC_APP_URL` exactly (same scheme and host, no trailing-slash differences).
+
+| Where | Setting | URL (POST) |
+|---|---|---|
+| Phone number → Voice | A call comes in | `https://YOUR-HOST/api/webhooks/twilio/voice` |
+| Phone number → Voice | Call status changes | `https://YOUR-HOST/api/webhooks/twilio/voice-status` |
+| TwiML App (the softphone's `twiml_app_sid`) | Voice Request URL | `https://YOUR-HOST/api/webhooks/twilio/voice` |
+| TwiML App | Status Callback URL | `https://YOUR-HOST/api/webhooks/twilio/voice-status` |
+| Messaging Service → Integration | Send a webhook (incoming messages) | `https://YOUR-HOST/api/webhooks/twilio/sms` |
+| Phone number → Messaging (only if the number is **not** in a Messaging Service) | A message comes in | `https://YOUR-HOST/api/webhooks/twilio/sms` |
+
+Delivery status (`/api/webhooks/twilio/sms-status`), recordings (`/recording`), voicemail transcription (`/transcription`), the conference voicemail redirect (`/voicemail`) and conference events (`/conference-status`) are set per call / message by the app — nothing to configure.
+
+**Debug bypass:** if calls or texts start failing with 403s after a deploy (wrong `NEXT_PUBLIC_APP_URL`, proxy rewriting the host), set `TWILIO_SKIP_SIGNATURE=1` in Coolify, redeploy, fix the URL, then **remove it**. While it is set every webhook logs `signature check SKIPPED` and the Dialer → Settings tab shows a warning. Rejections log the URLs that were tried.
+
+### Messaging Service (bulk SMS)
+
+Put the A2P 10DLC Messaging Service SID on **Dashboard → Credentials → Voice & SMS** (`messaging_service_sid`, or `TWILIO_MESSAGING_SERVICE_SID`). Single texts and campaigns send through it when set, otherwise from the bare number (US carriers reject unregistered traffic with error 30034). If **Advanced Opt-Out** is enabled on the service, Twilio answers STOP / START / HELP itself — the app still records the opt-out and does not reply twice. Otherwise the app replies with the standard texts (toggle in Dialer → Settings).
+
+### Scheduled task
+
+| Name | Command | Frequency |
+|---|---|---|
+| `sms-campaigns` | `node scripts/sms-campaign-cron.mjs` | `* * * * *` (every minute: starts scheduled campaigns that are due and keeps sending ones in progress, ~50 s per run) |
+
+"Send now" also starts sending immediately without waiting for the task. Check: `curl -X POST -H "x-cron-secret: $CRON_SECRET" https://YOUR-HOST/api/admin/sms/campaigns/process` returns `{"ok":true,...}`.
+
+### Dialer → Settings (Super Admin)
+
+- **Auto-transcribe recordings** — transcribes each call recording / voicemail with OpenAI when Twilio delivers it (needs the OpenAI key on Credentials).
+- **Conference mode** — OFF by default. When ON, every new call is placed in a per-call Twilio Conference so admins can **Listen** (muted), **Whisper** (only the agent hears) or **Barge** from Dialer → Live. Inbound callers hear hold music until the softphone answers (20 s), then get the same voicemail prompt as before. Turn it on only after testing on a test number; with it OFF the call flow is the original direct `<Dial>`.
+- **Bulk send speed** (default 1 message / second) and **keyword replies**.
+
+### Environment
+
+```env
+TWILIO_SKIP_SIGNATURE=   # leave unset; 1 = accept unsigned Twilio webhooks (temporary debugging only)
+```

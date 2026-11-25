@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   SMS_STOP_KEYWORDS,
@@ -9,171 +8,86 @@ import {
   SMS_HELP_REPLY,
 } from "@/lib/sms/constants";
 import { getOrCreateConversation } from "@/lib/twilio/sms";
+import { recordSmsOptIn, recordSmsOptOut } from "@/lib/sms/opt-out";
+import { getCommunicationSettings } from "@/lib/twilio/settings";
+import { EMPTY_TWIML, escapeXml, readTwilioWebhook, twimlResponse } from "@/lib/twilio/webhook";
 
+// Inbound SMS (Twilio number / Messaging Service → "A message comes in").
+//
+// Keywords follow CTIA norms: STOP / START / HELP (and their synonyms) are matched on the whole
+// message, case-insensitively, ignoring trailing punctuation. When the Messaging Service has
+// Advanced Opt-Out turned on, Twilio sends OptOutType and replies itself — we still record the
+// consent change but don't double-reply. Every inbound text, keywords included, is stored in
+// the conversation so staff can see why someone stopped hearing from us.
 export async function POST(request: Request) {
+  const intake = await readTwilioWebhook(request);
+  if (!intake.ok) return intake.response;
+  const { hook } = intake;
+
   try {
-    const formData = await request.formData();
-    const from = String(formData.get("From") ?? "");
-    const to = String(formData.get("To") ?? "");
-    const body = String(formData.get("Body") ?? "").trim();
-    const messageSid = String(formData.get("MessageSid") ?? "");
-    const numMedia = parseInt(String(formData.get("NumMedia") ?? "0"), 10);
+    const from = hook.get("From");
+    const body = hook.get("Body").trim();
+    const messageSid = hook.get("MessageSid");
+    const optOutType = hook.get("OptOutType").toUpperCase(); // STOP | START | HELP when Advanced Opt-Out is on
+    const numMedia = parseInt(hook.get("NumMedia") || "0", 10) || 0;
 
     const mediaUrls: string[] = [];
     for (let i = 0; i < numMedia; i++) {
-      const url = formData.get(`MediaUrl${i}`);
-      if (url) mediaUrls.push(String(url));
+      const url = hook.get(`MediaUrl${i}`);
+      if (url) mediaUrls.push(url);
     }
 
-    const upperBody = body.toUpperCase();
-    const isStop = SMS_STOP_KEYWORDS.some((k) => upperBody === k);
-    const isStart = SMS_START_KEYWORDS.some((k) => upperBody === k);
-    const isHelp = SMS_HELP_KEYWORDS.some((k) => upperBody === k);
+    const keyword = body.toUpperCase().replace(/[^A-Z ]/g, "").trim();
+    const isStop = optOutType === "STOP" || SMS_STOP_KEYWORDS.includes(keyword) || keyword === "STOP ALL" || keyword === "STOPALL";
+    const isStart = !isStop && (optOutType === "START" || SMS_START_KEYWORDS.includes(keyword));
+    const isHelp = !isStop && !isStart && (optOutType === "HELP" || SMS_HELP_KEYWORDS.includes(keyword));
 
     const supabase = createSupabaseAdminClient();
     const now = new Date().toISOString();
 
-    // Handle STOP keywords
-    if (isStop) {
-      await handleOptOut(supabase, from, now);
-      return twimlReply(SMS_STOP_REPLY);
+    if (from) {
+      try {
+        const conversationId = await getOrCreateConversation(from);
+        const { error: insertError } = await supabase.from("sms_messages").insert({
+          conversation_id: conversationId,
+          direction: "inbound",
+          body: body || (mediaUrls.length ? "[media]" : ""),
+          status: "received",
+          twilio_message_sid: messageSid || null,
+          media_urls: mediaUrls,
+          sent_at: now,
+        });
+        if (insertError) console.error("[sms-webhook] inbound message not stored", insertError.message);
+
+        const { data: conv } = await supabase.from("sms_conversations").select("unread_count").eq("id", conversationId).maybeSingle();
+        await supabase
+          .from("sms_conversations")
+          .update({
+            last_message_at: now,
+            last_message_preview: (body || "[media]").slice(0, 120),
+            unread_count: (Number(conv?.unread_count) || 0) + 1,
+            updated_at: now,
+          })
+          .eq("id", conversationId);
+      } catch (err) {
+        console.error("[sms-webhook] conversation update failed", err);
+      }
     }
 
-    // Handle START keywords
-    if (isStart) {
-      await handleOptIn(supabase, from, now);
-      return twimlReply(SMS_START_REPLY);
+    if (isStop || isStart || isHelp) {
+      if (isStop) await recordSmsOptOut(from, "keyword_stop");
+      if (isStart) await recordSmsOptIn(from, "keyword_start");
+
+      const settings = await getCommunicationSettings();
+      // Twilio already answered (Advanced Opt-Out), or replies are switched off.
+      if (optOutType || !settings.smsKeywordReplies) return twimlResponse(EMPTY_TWIML);
+      const reply = isStop ? SMS_STOP_REPLY : isStart ? SMS_START_REPLY : SMS_HELP_REPLY;
+      return twimlResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(reply)}</Message></Response>`);
     }
 
-    // Handle HELP keywords
-    if (isHelp) {
-      return twimlReply(SMS_HELP_REPLY);
-    }
-
-    // Regular inbound message — store in conversation
-    const conversationId = await getOrCreateConversation(from);
-
-    await supabase.from("sms_messages").insert({
-      conversation_id: conversationId,
-      direction: "inbound",
-      body,
-      status: "received",
-      twilio_message_sid: messageSid,
-      media_urls: mediaUrls,
-      sent_at: now,
-    });
-
-    await supabase
-      .from("sms_conversations")
-      .update({
-        last_message_at: now,
-        last_message_preview: body.slice(0, 120),
-        unread_count: supabase.rpc("increment_unread", { conv_id: conversationId }) as any,
-        updated_at: now,
-      })
-      .eq("id", conversationId);
-
-    // Increment unread count separately
-    await supabase.rpc("increment_sms_unread", { conv_id: conversationId }).maybeSingle();
-
-    return new NextResponse("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>", {
-      headers: { "Content-Type": "text/xml" },
-    });
+    return twimlResponse(EMPTY_TWIML);
   } catch (error) {
     console.error("SMS webhook error:", error);
-    return new NextResponse("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>", {
-      headers: { "Content-Type": "text/xml" },
-    });
+    return twimlResponse(EMPTY_TWIML);
   }
-}
-
-async function handleOptOut(supabase: ReturnType<typeof createSupabaseAdminClient>, phone: string, now: string) {
-  const { data: participant } = await supabase
-    .from("participants")
-    .select("id")
-    .or(`phone.eq.${phone},phone.eq.+${phone.replace(/\D/g, "")}`)
-    .maybeSingle();
-
-  if (participant) {
-    await supabase
-      .from("participants")
-      .update({ sms_opt_in: false, sms_opt_out_at: now })
-      .eq("id", participant.id);
-    await supabase.from("consent_events").insert({
-      entity_type: "participant",
-      entity_id: participant.id,
-      channel: "sms",
-      event_type: "opt_out",
-      source: "keyword_stop",
-    });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .or(`phone.eq.${phone},phone.eq.+${phone.replace(/\D/g, "")}`)
-    .maybeSingle();
-
-  if (profile) {
-    await supabase
-      .from("profiles")
-      .update({ sms_opt_in: false, sms_opt_out_at: now })
-      .eq("id", profile.id);
-    await supabase.from("consent_events").insert({
-      entity_type: "profile",
-      entity_id: profile.id,
-      channel: "sms",
-      event_type: "opt_out",
-      source: "keyword_stop",
-    });
-  }
-}
-
-async function handleOptIn(supabase: ReturnType<typeof createSupabaseAdminClient>, phone: string, now: string) {
-  const { data: participant } = await supabase
-    .from("participants")
-    .select("id")
-    .or(`phone.eq.${phone},phone.eq.+${phone.replace(/\D/g, "")}`)
-    .maybeSingle();
-
-  if (participant) {
-    await supabase
-      .from("participants")
-      .update({ sms_opt_in: true, sms_opt_in_at: now, sms_opt_in_source: "keyword_start" })
-      .eq("id", participant.id);
-    await supabase.from("consent_events").insert({
-      entity_type: "participant",
-      entity_id: participant.id,
-      channel: "sms",
-      event_type: "opt_in",
-      source: "keyword_start",
-    });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .or(`phone.eq.${phone},phone.eq.+${phone.replace(/\D/g, "")}`)
-    .maybeSingle();
-
-  if (profile) {
-    await supabase
-      .from("profiles")
-      .update({ sms_opt_in: true, sms_opt_in_at: now, sms_opt_in_source: "keyword_start" })
-      .eq("id", profile.id);
-    await supabase.from("consent_events").insert({
-      entity_type: "profile",
-      entity_id: profile.id,
-      channel: "sms",
-      event_type: "opt_in",
-      source: "keyword_start",
-    });
-  }
-}
-
-function twimlReply(message: string) {
-  return new NextResponse(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`,
-    { headers: { "Content-Type": "text/xml" } }
-  );
 }

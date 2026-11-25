@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readTwilioWebhook } from "@/lib/twilio/webhook";
 
+// Twilio's built-in voicemail transcription (<Record transcribe>).
 export async function POST(request: Request) {
+  const intake = await readTwilioWebhook(request);
+  if (!intake.ok) return intake.response;
+  const { hook } = intake;
   try {
-    const formData = await request.formData();
-    const callSid = String(formData.get("CallSid") ?? "");
-    const transcriptionSid = String(formData.get("TranscriptionSid") ?? "");
-    const transcriptionText = String(formData.get("TranscriptionText") ?? "");
-    const transcriptionStatus = String(formData.get("TranscriptionStatus") ?? "");
+    const callSid = hook.get("CallSid");
+    const transcriptionSid = hook.get("TranscriptionSid");
+    const transcriptionText = hook.get("TranscriptionText");
 
     if (!callSid) return NextResponse.json({ ok: true });
 
@@ -15,20 +18,17 @@ export async function POST(request: Request) {
 
     const { data: call } = await supabase
       .from("calls")
-      .select("id, answered_at")
+      .select("id, voicemail_transcription")
       .eq("twilio_call_sid", callSid)
       .maybeSingle();
 
     if (!call) return NextResponse.json({ ok: true });
 
-    if (call.answered_at) {
+    // Only the voicemail <Record> asks Twilio to transcribe. Keep an existing (Whisper)
+    // transcript; it is more accurate than Twilio's.
+    if (!call.voicemail_transcription && transcriptionText) {
       await supabase.from("calls").update({
-        transcription_sid: transcriptionSid,
-        transcription_text: transcriptionText,
-        updated_at: new Date().toISOString(),
-      }).eq("id", call.id);
-    } else {
-      await supabase.from("calls").update({
+        transcription_sid: transcriptionSid || null,
         voicemail_transcription: transcriptionText,
         updated_at: new Date().toISOString(),
       }).eq("id", call.id);

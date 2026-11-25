@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, sid: result.sid, status: result.status, conversationId });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to send SMS.";
-    const httpStatus = message.includes("required") || message.includes("permission") ? 403 : 500;
+    const httpStatus = message.includes("opted out") ? 400 : message.includes("required") || message.includes("permission") ? 403 : 500;
     return NextResponse.json({ error: message }, { status: httpStatus });
   }
 }
