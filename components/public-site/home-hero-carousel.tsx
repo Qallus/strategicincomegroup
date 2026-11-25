@@ -820,7 +820,7 @@ export function HomeHeroCarousel() {
                       <Link
                         href="/get-started"
                         className={cn(
-                          "flex h-12 items-center justify-center rounded-full px-10 text-[15px] font-bold no-underline outline-none transition-transform hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 focus-visible:ring-offset-transparent lg:h-[54px] lg:px-9",
+                          "flex h-12 items-center justify-center rounded-lg px-10 text-[15px] font-bold no-underline outline-none transition-transform hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 focus-visible:ring-offset-transparent lg:h-[54px] lg:px-9",
                           dark ? "bg-white" : "bg-[#2d3135] text-white",
                         )}
                         style={dark ? { color: s.ink } : undefined}
@@ -830,7 +830,7 @@ export function HomeHeroCarousel() {
                       <Link
                         href={s.link.href}
                         className={cn(
-                          "group flex items-center gap-2.5 rounded-sm text-base font-semibold underline underline-offset-[5px] outline-none focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-4 focus-visible:ring-offset-transparent lg:gap-2 lg:text-[15px]",
+                          "group flex items-center gap-2.5 rounded-sm text-base font-semibold no-underline outline-none focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-4 focus-visible:ring-offset-transparent lg:gap-2 lg:text-[15px]",
                           dark ? "text-white hover:text-brand-gold" : "text-[#0d1a3a] hover:text-[hsl(224_78%_23%)]",
                         )}
                       >
