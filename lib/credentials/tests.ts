@@ -2,11 +2,21 @@ import "server-only";
 import { createSign } from "node:crypto";
 import { CUSTOM_PREFIX } from "./catalog";
 import { getCustomDefinition, getProviderConfig } from "./server";
+import { REDTAIL_ENV_LABEL, REDTAIL_FIELDS, resolveRedtail } from "@/lib/redtail/env";
 
 // "Test connection" checks — lightweight, read-only calls with a 10-second limit. A result
 // message never contains a credential value (values are scrubbed before returning).
 
-export type TestResult = { ok: boolean; message: string };
+export type TestResult = {
+  ok: boolean;
+  message: string;
+  /**
+   * Server-only follow-up for the test route: values to save (encrypted) and fields to clear.
+   * Used by Redtail to store a freshly fetched UserKey and drop the password. The route strips
+   * this before responding — it never reaches the browser.
+   */
+  persist?: { values: Record<string, string>; clear: string[] };
+};
 
 const TIMEOUT_MS = 10_000;
 type Config = Record<string, string | undefined>;
@@ -104,18 +114,40 @@ const TESTS: Record<string, (cfg: Config) => Promise<TestResult>> = {
     return expectOk(res, "OpenRouter key works.");
   },
   async redtail(cfg) {
-    const miss = need(cfg, "api_key");
-    if (miss) return { ok: false, message: miss };
-    const base = (cfg.base_url || "https://review.crm.redtailtechnology.com/api/public/v1").replace(/\/+$/, "");
-    if (cfg.user_key) {
-      const res = await call(`${base}/contacts?page=1`, { headers: { Authorization: `Userkeyauth ${b64(`${cfg.api_key}:${cfg.user_key}`)}`, Accept: "application/json" } });
-      return expectOk(res, "User key works (contacts readable).");
+    // Active environment's base URL + keys (Development by default).
+    const r = resolveRedtail(cfg);
+    const env = REDTAIL_ENV_LABEL[r.environment];
+    const fields = REDTAIL_FIELDS[r.environment];
+    if (!r.apiKey) return { ok: false, message: `Add the ${env} API Key (from Redtail's partner welcome email).` };
+
+    // Username + password present → Redtail's UserKey retrieval method (Basic auth on
+    // /authentication). Save the returned UserKey encrypted and clear the password.
+    if (r.username && r.password && !r.userKey) {
+      const res = await call(`${r.baseUrl}/authentication`, {
+        headers: { Authorization: `Basic ${b64(`${r.apiKey}:${r.username}:${r.password}`)}`, Accept: "application/json" },
+      });
+      if (!res.ok) {
+        const hint = res.status === 401 ? " Check the username/password, and that Redtail has activated this trial (reply to partnersupport@redtailtechnology.com with the trial username)." : "";
+        return { ok: false, message: `${env}: authentication failed (HTTP ${res.status}).${hint}` };
+      }
+      const data = (await res.json().catch(() => ({}))) as { authenticated_user?: { user_key?: string }; user_key?: string; UserKey?: string };
+      const userKey = data.authenticated_user?.user_key ?? data.user_key ?? data.UserKey;
+      if (!userKey) return { ok: false, message: `${env}: signed in, but Redtail's response had no UserKey.` };
+      return {
+        ok: true,
+        message: `${env}: signed in. UserKey retrieved and saved (encrypted); the password was cleared.`,
+        persist: { values: { [fields.userKey]: userKey }, clear: ["password"] },
+      };
     }
-    if (cfg.username && cfg.password) {
-      const res = await call(`${base}/authentication`, { headers: { Authorization: `Basic ${b64(`${cfg.api_key}:${cfg.username}:${cfg.password}`)}`, Accept: "application/json" } });
-      return expectOk(res, "Username and password work. Fetch the user key and save it, then clear the password.");
+
+    if (r.userKey) {
+      const res = await call(`${r.baseUrl}/contacts?page=1`, {
+        headers: { Authorization: `Userkeyauth ${b64(`${r.apiKey}:${r.userKey}`)}`, Accept: "application/json" },
+      });
+      if (res.status === 401) return { ok: false, message: `${env}: Redtail rejected the API Key + UserKey (HTTP 401). Keys from one environment don't work in the other.` };
+      return expectOk(res, `${env}: connected — API Key + UserKey work and contacts are readable.`);
     }
-    return { ok: false, message: "Add a user key, or a username and password." };
+    return { ok: false, message: `${env}: add the trial's Redtail username and password, then Test connection to fetch the UserKey.` };
   },
   async microsoft(cfg) {
     const miss = need(cfg, "tenant_id", "client_id", "client_secret");
@@ -232,5 +264,6 @@ export async function runCredentialTest(provider: string, instance = "default"):
     const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
     result = { ok: false, message: timedOut ? "Timed out after 10 seconds." : err?.message || "Test failed." };
   }
-  return { ok: result.ok, message: scrub(result.message, cfg) };
+  // `persist` is passed through for the server-side test route only (never returned to the page).
+  return { ok: result.ok, message: scrub(result.message, cfg), ...(result.persist ? { persist: result.persist } : {}) };
 }

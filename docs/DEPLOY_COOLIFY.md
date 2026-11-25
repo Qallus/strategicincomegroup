@@ -47,9 +47,11 @@ VAPID_SUBJECT=mailto:planning@strategicincomegroup.com
 CRON_SECRET=<any long random string>
 
 # Redtail (Phase 3) — leave sync off until verified locally
-REDTAIL_API_BASE_URL=https://review.crm.redtailtechnology.com/api/public/v1
-REDTAIL_API_KEY=
-REDTAIL_USER_KEY=
+# Redtail: set these on Dashboard → Credentials → CRM instead (Development + Production keys,
+# active environment switch; Test connection fetches each UserKey). Env fallbacks if needed:
+# REDTAIL_ENVIRONMENT=development   (or production)
+# REDTAIL_DEV_API_KEY= / REDTAIL_DEV_USER_KEY=   (review.crm.redtailtechnology.com)
+# REDTAIL_PROD_API_KEY= / REDTAIL_PROD_USER_KEY= (crm.redtailtechnology.com)
 REDTAIL_SYNC_ENABLED=false
 ```
 

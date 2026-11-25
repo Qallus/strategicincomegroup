@@ -1,4 +1,5 @@
 import { getProviderConfig } from "@/lib/credentials/server";
+import { REDTAIL_ENV_LABEL, resolveRedtail, type RedtailEnvironment } from "@/lib/redtail/env";
 
 // Redtail CRM API client (scaffolding for the Phase 3 sync — see BUILD_PLAN.md).
 //
@@ -9,6 +10,7 @@ import { getProviderConfig } from "@/lib/credentials/server";
 // Confirm endpoint shapes against SIG's Redtail API documentation before relying on fields.
 
 export type RedtailConfig = {
+  environment: RedtailEnvironment;
   baseUrl: string;
   apiKey: string;
   userKey?: string;
@@ -16,23 +18,24 @@ export type RedtailConfig = {
   password?: string;
 };
 
-// Read from SIG Credentials (Dashboard → Credentials → CRM), falling back to the REDTAIL_* env vars.
+// Read from SIG Credentials (Dashboard → Credentials → CRM), falling back to the REDTAIL_* env
+// vars. Uses the ACTIVE environment's base URL, API Key and UserKey (see lib/redtail/env.ts).
 export async function redtailConfig(): Promise<RedtailConfig> {
-  const c = await getProviderConfig("redtail");
-  const baseUrl = (c.base_url || "https://review.crm.redtailtechnology.com/api/public/v1").replace(/\/+$/, "");
-  const apiKey = c.api_key || "";
-  if (!apiKey) throw new Error("Redtail API key is not set (Dashboard → Credentials → CRM, or REDTAIL_API_KEY).");
-  return { baseUrl, apiKey, userKey: c.user_key || undefined, username: c.username || undefined, password: c.password || undefined };
+  const r = resolveRedtail(await getProviderConfig("redtail"));
+  if (!r.apiKey) {
+    throw new Error(`Redtail ${REDTAIL_ENV_LABEL[r.environment]} API Key is not set (Dashboard → Credentials → CRM).`);
+  }
+  return { environment: r.environment, baseUrl: r.baseUrl, apiKey: r.apiKey, userKey: r.userKey, username: r.username, password: r.password };
 }
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 
 export function authHeader(cfg: RedtailConfig, mode: "userkey" | "basic" = cfg.userKey ? "userkey" : "basic") {
   if (mode === "userkey") {
-    if (!cfg.userKey) throw new Error("REDTAIL_USER_KEY is not set.");
+    if (!cfg.userKey) throw new Error(`Redtail ${REDTAIL_ENV_LABEL[cfg.environment]} UserKey is not set (Credentials → CRM → Test connection fetches it).`);
     return `Userkeyauth ${b64(`${cfg.apiKey}:${cfg.userKey}`)}`;
   }
-  if (!cfg.username || !cfg.password) throw new Error("REDTAIL_USERNAME / REDTAIL_PASSWORD are required for basic auth.");
+  if (!cfg.username || !cfg.password) throw new Error("Redtail UserKey is not set and no username/password is available for basic auth.");
   return `Basic ${b64(`${cfg.apiKey}:${cfg.username}:${cfg.password}`)}`;
 }
 

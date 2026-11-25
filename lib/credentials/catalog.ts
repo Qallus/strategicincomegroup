@@ -37,14 +37,24 @@ export const PROVIDERS: CatalogProvider[] = [
   // ── CRM ──
   {
     id: "redtail", tab: "crm", name: "Redtail CRM", testable: true,
-    description: "Read access for the Phase 3 contact sync. Use the user key; username and password are only needed once to fetch it.",
-    docsUrl: "https://corporate.redtailtechnology.com/api/",
+    description:
+      "Development (review) and Production keys side by side; the active environment is the one the app uses. Do all development in Development — Redtail warns that bad writes to production can corrupt live data. To get a UserKey: enter the trial's username and password, then Test connection — the UserKey is fetched, saved encrypted, and the password is cleared.",
+    docsUrl: "https://documenter.getpostman.com/view/7873823/SVzxXyzn",
     fields: [
-      plain("base_url", "API base URL", "REDTAIL_API_BASE_URL", "url", { placeholder: "https://review.crm.redtailtechnology.com/api/public/v1", help: "Where to find it: Redtail API documentation. Sandbox (review) while testing; production is https://smf.crm3.redtailtechnology.com/api/public/v1." }),
-      secret("api_key", "API Key", "REDTAIL_API_KEY", { required: true, help: "Where to find it: issued to SIG by Redtail's Integration Partner program (partner welcome email)." }),
-      secret("user_key", "User Key", "REDTAIL_USER_KEY", { help: "Where to find it: returned by Redtail's authentication call (API Key + Redtail username and password). Preferred over storing the password." }),
-      plain("username", "Redtail username", "REDTAIL_USERNAME", "text", { help: "The Redtail CRM login used to fetch the User Key." }),
-      secret("password", "Redtail password", "REDTAIL_PASSWORD", { help: "Only needed once to fetch the User Key; clear it afterwards." }),
+      plain("environment", "Active environment", "REDTAIL_ENVIRONMENT", "text", {
+        options: [
+          { value: "development", label: "Development (review)" },
+          { value: "production", label: "Production" },
+        ],
+        help: "SIG setting. Development uses https://review.crm.redtailtechnology.com/api/public/v1; Production uses https://crm.redtailtechnology.com/api/public/v1. Defaults to Development.",
+      }),
+      secret("dev_api_key", "Development API Key", "REDTAIL_DEV_API_KEY", { help: "Where to find it: Redtail partner welcome email → DEVELOPMENT API KEY (URI review.crm.redtailtechnology.com)." }),
+      secret("dev_user_key", "Development UserKey", "REDTAIL_DEV_USER_KEY", { help: "Where to find it: fetched automatically by Test connection from your review-environment trial login (Redtail's UserKey retrieval method)." }),
+      secret("prod_api_key", "Production API Key", "REDTAIL_PROD_API_KEY", { help: "Where to find it: Redtail partner welcome email → PRODUCTION API KEY (URI crm.redtailtechnology.com)." }),
+      secret("prod_user_key", "Production UserKey", "REDTAIL_PROD_USER_KEY", { help: "Where to find it: fetched automatically by Test connection from a production Redtail login while Production is active." }),
+      plain("username", "Redtail username", "REDTAIL_USERNAME", "text", { help: "The Redtail CRM login for the ACTIVE environment (your trial username in Development). Only needed to fetch that environment's UserKey." }),
+      secret("password", "Redtail password", "REDTAIL_PASSWORD", { help: "Used once to fetch the UserKey, then cleared automatically. Never stored after a successful fetch." }),
+      plain("base_url", "API base URL (override)", "REDTAIL_API_BASE_URL_OVERRIDE", "url", { help: "Leave empty. Only set this if Redtail gives you a different URI than the two above." }),
     ],
   },
   // ── Email ──

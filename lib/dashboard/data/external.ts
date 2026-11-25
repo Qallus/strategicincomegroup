@@ -6,6 +6,7 @@ import type { DashboardViewer } from "@/lib/dashboard/types";
 import { getWeather, locationForOffice, type WeatherLocationId } from "@/lib/weather/open-meteo";
 import { getQuotes, normalizeSymbol } from "@/lib/markets/finnhub";
 import { getProviderConfig } from "@/lib/credentials/server";
+import { resolveRedtail } from "@/lib/redtail/env";
 import { DataForbidden } from "./util";
 
 async function officeLocation(viewer: DashboardViewer): Promise<WeatherLocationId> {
@@ -33,7 +34,8 @@ export async function loadMarkets(_viewer: DashboardViewer, params: Record<strin
 export async function loadRedtailStatus(viewer: DashboardViewer) {
   if (!viewer.permissions.includes(PERMISSIONS.MANAGE_PARTICIPANTS)) throw new DataForbidden();
   const cfg = await getProviderConfig("redtail").catch(() => ({}) as Record<string, string | undefined>);
-  const configured = Boolean(cfg.api_key && (cfg.user_key || (cfg.username && cfg.password)));
+  const r = resolveRedtail(cfg);
+  const configured = Boolean(r.apiKey && r.userKey);
   let lastTest: { ok: boolean; message: string | null; testedAt: string } | null = null;
   try {
     const { data } = await createSupabaseAdminClient().from("credential_tests").select("ok, message, tested_at").eq("provider", "redtail").eq("instance", "default").maybeSingle();
@@ -41,6 +43,5 @@ export async function loadRedtailStatus(viewer: DashboardViewer) {
   } catch {
     /* credentials migration not applied */
   }
-  const sandbox = (cfg.base_url ?? "").includes("review.crm");
-  return { configured, hasApiKey: Boolean(cfg.api_key), lastTest, sandbox: configured ? sandbox || !cfg.base_url : false, canManage: viewer.isSuperAdmin };
+  return { configured, hasApiKey: Boolean(r.apiKey), lastTest, sandbox: r.environment === "development", canManage: viewer.isSuperAdmin };
 }
