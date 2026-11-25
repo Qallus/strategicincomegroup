@@ -452,16 +452,17 @@ function AllocationChips({ className }: { className?: string }) {
 const LEFT_CARD = "absolute hidden xl:block";
 const RIGHT_CARD = "absolute";
 // Default desktop positions for the standing studio portraits (subject spans ~59–77% of the stage).
-const BACK_AT = "left-[47.6%] top-[250px] w-[184px]";
-const FRONT_AT = "right-[9.5%] top-[392px] w-[196px]";
+const BACK_AT = "left-[47.6%] top-[170px] w-[184px]";
+const FRONT_AT = "right-[9.5%] top-[312px] w-[196px]";
 
 const SLIDES: Slide[] = [
   {
     key: "mike",
     name: "Mike",
-    alt: "Mike Gauthier, CFP®, Founder and CEO of Strategic Income Group, seated in an office chair",
-    image: "/team/hero/mike-gauthier-chair.webp",
-    frame: "cutout",
+    alt: "Mike Gauthier, CFP®, Founder and CEO of Strategic Income Group, seated in a studio portrait",
+    image: "/team/hero/mike-gauthier-studio.webp",
+    cutout: "/team/hero/mike-gauthier-studio-cutout.webp",
+    frame: "studio",
     tone: "dark",
     stops: ["#2b418f", "#1a2a66", "#0e1a48", "#081030"],
     at: "62% 40%",
@@ -473,10 +474,10 @@ const SLIDES: Slide[] = [
     },
     link: { label: "Why SIG?", mobileLabel: "Learn about our approach", href: "/our-approach" },
     desktopCards: {
-      back: <GoalBarCard className={cn(LEFT_CARD, "left-[46%] top-[206px] w-[196px]")} />,
+      back: <GoalBarCard className={cn(LEFT_CARD, "left-[47%] top-[180px] w-[184px]")} />,
       front: (
         <PhasesCard
-          className={cn(RIGHT_CARD, "right-[8%] top-[404px] w-[196px]")}
+          className={cn(RIGHT_CARD, "right-[6%] top-[330px] w-[196px]")}
           title="phases complete"
           note={
             <>
@@ -511,8 +512,8 @@ const SLIDES: Slide[] = [
     // Bree's hand is on her hip, so here the strategy card tucks behind her right side
     // (her arm clips its top-left corner) and the goals card overlaps her left shoulder.
     desktopCards: {
-      back: <AllocationChips className={cn(RIGHT_CARD, "right-[6.6%] top-[402px] w-[200px]")} />,
-      front: <GoalsCard className={cn(LEFT_CARD, "left-[47%] top-[214px] w-[200px]")} />,
+      back: <AllocationChips className={cn(RIGHT_CARD, "right-[6.6%] top-[322px] w-[200px]")} />,
+      front: <GoalsCard className={cn(LEFT_CARD, "left-[47%] top-[134px] w-[200px]")} />,
     },
     mobileCards: {
       back: <GoalBarCard small className="w-full" />,
@@ -561,7 +562,7 @@ const SLIDES: Slide[] = [
     link: { label: "Meet Laurie", href: "/team/laurie-simons" },
     desktopCards: {
       back: <StatCard className={cn(LEFT_CARD, BACK_AT)} eyebrow="Trust & estate" value="Updated" note="Estate documents reviewed" />,
-      front: <CalendarCard className={cn(RIGHT_CARD, "right-[8.5%] top-[392px] w-[216px]")} />,
+      front: <CalendarCard className={cn(RIGHT_CARD, "right-[8.5%] top-[312px] w-[216px]")} />,
     },
     mobileCards: {
       back: <StatCard small className="w-full" eyebrow="Trust & estate" value="Updated" note="Estate documents reviewed" />,
@@ -643,7 +644,7 @@ const SLIDES: Slide[] = [
 // melts into the band with no visible seam. Mobile: fade on all four sides.
 const MASK_DESKTOP = "linear-gradient(to right, transparent 0%, rgba(0,0,0,.18) 10%, rgba(0,0,0,.6) 22%, black 36%, black 66%, rgba(0,0,0,.6) 80%, rgba(0,0,0,.18) 91%, transparent 100%)";
 // Fades the photo's bottom edge when the band is taller than the photo (lg widths just above 1024px).
-const MASK_DESKTOP_Y = "linear-gradient(to bottom, black 72%, transparent 97%)";
+const MASK_DESKTOP_Y = "linear-gradient(to bottom, black 64%, transparent 84%)";
 const MASK_MOBILE_Y = "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.25) 6%, rgba(0,0,0,.7) 13%, black 20%, black 78%, transparent 100%)";
 const MASK_MOBILE_X = "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%)";
 
@@ -654,7 +655,7 @@ const MASK_CUTOUT_DY = "linear-gradient(to bottom, black 68%, transparent 82%)";
 // Photo frames. Studio = feathered portrait with backdrop; solo = background-free portrait
 // (Mike) that sits a little lower on mobile and a touch right of center so the back card reads.
 const STUDIO_FRAME =
-  "absolute left-1/2 top-0 h-full w-[340px] -translate-x-1/2 min-[400px]:w-[360px] sm:w-[420px] lg:left-auto lg:right-[6.25%] lg:top-[-20px] lg:aspect-[667/1000] lg:h-auto lg:w-[52.1%] lg:max-w-[667px] lg:translate-x-0";
+  "absolute left-1/2 top-0 h-full w-[340px] -translate-x-1/2 min-[400px]:w-[360px] sm:w-[420px] lg:left-auto lg:right-[6.25%] lg:top-[-100px] lg:aspect-[667/1000] lg:h-auto lg:w-[52.1%] lg:max-w-[667px] lg:translate-x-0";
 const SOLO_FRAME =
   "absolute left-[calc(50%+14px)] top-[52px] h-[calc(100%-52px)] w-[270px] -translate-x-1/2 min-[400px]:w-[285px] sm:left-1/2 sm:w-[330px] lg:left-auto lg:right-[14%] lg:top-[40px] lg:aspect-[466/805] lg:h-[780px] lg:w-auto lg:translate-x-0";
 const STUDIO_SIZES = "(min-width: 1280px) 667px, (min-width: 1024px) 52vw, (min-width: 640px) 420px, 360px";

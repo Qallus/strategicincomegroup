@@ -285,6 +285,8 @@ function MegaPanel({ menu, onNavigate }: { menu: MegaMenu; onNavigate: () => voi
   );
 }
 
+const subId = (label: string) => `mobile-sub-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
 function MobileMenu({ pathname, top, onNavigate }: { pathname: string; top: number; onNavigate: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   return (
@@ -296,16 +298,34 @@ function MobileMenu({ pathname, top, onNavigate }: { pathname: string; top: numb
               <button
                 type="button"
                 aria-expanded={expanded === item.label}
+                aria-controls={subId(item.label)}
                 onClick={() => setExpanded((cur) => (cur === item.label ? null : item.label))}
                 className="flex w-full items-center justify-between py-3.5 text-base font-medium"
               >
                 {item.label}
-                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", expanded === item.label && "rotate-180")} />
+                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-300", expanded === item.label && "rotate-180")} />
               </button>
-              {expanded === item.label ? (
-                <ul className="grid gap-1 pb-3">
-                  {item.groups.flatMap((g) => g.links).map((link) => (
-                    <li key={link.href}>
+              {/* Slide-down sub-navigation: the row height animates 0fr → 1fr, links ease in one after another. */}
+              <div
+                id={subId(item.label)}
+                inert={expanded !== item.label}
+                aria-hidden={expanded !== item.label}
+                className={cn(
+                  "grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
+                  expanded === item.label ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                )}
+              >
+                <ul className="grid min-h-0 gap-1 overflow-hidden">
+                  {item.groups.flatMap((g) => g.links).map((link, i) => (
+                    <li
+                      key={link.href}
+                      style={{ transitionDelay: expanded === item.label ? `${60 + i * 35}ms` : "0ms" }}
+                      className={cn(
+                        "transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none",
+                        expanded === item.label ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0",
+                        i === 0 && "pt-0.5",
+                      )}
+                    >
                       <Link
                         href={link.href}
                         onClick={onNavigate}
@@ -321,8 +341,9 @@ function MobileMenu({ pathname, top, onNavigate }: { pathname: string; top: numb
                       </Link>
                     </li>
                   ))}
+                  <li aria-hidden className="h-2" />
                 </ul>
-              ) : null}
+              </div>
             </li>
           ) : (
             <li key={item.label}>
