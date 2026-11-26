@@ -6,6 +6,11 @@ import {
   customProviderFrom, type CatalogField, type CatalogProvider, type CustomDefinition,
 } from "./catalog";
 import { CredentialsKeyError, decrypt, encrypt, hasMasterKey, last4Of } from "./crypto";
+import { REDTAIL_FIELDS } from "@/lib/redtail/env";
+
+// Passwords never show their last characters (keys and tokens do, to tell them apart).
+const isPasswordField = (key: string) => /pass(word)?|passphrase/i.test(key);
+const hintFor = (key: string, value: string) => (isPasswordField(key) ? null : last4Of(value));
 import type { CredentialsOverview, FieldStatus, HistoryEntry, ProviderState, ProviderStatus } from "./types";
 
 // SIG Credentials — server-side store.
@@ -291,7 +296,7 @@ export async function getCredentialsOverview(): Promise<CredentialsOverview> {
         return {
           key: f.key,
           source: "dashboard",
-          last4: row.is_secret ? row.last4 : null,
+          last4: row.is_secret && !isPasswordField(f.key) ? row.last4 : null,
           value: row.is_secret ? null : row.plain_value,
           undecryptable: row.is_secret && value === null ? true : undefined,
           updatedAt: row.updated_at,
@@ -303,7 +308,7 @@ export async function getCredentialsOverview(): Promise<CredentialsOverview> {
         return {
           key: f.key,
           source: "coolify",
-          last4: f.secret && !p.managedInCoolify ? last4Of(env) : null,
+          last4: f.secret && !p.managedInCoolify ? hintFor(f.key, env) : null,
           value: f.secret ? null : env,
           updatedAt: null,
           updatedBy: null,
@@ -315,6 +320,11 @@ export async function getCredentialsOverview(): Promise<CredentialsOverview> {
     const test = tests.find((t) => t.provider === p.id && t.instance === instance) ?? null;
     const latest = fields.filter((f) => f.updatedAt).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0] ?? null;
     const required = p.fields.filter((f) => f.required).map((f) => f.key);
+    // Redtail: complete only when the ACTIVE environment has both its API Key and UserKey.
+    if (p.id === "redtail") {
+      const env = (fields.find((f) => f.key === "environment")?.value ?? "").toLowerCase() === "production" ? "production" : "development";
+      required.push(...Object.values(REDTAIL_FIELDS[env]));
+    }
     const byKey = new Map(fields.map((f) => [f.key, f]));
     const anySet = fields.some((f) => f.source !== "missing");
     const missingRequired = required.some((k) => byKey.get(k)?.source === "missing");
@@ -427,7 +437,7 @@ export async function saveProviderValues(input: {
         if (e instanceof CredentialsKeyError) throw new CredentialInputError(e.message);
         throw e;
       }
-      payload = { is_secret: true, ...enc, last4: last4Of(value), plain_value: null };
+      payload = { is_secret: true, ...enc, last4: hintFor(key, value), plain_value: null };
     } else {
       payload = { is_secret: false, plain_value: value, ciphertext: null, iv: null, auth_tag: null, key_version: null, last4: null };
     }
@@ -609,7 +619,7 @@ async function moveAccountPlaintext(a: PlaintextAccount, actorId: string | null)
       if (existing.has(key)) continue;
       const isSecret = known.get(key)?.secret ?? true;
       const payload = isSecret
-        ? { is_secret: true, ...encrypt(value, provider, a.id, key), last4: last4Of(value), plain_value: null }
+        ? { is_secret: true, ...encrypt(value, provider, a.id, key), last4: hintFor(key, value), plain_value: null }
         : { is_secret: false, plain_value: value, ciphertext: null, iv: null, auth_tag: null, key_version: null, last4: null };
       const { error } = await sb.from("credentials").insert({ ...payload, provider, instance: a.id, field: key, created_by: actorId, updated_by: actorId, created_at: now, updated_at: now });
       if (error) throw new Error(error.message);

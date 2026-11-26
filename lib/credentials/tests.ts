@@ -127,8 +127,13 @@ const TESTS: Record<string, (cfg: Config) => Promise<TestResult>> = {
         headers: { Authorization: `Basic ${b64(`${r.apiKey}:${r.username}:${r.password}`)}`, Accept: "application/json" },
       });
       if (!res.ok) {
-        const hint = res.status === 401 ? " Check the username/password, and that Redtail has activated this trial (reply to partnersupport@redtailtechnology.com with the trial username)." : "";
-        return { ok: false, message: `${env}: authentication failed (HTTP ${res.status}).${hint}` };
+        // Include Redtail's own reason (e.g. invalid API key vs invalid user credentials).
+        const reason = (await bodySnippet(res)).trim();
+        const hint =
+          res.status === 401
+            ? " Check: (1) the username — not the email — and password sign in at review.crm.redtailtechnology.com; (2) the Development API Key; (3) Redtail has activated this account for API access (email partnersupport@redtailtechnology.com with the username)."
+            : "";
+        return { ok: false, message: `${env}: authentication failed (HTTP ${res.status})${reason ? ` — Redtail says: "${reason}"` : ""}.${hint}` };
       }
       const data = (await res.json().catch(() => ({}))) as { authenticated_user?: { user_key?: string }; user_key?: string; UserKey?: string };
       const userKey = data.authenticated_user?.user_key ?? data.user_key ?? data.UserKey;
